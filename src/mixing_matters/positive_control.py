@@ -1,6 +1,7 @@
 import hashlib
 import json
 import random
+import statistics
 import uuid
 from pathlib import Path
 
@@ -11,7 +12,7 @@ from .run import SEED, Generator
 
 EXAMPLES = 50
 KEYS = 30
-POSITIONS = {"kv_first": 0, "kv_middle": 14, "kv_last": 29}
+POSITIONS = {f"kv_position_{slot}": round(slot * (KEYS - 1) / 9) for slot in range(10)}
 MIN_EDGE_ADVANTAGE = 0.05
 
 
@@ -90,7 +91,8 @@ def validate_control(path: Path, metadata: dict) -> str:
         / EXAMPLES
         for condition in POSITIONS
     }
-    edge = max(accuracies["kv_first"], accuracies["kv_last"])
-    if edge - accuracies["kv_middle"] < MIN_EDGE_ADVANTAGE:
+    edge = statistics.mean(accuracies[f"kv_position_{slot}"] for slot in (0, 9))
+    middle = statistics.mean(accuracies[f"kv_position_{slot}"] for slot in (4, 5))
+    if edge - middle < MIN_EDGE_ADVANTAGE:
         raise ValueError(f"positive control failed: {json.dumps(accuracies, sort_keys=True)}")
     return hashlib.sha256(path.read_bytes()).hexdigest()
