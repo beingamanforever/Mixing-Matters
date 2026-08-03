@@ -1,0 +1,17 @@
+Source: https://github.com/nelson-liu/lost-in-the-middle
+Commit: 29b8a6d042ce29abccee3db1a73171a107d7e6af
+
+Vendored without semantic changes:
+src/lost_in_the_middle/metrics.py
+src/lost_in_the_middle/prompting.py
+src/lost_in_the_middle/prompts/*.prompt
+
+Patch application adds a final newline to two prompt files.
+The upstream loader strips final newlines, so rendered prompts are byte-identical.
+
+Dataset:
+qa_data/10_total_documents/nq-open-10_total_documents_gold_at_0.jsonl.gz
+SHA-256: 192a05b27af2b09eec33ca0c94bb5cf82bcaf70d78b3bdff1258df34bf37aab9
+
+The upstream code is MIT licensed.
+The upstream license is reproduced in vendor/LICENSE.
