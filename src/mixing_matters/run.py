@@ -168,6 +168,9 @@ def _run_certify(
 
     if output.exists():
         raise FileExistsError(output)
+    failures = output.with_suffix(".failures.jsonl")
+    if failures.exists():
+        raise FileExistsError(failures)
     digest = file_sha256(data_path)
     if digest != SHA256:
         raise ValueError(f"dataset checksum mismatch: {digest}")
@@ -281,8 +284,7 @@ def _run_certify(
         }
 
         if exclusion:
-            sidecar = output.with_suffix(".failures.jsonl")
-            with sidecar.open("a") as stream:
+            with failures.open("a") as stream:
                 stream.write(
                     json.dumps({"run_id": run_id, "question_id": qid, "error": exclusion}) + "\n"
                 )
