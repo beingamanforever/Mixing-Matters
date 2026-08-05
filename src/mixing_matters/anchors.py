@@ -1,6 +1,6 @@
 from lost_in_the_middle.prompting import Document, get_closedbook_qa_prompt, get_qa_prompt
 
-from .build_positions import place_gold, negative_positions, shuffle_distractors
+from .build_positions import place_fake, place_gold, shuffle_distractors
 
 
 def build_prompt(row: dict, condition: str) -> tuple[str, int | None]:
@@ -35,7 +35,7 @@ def build_control_prompt(row: dict, condition: str, **kwargs) -> tuple[str, int 
         gold_present = True
     elif condition == "negative_control":
         pos = kwargs["pos"]
-        documents = negative_positions(row)[pos]["ctxs"]
+        documents = place_fake(row, pos)["ctxs"]
         position = pos
         gold_present = False
     elif condition == "distractor_order":
@@ -46,7 +46,7 @@ def build_control_prompt(row: dict, condition: str, **kwargs) -> tuple[str, int 
         gold_present = True
     else:
         raise ValueError(f"unknown control condition: {condition}")
-        
+
     prompt = get_qa_prompt(
         row["question"],
         [Document.from_dict(document) for document in documents],

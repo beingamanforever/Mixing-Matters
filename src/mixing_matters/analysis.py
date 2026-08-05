@@ -3,6 +3,9 @@ import random
 from collections import Counter
 
 EXPECTED_COUNTS = {"gold_first": 200, "gold_middle": 200, "closed_book": 50, "oracle": 50}
+BOOTSTRAP_SEED = 240521
+FLOOR_TOLERANCE = 0.05
+ORDER_TOLERANCE = 0.10
 
 
 def validate_phase1(records: list[dict]) -> None:
@@ -91,101 +94,127 @@ def planning_sample_size(discordance: float) -> int:
     return max(1, math.ceil(6080 * discordance - 60))
 
 
-def bootstrap_paired_edges(scores_by_question: dict[str, dict[int, float]], rng: random.Random, n_resamples: int = 10000) -> tuple[tuple[float, float], tuple[float, float]]:
-    primacy_dist = []
-    recency_dist = []
-    qids = list(scores_by_question.keys())
-    n = len(qids)
-    
+def bootstrap_paired_edges(
+    scores_by_question: dict[str, dict[int, float]], rng: random.Random, n_resamples: int = 10000
+) -> tuple[tuple[float, float], tuple[float, float]]:
+    primacy = []
+    recency = []
+    questions = list(scores_by_question.keys())
+    size = len(questions)
+
     for _ in range(n_resamples):
-        sampled = rng.choices(qids, k=n)
-        def mean_acc(pos_list):
-            scores = [scores_by_question[q][p] for q in sampled for p in pos_list]
+        sampled = rng.choices(questions, k=size)
+
+        def mean_accuracy(positions):
+            scores = [
+                scores_by_question[question][position]
+                for question in sampled
+                for position in positions
+            ]
             return sum(scores) / len(scores) if scores else 0.0
-            
-        primacy_dist.append(mean_acc([0, 1]) - mean_acc([4, 5]))
-        recency_dist.append(mean_acc([8, 9]) - mean_acc([4, 5]))
-        
-    primacy_dist.sort()
-    recency_dist.sort()
-    
-    ci_primacy = (primacy_dist[int(0.025 * n_resamples)], primacy_dist[int(0.975 * n_resamples)])
-    ci_recency = (recency_dist[int(0.025 * n_resamples)], recency_dist[int(0.975 * n_resamples)])
+
+        primacy.append(mean_accuracy([0, 1]) - mean_accuracy([4, 5]))
+        recency.append(mean_accuracy([8, 9]) - mean_accuracy([4, 5]))
+
+    primacy.sort()
+    recency.sort()
+
+    ci_primacy = (primacy[int(0.025 * n_resamples)], primacy[int(0.975 * n_resamples)])
+    ci_recency = (recency[int(0.025 * n_resamples)], recency[int(0.975 * n_resamples)])
     return ci_primacy, ci_recency
 
 
-def validate_negative(records: list[dict], floor_records: list[dict] = None) -> None:
-    # prompt length invariance
-    lengths_by_q = {}
-    for r in records:
-        lengths_by_q.setdefault(r["question_id"], set()).add(r["prompt_token_count"])
-    for qid, lengths in lengths_by_q.items():
+def validate_negative(records: list[dict]) -> None:
+    lengths_by_question: dict[str, set[int]] = {}
+    for record in records:
+        lengths = lengths_by_question.setdefault(record["question_id"], set())
+        lengths.add(record["prompt_token_count"])
+    for question, lengths in lengths_by_question.items():
         if len(lengths) > 1:
-            raise ValueError(f"per-question length non-invariance detected: {lengths}")
-            
-    # structure scores
-    scores_by_question = {}
-    valid_count = 0
-    
-    for r in records:
-        if r["score"] is None:
+            raise ValueError(
+                f"per-question length non-invariance detected for {question}: {lengths}"
+            )
+
+    scored_by_question: dict[str, dict[int, dict]] = {}
+    for record in records:
+        if record["score"] is None:
             continue
-        qid = r["question_id"]
-        pos = r["gold_position"]
-        if qid not in scores_by_question:
-            scores_by_question[qid] = {}
-        scores_by_question[qid][pos] = r
-        valid_count += 1
-        
-    if valid_count == 0:
+        positions = scored_by_question.setdefault(record["question_id"], {})
+        if record["gold_position"] in positions:
+            raise ValueError(
+                f"duplicate result: {record['question_id']} at {record['gold_position']}"
+            )
+        positions[record["gold_position"]] = record
+    if not scored_by_question:
         raise ValueError("no valid records found")
-        
-    # Check all 10 positions present per question, and mean diff from floor per question
-    scores_for_bootstrap = {}
-    for qid, pos_dict in scores_by_question.items():
-        if len(pos_dict) != 10:
-            raise ValueError(f"question {qid} does not have exactly 10 positions (found {len(pos_dict)})")
-            
-        mean_neg = sum(r["score"] for r in pos_dict.values()) / 10.0
-        floor_acc = next(iter(pos_dict.values()))["floor_accuracy"]
-        if abs(mean_neg - floor_acc) > 0.05:
-            raise ValueError(f"negative control mean differs from floor by > 0.05 for question {qid}: {mean_neg} vs {floor_acc}")
-            
-        scores_for_bootstrap[qid] = {pos: r["score"] for pos, r in pos_dict.items()}
-        
-    # Flatness check
-    rng = random.Random(42)
-    ci_primacy, ci_recency = bootstrap_paired_edges(scores_for_bootstrap, rng)
-    
-    def contains_zero(ci):
-        return ci[0] <= 0 <= ci[1]
-        
-    if not contains_zero(ci_primacy):
+
+    scores_by_question: dict[str, dict[int, float]] = {}
+    floors = []
+    for question, positions in scored_by_question.items():
+        if len(positions) != 10:
+            raise ValueError(f"question {question} lacks ten scored positions: {len(positions)}")
+        floor_values = {record["floor_accuracy"] for record in positions.values()}
+        if len(floor_values) != 1:
+            raise ValueError(f"question {question} carries mixed floor accuracies: {floor_values}")
+        floors.append(floor_values.pop())
+        scores_by_question[question] = {
+            position: record["score"] for position, record in positions.items()
+        }
+
+    # Single questions score 0 or 1, so only the pooled accuracy can sit near the
+    # closed-book floor. A per-question gate would reject any correct guess.
+    scored_count = 10 * len(scores_by_question)
+    accuracy = sum(sum(scores.values()) for scores in scores_by_question.values()) / scored_count
+    floor = sum(floors) / len(floors)
+    if abs(accuracy - floor) > FLOOR_TOLERANCE:
+        raise ValueError(
+            f"negative control accuracy differs from floor by more than {FLOOR_TOLERANCE}: "
+            f"{accuracy} vs {floor}"
+        )
+
+    ci_primacy, ci_recency = bootstrap_paired_edges(
+        scores_by_question, random.Random(BOOTSTRAP_SEED)
+    )
+    if not ci_primacy[0] <= 0 <= ci_primacy[1]:
         raise ValueError(f"flatness CI for primacy does not contain 0: {ci_primacy}")
-    if not contains_zero(ci_recency):
+    if not ci_recency[0] <= 0 <= ci_recency[1]:
         raise ValueError(f"flatness CI for recency does not contain 0: {ci_recency}")
 
 
 def validate_order(records: list[dict]) -> None:
-    # Collect scores by (question, pos) -> list of scores across perms
-    scores_by_group = {}
-    for r in records:
-        if r["score"] is None:
+    lengths_by_group: dict[tuple[str, int], set[int]] = {}
+    scores_by_permutation: dict[int, dict[tuple[str, int], float]] = {}
+    for record in records:
+        if record["score"] is None:
             continue
-        key = (r["question_id"], r["gold_position"])
-        scores_by_group.setdefault(key, []).append(r["score"])
-        
-    if not scores_by_group:
+        group = (record["question_id"], record["gold_position"])
+        lengths_by_group.setdefault(group, set()).add(record["prompt_token_count"])
+        scores = scores_by_permutation.setdefault(record["permutation_id"], {})
+        if group in scores:
+            raise ValueError(f"duplicate result: {group} permutation {record['permutation_id']}")
+        scores[group] = record["score"]
+    if not scores_by_permutation:
         raise ValueError("no valid records found")
-        
-    ranges = []
-    for key, scores in scores_by_group.items():
-        if len(scores) > 1:
-            ranges.append(max(scores) - min(scores))
-            
-    if not ranges:
+    if len(scores_by_permutation) < 2:
         raise ValueError("no permutations found to compare")
-        
-    mean_range = sum(ranges) / len(ranges)
-    if mean_range > 0.10:
-        raise ValueError(f"mean range across distractor permutations is > 0.10: {mean_range}")
+
+    for group, lengths in lengths_by_group.items():
+        if len(lengths) > 1:
+            raise ValueError(f"distractor order changed prompt length for {group}: {lengths}")
+
+    groups = [set(scores) for scores in scores_by_permutation.values()]
+    if any(covered != groups[0] for covered in groups):
+        raise ValueError("permutations do not cover the same question and position pairs")
+
+    # Accuracy is the group-level quantity the position claim rests on. Item-level
+    # flips between two orderings are expected even when accuracy is unchanged.
+    accuracies = {
+        permutation: sum(scores.values()) / len(scores)
+        for permutation, scores in scores_by_permutation.items()
+    }
+    spread = max(accuracies.values()) - min(accuracies.values())
+    if spread > ORDER_TOLERANCE:
+        raise ValueError(
+            f"accuracy across distractor permutations spans more than {ORDER_TOLERANCE}: "
+            f"{accuracies}"
+        )

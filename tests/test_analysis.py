@@ -1,7 +1,15 @@
+import random
+
 import pytest
 
-from mixing_matters.analysis import planning_sample_size, summarize, validate_phase1, bootstrap_paired_edges, validate_negative, validate_order
-import random
+from mixing_matters.analysis import (
+    bootstrap_paired_edges,
+    planning_sample_size,
+    summarize,
+    validate_negative,
+    validate_order,
+    validate_phase1,
+)
 
 
 def test_discordance_and_planning_table():
@@ -59,75 +67,113 @@ def test_phase1_validation_rejects_mixed_provenance():
 
 def test_bootstrap_paired_edges():
     rng = random.Random(42)
-    # flat fixture
-    flat = {str(i): {pos: 0.5 for pos in range(10)} for i in range(100)}
-    ci_prim, ci_rec = bootstrap_paired_edges(flat, rng, 100)
-    assert ci_prim[0] <= 0 <= ci_prim[1]
-    assert ci_rec[0] <= 0 <= ci_rec[1]
+    flat = {str(question): {position: 0.5 for position in range(10)} for question in range(100)}
+    primacy, recency = bootstrap_paired_edges(flat, rng, 100)
+    assert primacy[0] <= 0 <= primacy[1]
+    assert recency[0] <= 0 <= recency[1]
 
-    # primacy fixture
-    prim = {str(i): {pos: 0.8 if pos in (0, 1) else 0.4 for pos in range(10)} for i in range(100)}
-    ci_prim2, ci_rec2 = bootstrap_paired_edges(prim, rng, 100)
-    assert ci_prim2[0] > 0
+    edged = {
+        str(question): {position: 0.8 if position in (0, 1) else 0.4 for position in range(10)}
+        for question in range(100)
+    }
+    primacy, _ = bootstrap_paired_edges(edged, rng, 100)
+    assert primacy[0] > 0
 
 
 def test_validate_negative():
     records = []
     for i in range(100):
         for pos in range(10):
-            records.append({
-                "question_id": str(i),
-                "gold_position": pos,
-                "score": 0.5,
-                "floor_accuracy": 0.5,
-                "prompt_token_count": 100
-            })
+            records.append(
+                {
+                    "question_id": str(i),
+                    "gold_position": pos,
+                    "score": 0.5,
+                    "floor_accuracy": 0.5,
+                    "prompt_token_count": 100,
+                }
+            )
     validate_negative(records)
-    
-    records_diff = [dict(r, score=0.6) for r in records]
+
+    above_floor = [dict(record, score=0.6) for record in records]
     with pytest.raises(ValueError, match="differs from floor"):
-        validate_negative(records_diff)
-        
-    records_len = []
+        validate_negative(above_floor)
+
+    stretched = []
     for i in range(100):
         for pos in range(10):
-            records_len.append({
-                "question_id": str(i),
-                "gold_position": pos,
-                "score": 0.5,
-                "floor_accuracy": 0.5,
-                "prompt_token_count": 100 + (pos % 2)
-            })
+            stretched.append(
+                {
+                    "question_id": str(i),
+                    "gold_position": pos,
+                    "score": 0.5,
+                    "floor_accuracy": 0.5,
+                    "prompt_token_count": 100 + (pos % 2),
+                }
+            )
     with pytest.raises(ValueError, match="non-invariance"):
-        validate_negative(records_len)
-        
-    records_prim = [dict(r, score=0.8 if r["gold_position"] in (0,1) else 0.4) for r in records]
+        validate_negative(stretched)
+
+    edged = [
+        dict(record, score=0.8 if record["gold_position"] in (0, 1) else 0.4) for record in records
+    ]
     with pytest.raises(ValueError, match="flatness CI for primacy"):
-        validate_negative(records_prim)
+        validate_negative(edged)
 
 
 def test_validate_order():
-    records = []
-    for i in range(10):
-        for pos in (0, 4, 9):
-            for perm in range(3):
-                records.append({
-                    "question_id": str(i),
-                    "gold_position": pos,
-                    "score": 0.5 + 0.01 * perm,
-                    "prompt_token_count": 100
-                })
+    records = [
+        {
+            "question_id": str(question),
+            "gold_position": position,
+            "permutation_id": permutation,
+            "score": 0.5 + 0.01 * permutation,
+            "prompt_token_count": 100,
+        }
+        for question in range(10)
+        for position in (0, 4, 9)
+        for permutation in range(3)
+    ]
     validate_order(records)
-    
-    records_high = []
-    for i in range(10):
-        for pos in (0, 4, 9):
-            for perm in range(3):
-                records_high.append({
-                    "question_id": str(i),
-                    "gold_position": pos,
-                    "score": 0.5 + 0.2 * perm,
-                    "prompt_token_count": 100
-                })
-    with pytest.raises(ValueError, match="> 0.10"):
-        validate_order(records_high)
+
+    shifted = [dict(record, score=0.5 + 0.2 * record["permutation_id"]) for record in records]
+    with pytest.raises(ValueError, match="spans more than 0.1"):
+        validate_order(shifted)
+
+    stretched = [
+        dict(record, prompt_token_count=100 + record["permutation_id"]) for record in records
+    ]
+    with pytest.raises(ValueError, match="changed prompt length"):
+        validate_order(stretched)
+
+
+def test_binary_null_passes_gates():
+    rng = random.Random(0)
+    negative = []
+    for question in range(200):
+        floor = float(rng.random() < 0.15)
+        for position in range(10):
+            negative.append(
+                {
+                    "question_id": str(question),
+                    "gold_position": position,
+                    "score": float(rng.random() < 0.15),
+                    "floor_accuracy": floor,
+                    "prompt_token_count": 1500,
+                }
+            )
+    validate_negative(negative)
+
+    order = [
+        {
+            "question_id": str(question),
+            "gold_position": position,
+            "permutation_id": permutation,
+            "score": float(rng.random() < 0.40),
+            "prompt_token_count": 1500,
+        }
+        for question in range(200)
+        for position in (0, 4, 9)
+        for permutation in range(3)
+    ]
+    validate_order(order)
