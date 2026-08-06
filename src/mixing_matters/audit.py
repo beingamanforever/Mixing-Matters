@@ -83,6 +83,12 @@ def audit_sample(
     identifying and scoring fields needed to unblind an item after the audit
     is complete. The scoring-variant fields are read defensively, since some
     record sources (for example certify-control outputs) do not compute them.
+
+    The document count still identifies the anchor conditions, because a
+    closed-book prompt has no documents and an oracle prompt has one. Blinding
+    that would mean showing documents the model never saw, which would make the
+    extraction and hallucination categories unanswerable. The gold position,
+    which is what the study must blind, is not recoverable.
     """
     by_condition: dict[str, list[dict]] = {}
     for record in records:
