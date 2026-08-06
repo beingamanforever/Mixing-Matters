@@ -215,6 +215,14 @@ def phase1_condition_accuracy(records: list[dict]) -> dict:
     }
 
 
+def _provenance_caption(records: list[dict]) -> str:
+    """Name the model and the sample size so a figure stands alone in a slide."""
+    first = records[0]
+    model = first.get("model_name") or first.get("model", "unknown model")
+    units = len({record.get("question_id", record.get("control_id")) for record in records})
+    return f"{model}, {units} instances"
+
+
 def write_figures(
     kv_records: list[dict], phase1_records: list[dict], directory: Path
 ) -> list[Path]:
@@ -239,9 +247,9 @@ def write_figures(
 
     fig, ax = plt.subplots()
     ax.errorbar(slots, accuracies, yerr=[lower_error, upper_error], fmt="o-", capsize=4)
-    ax.set_title("Key-Value Position Accuracy")
-    ax.set_xlabel("Key-Value Slot")
-    ax.set_ylabel("Accuracy")
+    ax.set_title(f"Key-value position accuracy\n{_provenance_caption(kv_records)}")
+    ax.set_xlabel("Key-value slot")
+    ax.set_ylabel("Accuracy, 95 percent bootstrap interval")
     ax.set_xticks(slots)
     fig.savefig(kv_path)
     plt.close(fig)
@@ -255,9 +263,9 @@ def write_figures(
 
     fig, ax = plt.subplots()
     ax.bar(PHASE1_CONDITIONS, accuracies, yerr=[lower_error, upper_error], capsize=4)
-    ax.set_title("Phase 1 Condition Accuracy")
+    ax.set_title(f"Phase 1 condition accuracy\n{_provenance_caption(phase1_records)}")
     ax.set_xlabel("Condition")
-    ax.set_ylabel("Accuracy")
+    ax.set_ylabel("Accuracy, 95 percent bootstrap interval")
     fig.savefig(phase1_path)
     plt.close(fig)
 
