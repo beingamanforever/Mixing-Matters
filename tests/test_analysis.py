@@ -177,3 +177,34 @@ def test_binary_null_passes_gates():
         for permutation in range(3)
     ]
     validate_order(order)
+
+
+def test_gates_reject_unscored_units():
+    negative = [
+        {
+            "question_id": str(question),
+            "gold_position": position,
+            "score": None if question == 3 else 0.5,
+            "floor_accuracy": 0.5,
+            "prompt_token_count": 100,
+        }
+        for question in range(10)
+        for position in range(10)
+    ]
+    with pytest.raises(ValueError, match="no scored position"):
+        validate_negative(negative)
+
+    order = [
+        {
+            "question_id": str(question),
+            "gold_position": position,
+            "permutation_id": permutation,
+            "score": None if position == 4 else 0.5,
+            "prompt_token_count": 100,
+        }
+        for question in range(10)
+        for position in (0, 4, 9)
+        for permutation in range(3)
+    ]
+    with pytest.raises(ValueError, match="no scored permutation"):
+        validate_order(order)

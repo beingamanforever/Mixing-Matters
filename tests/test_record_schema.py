@@ -1,6 +1,8 @@
 import json
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from mixing_matters.run import run_certify_negative
 
 
@@ -90,3 +92,10 @@ def test_record_schema_and_invariance(tmp_path, row):
         else:
             assert ceilings[qid] == record["ceiling_accuracy"]
             assert floors[qid] == record["floor_accuracy"]
+
+
+def test_failures_sidecar_blocks_rerun(tmp_path, row):
+    (tmp_path / "out.failures.jsonl").write_text("")
+    with patch("mixing_matters.run.read_rows", return_value=[row]):
+        with pytest.raises(FileExistsError):
+            run_certify_negative(tmp_path / "data.jsonl", tmp_path / "out.jsonl", "rev", None, n=1)

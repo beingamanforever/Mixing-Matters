@@ -147,6 +147,9 @@ def validate_negative(records: list[dict]) -> None:
         positions[record["gold_position"]] = record
     if not scored_by_question:
         raise ValueError("no valid records found")
+    unscored = set(lengths_by_question) - set(scored_by_question)
+    if unscored:
+        raise ValueError(f"{len(unscored)} questions have no scored position: {sorted(unscored)}")
 
     scores_by_question: dict[str, dict[int, float]] = {}
     floors = []
@@ -185,10 +188,10 @@ def validate_order(records: list[dict]) -> None:
     lengths_by_group: dict[tuple[str, int], set[int]] = {}
     scores_by_permutation: dict[int, dict[tuple[str, int], float]] = {}
     for record in records:
-        if record["score"] is None:
-            continue
         group = (record["question_id"], record["gold_position"])
         lengths_by_group.setdefault(group, set()).add(record["prompt_token_count"])
+        if record["score"] is None:
+            continue
         scores = scores_by_permutation.setdefault(record["permutation_id"], {})
         if group in scores:
             raise ValueError(f"duplicate result: {group} permutation {record['permutation_id']}")
@@ -201,6 +204,11 @@ def validate_order(records: list[dict]) -> None:
     for group, lengths in lengths_by_group.items():
         if len(lengths) > 1:
             raise ValueError(f"distractor order changed prompt length for {group}: {lengths}")
+
+    scored_groups = {group for scores in scores_by_permutation.values() for group in scores}
+    unscored = set(lengths_by_group) - scored_groups
+    if unscored:
+        raise ValueError(f"{len(unscored)} groups have no scored permutation: {sorted(unscored)}")
 
     groups = [set(scores) for scores in scores_by_permutation.values()]
     if any(covered != groups[0] for covered in groups):
