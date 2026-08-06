@@ -63,16 +63,24 @@ def _installed_version(package: str) -> str | None:
         return None
 
 
+TRUNCATION_PROBE_TOKENS = 3000
+
+
 def _assert_no_active_truncation(tokenizer) -> None:
     """Fail loudly rather than silently corrupt long prompts.
 
-    The AntonV mamba2 tokenizer.json embeds a truncation setting with
-    max_length 1024; every prompt in this study is far longer than that.
+    The mamba2 tokenizer.json ships a truncation setting with max_length 1024,
+    which the default call path does not apply, while every prompt in this
+    study is longer than that. Measure the behaviour instead of trusting the
+    configuration: tokenize a probe far longer than any prompt and require the
+    full length back.
     """
-    backend = getattr(tokenizer, "backend_tokenizer", None)
-    truncation = getattr(backend, "truncation", None) if backend is not None else None
-    if truncation is not None:
-        raise ValueError(f"tokenizer has active truncation configured: {truncation}")
+    probe = "token " * TRUNCATION_PROBE_TOKENS
+    count = len(tokenizer(probe).input_ids)
+    if count < TRUNCATION_PROBE_TOKENS:
+        raise ValueError(
+            f"tokenizer truncates: {TRUNCATION_PROBE_TOKENS} probe tokens came back as {count}"
+        )
 
 
 def _require_mamba_kernels(mamba_module) -> None:
@@ -80,18 +88,24 @@ def _require_mamba_kernels(mamba_module) -> None:
 
     transformers.models.mamba.modeling_mamba.MambaMixer.forward dispatches to
     the CUDA kernel path only when selective_state_update, selective_scan_fn,
-    mamba_inner_fn, and the causal-conv1d functions all resolved at import
-    time; otherwise it silently falls back to the numerically different
-    pytorch reference path.
+    mamba_inner_fn, and the causal-conv1d functions all resolve; otherwise it
+    silently falls back to the numerically different pytorch reference path.
+
+    The causal-conv1d functions are loaded lazily inside forward, so reading
+    the module attributes before that call reports them as missing. Resolve
+    them the same way the dispatch does.
     """
-    required = (
-        "selective_state_update",
-        "selective_scan_fn",
-        "mamba_inner_fn",
-        "causal_conv1d_fn",
-        "causal_conv1d_update",
-    )
-    missing = [name for name in required if getattr(mamba_module, name, None) is None]
+    resolved = {
+        name: getattr(mamba_module, name, None)
+        for name in ("selective_state_update", "selective_scan_fn", "mamba_inner_fn")
+    }
+    loader = getattr(mamba_module, "_lazy_load_causal_conv1d", None)
+    if loader is None:
+        resolved["causal_conv1d_update"] = getattr(mamba_module, "causal_conv1d_update", None)
+        resolved["causal_conv1d_fn"] = getattr(mamba_module, "causal_conv1d_fn", None)
+    else:
+        resolved["causal_conv1d_update"], resolved["causal_conv1d_fn"] = loader()
+    missing = sorted(name for name, value in resolved.items() if value is None)
     if missing:
         raise RuntimeError(
             "mamba CUDA kernel path unavailable, missing: "
