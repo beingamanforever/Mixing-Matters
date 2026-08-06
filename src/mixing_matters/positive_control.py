@@ -5,10 +5,8 @@ import statistics
 import uuid
 from pathlib import Path
 
-from lost_in_the_middle.prompting import get_kv_retrieval_prompt
-
-from .io import read_jsonl, write_jsonl
-from .run import SEED, Generator
+from .io import read_jsonl
+from .run import SEED
 
 EXAMPLES = 50
 KEYS = 30
@@ -27,35 +25,6 @@ def control_examples() -> list[dict]:
         key, value = pairs[0]
         examples.append({"control_id": index, "pairs": pairs, "key": key, "value": value})
     return examples
-
-
-def run_control(output: Path, revision: str) -> None:
-    if output.exists():
-        raise FileExistsError(output)
-    generator = Generator(revision)
-
-    def records():
-        for example in control_examples():
-            gold = example["pairs"][0]
-            distractors = example["pairs"][1:]
-            for condition, position in POSITIONS.items():
-                pairs = list(distractors)
-                pairs.insert(position, gold)
-                prompt = get_kv_retrieval_prompt(pairs, example["key"])
-                generation, prompt_tokens, generated_tokens = generator(prompt)
-                yield {
-                    "control_id": example["control_id"],
-                    "condition": condition,
-                    "prompt": prompt,
-                    "generation": generation,
-                    "gold": example["value"],
-                    "score": float(example["value"].lower() in generation.lower()),
-                    "prompt_token_count": prompt_tokens,
-                    "generated_token_count": generated_tokens,
-                    **generator.metadata,
-                }
-
-    write_jsonl(output, records())
 
 
 def validate_control(path: Path, metadata: dict) -> str:

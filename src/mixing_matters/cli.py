@@ -6,9 +6,10 @@ from .analysis import summarize, validate_negative, validate_order, validate_pha
 from .audit import write_audit_sample
 from .data import read_rows
 from .download import NAME, download
-from .figures import write_figures
+from .figures import write_figures, write_phase2_figures
 from .io import read_jsonl
-from .positive_control import run_control
+from .models import MODELS
+from .positive_control import validate_control
 from .run import (
     MODEL,
     SEED,
@@ -16,10 +17,56 @@ from .run import (
     plan,
     plan_negative,
     plan_order,
+    plan_sweep,
     run_certify_negative,
     run_certify_order,
+    run_kv_control,
+    run_sweep,
     run_tracer,
 )
+
+
+def _normalize_sweep_record(record: dict) -> dict:
+    """Lift model_key out of software_versions, where run_sweep nests it.
+
+    phase2.py expects model_key as a top-level field; run_sweep only writes
+    it inside software_versions.
+    """
+    if "model_key" in record:
+        return record
+    model_key = record.get("software_versions", {}).get("model_key")
+    if model_key is None:
+        raise ValueError("record is missing model_key in software_versions")
+    return {**record, "model_key": model_key}
+
+
+def _print_control_outcome(model_key: str, control_path: Path) -> None:
+    """Validate a key-value positive control file and report pass/fail.
+
+    Never raises: a model failing key-value retrieval is a finding about the
+    model, not a reason to abort the position sweep.
+    """
+    records = read_jsonl(control_path)
+    if not records:
+        print(f"Positive control for {model_key}: no records found in {control_path}")
+        return
+    fields = (
+        "model",
+        "model_revision",
+        "seed",
+        "python",
+        "torch",
+        "transformers",
+        "cuda",
+        "gpu",
+        "attention_implementation",
+    )
+    metadata = {field: records[0].get(field) for field in fields}
+    try:
+        validate_control(control_path, metadata)
+        print(f"Positive control for {model_key}: PASSED")
+    except ValueError as error:
+        print(f"Positive control for {model_key}: FAILED ({error})")
 
 
 def main() -> None:
@@ -35,7 +82,24 @@ def main() -> None:
     run.add_argument("--dry-run", action="store_true")
     control = commands.add_parser("positive-control")
     control.add_argument("--output", type=Path, required=True)
-    control.add_argument("--revision", required=True)
+    control.add_argument(
+        "--revision",
+        help="Model tag or commit to resolve; defaults to the pinned registry revision",
+    )
+    control.add_argument("--model", choices=sorted(MODELS), default="pythia-2.8b")
+
+    sweep_cmd = commands.add_parser("sweep")
+    sweep_cmd.add_argument("--model", choices=sorted(MODELS), required=True)
+    sweep_cmd.add_argument("--data", type=Path, default=Path("data") / NAME)
+    sweep_cmd.add_argument("--output", type=Path, required=True)
+    sweep_cmd.add_argument(
+        "--revision",
+        help="Model tag or commit to resolve; defaults to the pinned registry revision",
+    )
+    sweep_cmd.add_argument("--questions", type=int, default=800)
+    sweep_cmd.add_argument("--positive-control", type=Path)
+    sweep_cmd.add_argument("--dry-run", action="store_true")
+
     analyze = commands.add_parser("analyze")
     analyze.add_argument("results", type=Path)
 
@@ -47,6 +111,10 @@ def main() -> None:
     figures_cmd.add_argument("--kv", type=Path, required=True)
     figures_cmd.add_argument("--phase1", type=Path, required=True)
     figures_cmd.add_argument("--output", type=Path, required=True)
+
+    phase2_report = commands.add_parser("phase2-report")
+    phase2_report.add_argument("--results", type=Path, nargs="+", required=True)
+    phase2_report.add_argument("--output", type=Path, required=True)
 
     audit_cmd = commands.add_parser("audit-sample")
     audit_cmd.add_argument("--results", type=Path, required=True)
@@ -82,7 +150,17 @@ def main() -> None:
             parser.error("run requires --positive-control unless --dry-run is set")
         run_tracer(args.data, args.output, args.revision, args.positive_control)
     elif args.command == "positive-control":
-        run_control(args.output, args.revision)
+        revision = args.revision or MODELS[args.model].revision
+        run_kv_control(MODELS[args.model], args.output, revision)
+    elif args.command == "sweep" and args.dry_run:
+        rows = read_rows(args.data)
+        work = plan_sweep(rows, questions=args.questions)
+        print(json.dumps({"model": args.model, "seed": SEED, "generations": len(work)}))
+    elif args.command == "sweep":
+        revision = args.revision or MODELS[args.model].revision
+        if args.positive_control is not None:
+            _print_control_outcome(args.model, args.positive_control)
+        run_sweep(args.data, args.output, args.model, revision, questions=args.questions)
     elif args.command == "certify-negative" and args.dry_run:
         rows = read_rows(args.data)
         work = plan_negative(rows, n=args.n)
@@ -115,6 +193,12 @@ def main() -> None:
         kv_records = read_jsonl(args.kv)
         phase1_records = read_jsonl(args.phase1)
         paths = write_figures(kv_records, phase1_records, args.output)
+        print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
+    elif args.command == "phase2-report":
+        records = [
+            _normalize_sweep_record(record) for path in args.results for record in read_jsonl(path)
+        ]
+        paths = write_phase2_figures(records, args.output)
         print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
     elif args.command == "audit-sample":
         records = read_jsonl(args.results)
