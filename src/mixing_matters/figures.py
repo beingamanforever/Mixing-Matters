@@ -1,5 +1,7 @@
+import itertools
 import json
 import random
+import textwrap
 from pathlib import Path
 
 import matplotlib
@@ -7,6 +9,8 @@ import matplotlib
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
+
+from .phase2 import DEFAULT_RESAMPLES, GOLD_POSITIONS, edges, interaction, position_curve
 
 BOOTSTRAP_SEED = 240521
 N_RESAMPLES = 10000
@@ -273,3 +277,177 @@ def write_figures(
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
 
     return [kv_path, phase1_path, summary_path]
+
+
+def _floor_ceiling_means(records: list[dict]) -> dict[str, dict[str, float]]:
+    """Mean floor and ceiling accuracy per model, one value per question.
+
+    floor_accuracy and ceiling_accuracy are the same for every gold position
+    of a question, so only the first gold record seen per question is kept.
+    """
+    per_model_question: dict[str, dict[str, tuple[float, float]]] = {}
+    for record in records:
+        if record.get("condition") != "gold":
+            continue
+        bucket = per_model_question.setdefault(record["model_key"], {})
+        bucket.setdefault(
+            record["question_id"], (record["floor_accuracy"], record["ceiling_accuracy"])
+        )
+
+    means = {}
+    for model, questions in per_model_question.items():
+        floors = [floor for floor, _ in questions.values()]
+        ceilings = [ceiling for _, ceiling in questions.values()]
+        means[model] = {
+            "floor_accuracy": sum(floors) / len(floors),
+            "ceiling_accuracy": sum(ceilings) / len(ceilings),
+        }
+    return means
+
+
+def _model_caption(question_counts: dict[str, int]) -> str:
+    """Name every model and its question count so a figure stands alone in a slide.
+
+    Wrapped to a fixed character width, independent of the number of models,
+    so the caption stays inside the figure instead of running off the edge.
+    """
+    caption = ", ".join(
+        f"{model} ({count} questions)" for model, count in sorted(question_counts.items())
+    )
+    return "\n".join(textwrap.wrap(caption, width=60))
+
+
+def phase2_summary(records: list[dict], n_resamples: int = DEFAULT_RESAMPLES) -> dict:
+    """The position curve, edges, pairwise interactions, and floor/ceiling per model.
+
+    This is the machine-readable form of both Phase 2 figures: the position
+    curve and edges come straight from ``phase2.position_curve`` and
+    ``phase2.edges``, interactions are computed for every pair of models
+    found in ``edges``, and floor/ceiling means are the reference lines drawn
+    on the position curve figure.
+    """
+    curve = position_curve(records, n_resamples=n_resamples)
+    edge = edges(records, n_resamples=n_resamples)
+    models = sorted(edge)
+
+    interactions = [
+        {
+            "first_model": first_model,
+            "second_model": second_model,
+            **interaction(records, first_model, second_model, n_resamples=n_resamples),
+        }
+        for first_model, second_model in itertools.combinations(models, 2)
+    ]
+
+    return {
+        "models": models,
+        "n_resamples": n_resamples,
+        "position_curve": curve,
+        "edges": edge,
+        "interactions": interactions,
+        "floor_ceiling": _floor_ceiling_means(records),
+    }
+
+
+def write_phase2_figures(
+    records: list[dict], directory: Path, n_resamples: int = DEFAULT_RESAMPLES
+) -> list[Path]:
+    """Write the Phase 2 position-curve and edge figures plus their summary.
+
+    Refuses to overwrite any of ``position-curves.png``, ``position-edges.png``,
+    or ``phase2-summary.json`` if they already exist in ``directory``.
+    """
+    summary = phase2_summary(records, n_resamples=n_resamples)
+
+    curve_path = directory / "position-curves.png"
+    edges_path = directory / "position-edges.png"
+    summary_path = directory / "phase2-summary.json"
+    for path in (curve_path, edges_path, summary_path):
+        if path.exists():
+            raise FileExistsError(path)
+
+    directory.mkdir(parents=True, exist_ok=True)
+
+    models = summary["models"]
+    curve = summary["position_curve"]
+    edge = summary["edges"]
+    floor_ceiling = summary["floor_ceiling"]
+    question_counts = {model: curve[model]["positions"][0]["question_count"] for model in models}
+
+    fig, ax = plt.subplots()
+    color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    for model, color in zip(models, itertools.cycle(color_cycle)):
+        positions = curve[model]["positions"]
+        accuracies = [positions[position]["accuracy"] for position in GOLD_POSITIONS]
+        low = [positions[position]["ci_low"] for position in GOLD_POSITIONS]
+        high = [positions[position]["ci_high"] for position in GOLD_POSITIONS]
+        lower_error = [max(0.0, value - bound) for value, bound in zip(accuracies, low)]
+        upper_error = [max(0.0, bound - value) for value, bound in zip(accuracies, high)]
+        ax.errorbar(
+            GOLD_POSITIONS,
+            accuracies,
+            yerr=[lower_error, upper_error],
+            fmt="o-",
+            capsize=4,
+            color=color,
+            label=model,
+        )
+        # Floor/ceiling reference lines are subordinate to the curves: thin,
+        # dotted, low alpha, and left out of the legend.
+        ax.axhline(floor_ceiling[model]["floor_accuracy"], color=color, linestyle=":", alpha=0.35)
+        ax.axhline(floor_ceiling[model]["ceiling_accuracy"], color=color, linestyle=":", alpha=0.35)
+    ax.set_title(f"Position curve: accuracy by gold position\n{_model_caption(question_counts)}")
+    ax.set_xlabel("Gold position (0 first, 9 last)")
+    ax.set_ylabel("Accuracy, 95 percent bootstrap interval")
+    ax.set_xticks(list(GOLD_POSITIONS))
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(curve_path)
+    plt.close(fig)
+
+    edge_question_counts = {model: edge[model]["question_count"] for model in models}
+    x = range(len(models))
+    width = 0.35
+
+    def edge_errors(edge_name: str) -> tuple[list[float], list[float], list[float]]:
+        estimates = [edge[model][edge_name]["estimate"] for model in models]
+        low = [edge[model][edge_name]["ci_low"] for model in models]
+        high = [edge[model][edge_name]["ci_high"] for model in models]
+        lower_error = [max(0.0, value - bound) for value, bound in zip(estimates, low)]
+        upper_error = [max(0.0, bound - value) for value, bound in zip(estimates, high)]
+        return estimates, lower_error, upper_error
+
+    primacy_estimates, primacy_lower, primacy_upper = edge_errors("primacy")
+    recency_estimates, recency_lower, recency_upper = edge_errors("recency")
+
+    fig, ax = plt.subplots()
+    ax.bar(
+        [position - width / 2 for position in x],
+        primacy_estimates,
+        width,
+        yerr=[primacy_lower, primacy_upper],
+        capsize=4,
+        label="Primacy edge",
+    )
+    ax.bar(
+        [position + width / 2 for position in x],
+        recency_estimates,
+        width,
+        yerr=[recency_lower, recency_upper],
+        capsize=4,
+        label="Recency edge",
+    )
+    ax.axhline(0.0, color="black", linewidth=0.8)
+    ax.set_title(f"Position edges: primacy and recency\n{_model_caption(edge_question_counts)}")
+    ax.set_xlabel("Model")
+    ax.set_ylabel("Edge minus center accuracy, 95 percent bootstrap interval")
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(models)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(edges_path)
+    plt.close(fig)
+
+    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
+
+    return [curve_path, edges_path, summary_path]

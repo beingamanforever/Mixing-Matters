@@ -6,7 +6,7 @@ from .analysis import summarize, validate_negative, validate_order, validate_pha
 from .audit import write_audit_sample
 from .data import read_rows
 from .download import NAME, download
-from .figures import write_figures
+from .figures import write_figures, write_phase2_figures
 from .io import read_jsonl
 from .models import MODELS
 from .positive_control import validate_control
@@ -24,6 +24,20 @@ from .run import (
     run_sweep,
     run_tracer,
 )
+
+
+def _normalize_sweep_record(record: dict) -> dict:
+    """Lift model_key out of software_versions, where run_sweep nests it.
+
+    phase2.py expects model_key as a top-level field; run_sweep only writes
+    it inside software_versions.
+    """
+    if "model_key" in record:
+        return record
+    model_key = record.get("software_versions", {}).get("model_key")
+    if model_key is None:
+        raise ValueError("record is missing model_key in software_versions")
+    return {**record, "model_key": model_key}
 
 
 def _print_control_outcome(model_key: str, control_path: Path) -> None:
@@ -97,6 +111,10 @@ def main() -> None:
     figures_cmd.add_argument("--kv", type=Path, required=True)
     figures_cmd.add_argument("--phase1", type=Path, required=True)
     figures_cmd.add_argument("--output", type=Path, required=True)
+
+    phase2_report = commands.add_parser("phase2-report")
+    phase2_report.add_argument("--results", type=Path, nargs="+", required=True)
+    phase2_report.add_argument("--output", type=Path, required=True)
 
     audit_cmd = commands.add_parser("audit-sample")
     audit_cmd.add_argument("--results", type=Path, required=True)
@@ -175,6 +193,12 @@ def main() -> None:
         kv_records = read_jsonl(args.kv)
         phase1_records = read_jsonl(args.phase1)
         paths = write_figures(kv_records, phase1_records, args.output)
+        print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
+    elif args.command == "phase2-report":
+        records = [
+            _normalize_sweep_record(record) for path in args.results for record in read_jsonl(path)
+        ]
+        paths = write_phase2_figures(records, args.output)
         print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
     elif args.command == "audit-sample":
         records = read_jsonl(args.results)
