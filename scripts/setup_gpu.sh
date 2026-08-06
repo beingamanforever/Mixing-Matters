@@ -34,7 +34,7 @@ echo "== installing pinned runtime"
 "$PIP" install -q --no-cache-dir "torch==$TORCH_VERSION" --index-url "$TORCH_INDEX"
 "$PIP" install -q --no-cache-dir \
   "transformers==$TRANSFORMERS_VERSION" "huggingface_hub<1.0" "pydantic<3" \
-  regex matplotlib pytest ninja packaging setuptools wheel
+  regex matplotlib pytest ninja packaging setuptools wheel einops
 
 "$PYTHON" - <<'PY'
 import torch
