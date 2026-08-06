@@ -44,6 +44,23 @@ if not torch.cuda.is_available():
 print(f"torch {torch.__version__} cuda {torch.version.cuda} device {torch.cuda.get_device_name(0)}")
 PY
 
+# The kernel build needs nvcc. Some hosts ship the CUDA toolkit without it on
+# PATH, so discover it under the standard install location before building.
+if ! command -v nvcc >/dev/null 2>&1; then
+  for candidate in "${CUDA_HOME:-}" /usr/local/cuda /usr/local/cuda-12.6 /usr/local/cuda-12; do
+    if [ -n "$candidate" ] && [ -x "$candidate/bin/nvcc" ]; then
+      export CUDA_HOME="$candidate"
+      export PATH="$candidate/bin:$PATH"
+      break
+    fi
+  done
+fi
+if ! command -v nvcc >/dev/null 2>&1; then
+  echo "nvcc not found, cannot build the Mamba kernels; install the CUDA toolkit" >&2
+  exit 1
+fi
+echo "== using $(command -v nvcc): $(nvcc --version | grep -o 'release [0-9.]*')"
+
 # The kernels are compiled for the exact architecture of this host, so the
 # build stays short and cannot silently rely on a cubin for another generation.
 ARCH=$("$PYTHON" -c "import torch; print('.'.join(str(part) for part in torch.cuda.get_device_capability()))")
