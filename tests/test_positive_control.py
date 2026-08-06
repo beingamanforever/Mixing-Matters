@@ -55,8 +55,14 @@ def test_control_gate(tmp_path):
     inverted.write_text(
         path.read_text()
         .replace('"score": 1.0', '"score": 0.0')
-        .replace('"condition": "kv_position_4", "score": 0.0', '"condition": "kv_position_4", "score": 1.0')
-        .replace('"condition": "kv_position_5", "score": 0.0', '"condition": "kv_position_5", "score": 1.0')
+        .replace(
+            '"condition": "kv_position_4", "score": 0.0',
+            '"condition": "kv_position_4", "score": 1.0',
+        )
+        .replace(
+            '"condition": "kv_position_5", "score": 0.0',
+            '"condition": "kv_position_5", "score": 1.0',
+        )
     )
     with pytest.raises(ValueError, match="failed"):
         validate_control(inverted, metadata)

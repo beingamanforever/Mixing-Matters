@@ -1,20 +1,47 @@
 import hashlib
 import json
 import platform
+import subprocess
 import uuid
 from pathlib import Path
 
 from lost_in_the_middle.metrics import best_subspan_em
 
 from . import UPSTREAM_COMMIT
-from .anchors import build_prompt, build_control_prompt
+from .anchors import build_control_prompt, build_prompt
 from .data import question_id, read_rows, split_indices
 from .download import SHA256
 from .io import write_jsonl
+from .scoring import score_variants
 
 MODEL = "EleutherAI/pythia-2.8b"
 SEED = 240521
 MAX_NEW_TOKENS = 32
+
+
+def _resolve_driver_version(torch_module) -> str:
+    """Resolve the NVIDIA driver version, failing loudly if it cannot be found."""
+    getter = getattr(torch_module.cuda, "driver_version", None)
+    if callable(getter):
+        try:
+            resolved = getter()
+        except Exception:  # noqa: BLE001 - any failure here just falls through to nvidia-smi
+            resolved = None
+        if resolved:
+            return str(resolved)
+    try:
+        result = subprocess.run(
+            ["nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise RuntimeError("could not determine the NVIDIA driver version") from error
+    driver = result.stdout.strip().splitlines()[0] if result.stdout.strip() else ""
+    if not driver:
+        raise RuntimeError("could not determine the NVIDIA driver version")
+    return driver
 
 
 def file_sha256(path: Path) -> str:
@@ -28,18 +55,15 @@ def file_sha256(path: Path) -> str:
 def plan(rows: list[dict]) -> list[tuple[int, dict, str]]:
     exploratory, _ = split_indices(len(rows), SEED)
     selected = [(index, rows[index]) for index in exploratory[:200]]
+    # Anchors are ordered before the gold conditions of the same question so
+    # their scores are known in time to be attached as floor/ceiling.
     work = [
         (index, row, condition)
         for index, row in selected
-        for condition in ("gold_first", "gold_middle")
+        for condition in ("closed_book", "oracle", "gold_first", "gold_middle")
     ]
-    work += [
-        (index, row, condition)
-        for index, row in selected[:50]
-        for condition in ("closed_book", "oracle")
-    ]
-    if len(work) != 500:
-        raise AssertionError("tracer plan must contain exactly 500 unique generations")
+    if len(work) != 800:
+        raise AssertionError("tracer plan must contain exactly 800 unique generations")
     return work
 
 
@@ -60,7 +84,7 @@ class Generator:
         self.model = AutoModelForCausalLM.from_pretrained(
             MODEL,
             revision=exact_revision,
-            torch_dtype=torch.bfloat16,
+            dtype=torch.bfloat16,
             attn_implementation="eager",
         ).to("cuda")
         self.model.eval()
@@ -74,8 +98,12 @@ class Generator:
             "torch": torch.__version__,
             "transformers": transformers.__version__,
             "cuda": torch.version.cuda,
+            "driver": _resolve_driver_version(torch),
             "gpu": torch.cuda.get_device_name(0),
             "attention_implementation": "eager",
+            # Read back from the loaded model rather than the requested dtype so a
+            # silent fallback (e.g. no bf16 support) is caught, not masked.
+            "dtype": str(self.model.dtype),
         }
 
     def __call__(self, prompt: str) -> tuple[str, int, int]:
@@ -86,7 +114,7 @@ class Generator:
         inputs = {key: value.to("cuda") for key, value in inputs.items()}
         with self.torch.inference_mode():
             output_ids = self.model.generate(
-                **inputs, do_sample=False, max_new_tokens=MAX_NEW_TOKENS
+                **inputs, do_sample=False, num_beams=1, max_new_tokens=MAX_NEW_TOKENS
             )
         new_ids = output_ids[0, prompt_tokens:]
         return (
@@ -96,20 +124,60 @@ class Generator:
         )
 
 
+def _provenance(
+    run_id: str,
+    generator: "Generator",
+    digest: str,
+    control_digest: str | None,
+    software_versions: dict,
+) -> dict:
+    """Fields common to every generation record, tracer and certify alike."""
+    return {
+        "run_id": run_id,
+        "temperature": 0,
+        "top_p": 1,
+        "top_k": None,
+        "max_new_tokens": MAX_NEW_TOKENS,
+        "random_seed": SEED,
+        "manual_seed": SEED,
+        "model_name": MODEL,
+        "model_revision": generator.metadata["model_revision"],
+        "software_versions": software_versions,
+        "data_revision": UPSTREAM_COMMIT,
+        "data_sha256": digest,
+        "positive_control_sha256": control_digest,
+    }
+
+
 def run_tracer(data_path: Path, output: Path, revision: str, control_path: Path) -> None:
     from .positive_control import validate_control
 
     if output.exists():
         raise FileExistsError(output)
+    failures = output.with_suffix(".failures.jsonl")
+    if failures.exists():
+        raise FileExistsError(failures)
     digest = file_sha256(data_path)
     if digest != SHA256:
         raise ValueError(f"dataset checksum mismatch: {digest}")
     rows = read_rows(data_path)
     generator = Generator(revision)
     control_digest = validate_control(control_path, generator.metadata)
-    position_lengths: dict[str, int] = {}
 
-    def generate(index: int, row: dict, condition: str) -> dict:
+    run_id = str(uuid.uuid4())
+    position_lengths: dict[str, int] = {}
+    software_versions = {
+        "python": generator.metadata["python"],
+        "torch": generator.metadata["torch"],
+        "transformers": generator.metadata["transformers"],
+        "cuda": generator.metadata["cuda"],
+        "driver": generator.metadata["driver"],
+        "gpu": generator.metadata["gpu"],
+        "attention_implementation": generator.metadata["attention_implementation"],
+        "dtype": generator.metadata["dtype"],
+    }
+
+    def generate(index: int, row: dict, condition: str) -> tuple[dict, float | None]:
         prompt, gold_position = build_prompt(row, condition)
         generation, prompt_tokens, generated_tokens = generator(prompt)
         qid = question_id(row, index)
@@ -117,24 +185,66 @@ def run_tracer(data_path: Path, output: Path, revision: str, control_path: Path)
             previous = position_lengths.setdefault(qid, prompt_tokens)
             if prompt_tokens != previous:
                 raise ValueError(f"position changed prompt length at source index {index}")
-        return {
+
+        try:
+            scores = score_variants(generation, row["answers"])
+        except Exception as error:  # noqa: BLE001 - scoring failures are logged, not fatal
+            scores = {"score": None, "score_normalized_em": None, "score_first_line": None}
+            with failures.open("a") as stream:
+                stream.write(
+                    json.dumps(
+                        {
+                            "run_id": run_id,
+                            "question_id": qid,
+                            "condition": condition,
+                            "source_index": index,
+                            "error": str(error),
+                        }
+                    )
+                    + "\n"
+                )
+
+        record = {
             "question_id": qid,
             "source_index": index,
             "condition": condition,
             "gold_position": gold_position,
             "prompt": prompt,
-            "generation": generation,
-            "gold": row["answers"],
-            "score": best_subspan_em(generation, row["answers"]),
+            "model_response": generation,
+            "correct_answer": row["answers"][0] if row["answers"] else "",
+            "answers": row["answers"],
             "prompt_token_count": prompt_tokens,
             "generated_token_count": generated_tokens,
-            "data_revision": UPSTREAM_COMMIT,
-            "data_sha256": digest,
-            "positive_control_sha256": control_digest,
-            **generator.metadata,
+            **scores,
+            **_provenance(run_id, generator, digest, control_digest, software_versions),
         }
+        return record, scores["score"]
 
-    write_jsonl(output, (generate(*item) for item in plan(rows)))
+    def records():
+        work = plan(rows)
+        groups = [work[start : start + 4] for start in range(0, len(work), 4)]
+        for group in groups:
+            conditions = [item[2] for item in group]
+            if conditions != ["closed_book", "oracle", "gold_first", "gold_middle"]:
+                raise ValueError(f"unexpected condition order in tracer plan group: {conditions}")
+        for group in groups:
+            index, row, closed_condition = group[0]
+            closed_record, floor = generate(index, row, closed_condition)
+            oracle_index, oracle_row, oracle_condition = group[1]
+            oracle_record, ceiling = generate(oracle_index, oracle_row, oracle_condition)
+            closed_record["floor_accuracy"] = floor
+            closed_record["ceiling_accuracy"] = ceiling
+            oracle_record["floor_accuracy"] = floor
+            oracle_record["ceiling_accuracy"] = ceiling
+            yield closed_record
+            yield oracle_record
+            for gold_index, gold_row, gold_condition in group[2:]:
+                gold_record, _ = generate(gold_index, gold_row, gold_condition)
+                gold_record["floor_accuracy"] = floor
+                gold_record["ceiling_accuracy"] = ceiling
+                yield gold_record
+
+    write_jsonl(output, records())
 
 
 def plan_negative(rows: list[dict], n: int = 200) -> list[tuple[int, dict, str, int]]:
@@ -242,12 +352,11 @@ def _run_certify(
         try:
             score = float(best_subspan_em(generation, row["answers"]))
             exclusion = None
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - scoring failures are logged, not fatal
             score = None
             exclusion = str(error)
 
         record = {
-            "run_id": run_id,
             "condition": condition,
             "gold_present": gold_present,
             "fake_source_index": fake_source_index,
@@ -263,24 +372,19 @@ def _run_certify(
             "correct_answer": row["answers"][0] if row["answers"] else "",
             "prompt_token_count": prompt_tokens,
             "generated_token_count": generated_tokens,
-            "temperature": 0,
-            "top_p": 1,
-            "top_k": None,
-            "max_new_tokens": MAX_NEW_TOKENS,
-            "random_seed": SEED,
-            "manual_seed": SEED,
-            "model_name": MODEL,
-            "model_revision": generator.metadata["model_revision"],
-            "software_versions": {
-                "python": generator.metadata["python"],
-                "torch": generator.metadata["torch"],
-                "transformers": generator.metadata["transformers"],
-                "cuda": generator.metadata["cuda"],
-                "attention_implementation": generator.metadata["attention_implementation"],
-            },
-            "data_revision": UPSTREAM_COMMIT,
-            "data_sha256": digest,
-            "positive_control_sha256": control_digest,
+            **_provenance(
+                run_id,
+                generator,
+                digest,
+                control_digest,
+                {
+                    "python": generator.metadata["python"],
+                    "torch": generator.metadata["torch"],
+                    "transformers": generator.metadata["transformers"],
+                    "cuda": generator.metadata["cuda"],
+                    "attention_implementation": generator.metadata["attention_implementation"],
+                },
+            ),
         }
 
         if exclusion:

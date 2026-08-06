@@ -2,7 +2,8 @@ import math
 import random
 from collections import Counter
 
-EXPECTED_COUNTS = {"gold_first": 200, "gold_middle": 200, "closed_book": 50, "oracle": 50}
+EXPECTED_COUNTS = {"gold_first": 200, "gold_middle": 200, "closed_book": 200, "oracle": 200}
+SCORE_FIELDS = ("score", "score_normalized_em", "score_first_line")
 BOOTSTRAP_SEED = 240521
 FLOOR_TOLERANCE = 0.05
 ORDER_TOLERANCE = 0.10
@@ -16,45 +17,67 @@ def validate_phase1(records: list[dict]) -> None:
         condition: {record["question_id"] for record in records if record["condition"] == condition}
         for condition in EXPECTED_COUNTS
     }
-    if ids["gold_first"] != ids["gold_middle"]:
-        raise ValueError("gold-first and gold-middle IDs differ")
-    if ids["closed_book"] != ids["oracle"] or not ids["oracle"] <= ids["gold_first"]:
-        raise ValueError("anchor IDs must be the same subset of position IDs")
+    reference_ids = ids["gold_first"]
+    if any(ids[condition] != reference_ids for condition in EXPECTED_COUNTS):
+        raise ValueError("closed-book, oracle, gold-first, and gold-middle IDs must all match")
+
     invariant_fields = (
-        "model",
+        "model_name",
         "model_revision",
         "data_revision",
         "data_sha256",
         "positive_control_sha256",
-        "seed",
-        "torch",
-        "transformers",
-        "cuda",
-        "gpu",
-        "attention_implementation",
+        "random_seed",
     )
     for field in invariant_fields:
         values = {record.get(field) for record in records}
         if None in values or len(values) != 1:
             raise ValueError(f"mixed or missing {field}: {values}")
+    software_fields = (
+        "python",
+        "torch",
+        "transformers",
+        "cuda",
+        "driver",
+        "gpu",
+        "attention_implementation",
+        "dtype",
+    )
+    for field in software_fields:
+        values = {record.get("software_versions", {}).get(field) for record in records}
+        if None in values or len(values) != 1:
+            raise ValueError(f"mixed or missing software_versions.{field}: {values}")
+
     source_ids = {
         condition: {
             record["source_index"] for record in records if record["condition"] == condition
         }
         for condition in EXPECTED_COUNTS
     }
-    if source_ids["gold_first"] != source_ids["gold_middle"]:
-        raise ValueError("position source indices differ")
-    if (
-        source_ids["closed_book"] != source_ids["oracle"]
-        or not source_ids["oracle"] <= source_ids["gold_first"]
-    ):
-        raise ValueError("anchor source indices must be the same subset of position indices")
+    reference_source_ids = source_ids["gold_first"]
+    if any(source_ids[condition] != reference_source_ids for condition in EXPECTED_COUNTS):
+        raise ValueError(
+            "closed-book, oracle, gold-first, and gold-middle source indices must match"
+        )
+
+    anchors_by_question: dict[str, tuple[float, float]] = {}
+    for record in records:
+        anchors = (record["floor_accuracy"], record["ceiling_accuracy"])
+        previous = anchors_by_question.setdefault(record["question_id"], anchors)
+        if previous != anchors:
+            raise ValueError(
+                f"question {record['question_id']} carries mixed floor/ceiling accuracy: "
+                f"{previous} vs {anchors}"
+            )
 
 
 def summarize(records: list[dict]) -> dict:
     keyed: dict[tuple[str, str], float] = {}
+    excluded_null_score_count = 0
     for record in records:
+        if record["score"] is None:
+            excluded_null_score_count += 1
+            continue
         key = record["question_id"], record["condition"]
         if key in keyed:
             raise ValueError(f"duplicate result: {key}")
@@ -72,6 +95,23 @@ def summarize(records: list[dict]) -> dict:
     differences = [keyed[qid, "gold_first"] - keyed[qid, "gold_middle"] for qid in first_ids]
     counts = Counter(str(int(value)) for value in differences)
     discordance = sum(value != 0 for value in differences) / len(differences)
+
+    floor_by_question: dict[str, float | None] = {}
+    ceiling_by_question: dict[str, float | None] = {}
+    for record in records:
+        floor_by_question[record["question_id"]] = record["floor_accuracy"]
+        ceiling_by_question[record["question_id"]] = record["ceiling_accuracy"]
+    floor_values = [value for value in floor_by_question.values() if value is not None]
+    ceiling_values = [value for value in ceiling_by_question.values() if value is not None]
+
+    conditions = {record["condition"] for record in records}
+    score_variant_accuracy = {
+        condition: {
+            field: score_variant_field_accuracy(records, condition, field) for field in SCORE_FIELDS
+        }
+        for condition in conditions
+    }
+
     return {
         "accuracy": accuracies,
         "paired_count": len(differences),
@@ -79,7 +119,22 @@ def summarize(records: list[dict]) -> dict:
         "mean_first_minus_middle": sum(differences) / len(differences),
         "discordance": discordance,
         "planned_interaction_n": planning_sample_size(discordance),
+        "mean_floor_accuracy": sum(floor_values) / len(floor_values),
+        "mean_ceiling_accuracy": sum(ceiling_values) / len(ceiling_values),
+        "score_variant_accuracy": score_variant_accuracy,
+        "excluded_null_score_count": excluded_null_score_count,
     }
+
+
+def score_variant_field_accuracy(records: list[dict], condition: str, field: str) -> float:
+    values = [
+        record[field]
+        for record in records
+        if record["condition"] == condition and record[field] is not None
+    ]
+    if not values:
+        raise ValueError(f"no non-null {field} values for condition {condition}")
+    return sum(values) / len(values)
 
 
 def planning_sample_size(discordance: float) -> int:
@@ -102,19 +157,16 @@ def bootstrap_paired_edges(
     questions = list(scores_by_question.keys())
     size = len(questions)
 
+    def mean_accuracy(sampled, positions):
+        scores = [
+            scores_by_question[question][position] for question in sampled for position in positions
+        ]
+        return sum(scores) / len(scores) if scores else 0.0
+
     for _ in range(n_resamples):
         sampled = rng.choices(questions, k=size)
-
-        def mean_accuracy(positions):
-            scores = [
-                scores_by_question[question][position]
-                for question in sampled
-                for position in positions
-            ]
-            return sum(scores) / len(scores) if scores else 0.0
-
-        primacy.append(mean_accuracy([0, 1]) - mean_accuracy([4, 5]))
-        recency.append(mean_accuracy([8, 9]) - mean_accuracy([4, 5]))
+        primacy.append(mean_accuracy(sampled, [0, 1]) - mean_accuracy(sampled, [4, 5]))
+        recency.append(mean_accuracy(sampled, [8, 9]) - mean_accuracy(sampled, [4, 5]))
 
     primacy.sort()
     recency.sort()
