@@ -8,7 +8,8 @@ from .data import read_rows
 from .download import NAME, download
 from .figures import write_figures
 from .io import read_jsonl
-from .positive_control import run_control
+from .models import MODELS
+from .positive_control import validate_control
 from .run import (
     MODEL,
     SEED,
@@ -16,10 +17,42 @@ from .run import (
     plan,
     plan_negative,
     plan_order,
+    plan_sweep,
     run_certify_negative,
     run_certify_order,
+    run_kv_control,
+    run_sweep,
     run_tracer,
 )
+
+
+def _print_control_outcome(model_key: str, control_path: Path) -> None:
+    """Validate a key-value positive control file and report pass/fail.
+
+    Never raises: a model failing key-value retrieval is a finding about the
+    model, not a reason to abort the position sweep.
+    """
+    records = read_jsonl(control_path)
+    if not records:
+        print(f"Positive control for {model_key}: no records found in {control_path}")
+        return
+    fields = (
+        "model",
+        "model_revision",
+        "seed",
+        "python",
+        "torch",
+        "transformers",
+        "cuda",
+        "gpu",
+        "attention_implementation",
+    )
+    metadata = {field: records[0].get(field) for field in fields}
+    try:
+        validate_control(control_path, metadata)
+        print(f"Positive control for {model_key}: PASSED")
+    except ValueError as error:
+        print(f"Positive control for {model_key}: FAILED ({error})")
 
 
 def main() -> None:
@@ -35,7 +68,24 @@ def main() -> None:
     run.add_argument("--dry-run", action="store_true")
     control = commands.add_parser("positive-control")
     control.add_argument("--output", type=Path, required=True)
-    control.add_argument("--revision", required=True)
+    control.add_argument(
+        "--revision",
+        help="Model tag or commit to resolve; defaults to the pinned registry revision",
+    )
+    control.add_argument("--model", choices=sorted(MODELS), default="pythia-2.8b")
+
+    sweep_cmd = commands.add_parser("sweep")
+    sweep_cmd.add_argument("--model", choices=sorted(MODELS), required=True)
+    sweep_cmd.add_argument("--data", type=Path, default=Path("data") / NAME)
+    sweep_cmd.add_argument("--output", type=Path, required=True)
+    sweep_cmd.add_argument(
+        "--revision",
+        help="Model tag or commit to resolve; defaults to the pinned registry revision",
+    )
+    sweep_cmd.add_argument("--questions", type=int, default=800)
+    sweep_cmd.add_argument("--positive-control", type=Path)
+    sweep_cmd.add_argument("--dry-run", action="store_true")
+
     analyze = commands.add_parser("analyze")
     analyze.add_argument("results", type=Path)
 
@@ -82,7 +132,17 @@ def main() -> None:
             parser.error("run requires --positive-control unless --dry-run is set")
         run_tracer(args.data, args.output, args.revision, args.positive_control)
     elif args.command == "positive-control":
-        run_control(args.output, args.revision)
+        revision = args.revision or MODELS[args.model].revision
+        run_kv_control(MODELS[args.model], args.output, revision)
+    elif args.command == "sweep" and args.dry_run:
+        rows = read_rows(args.data)
+        work = plan_sweep(rows, questions=args.questions)
+        print(json.dumps({"model": args.model, "seed": SEED, "generations": len(work)}))
+    elif args.command == "sweep":
+        revision = args.revision or MODELS[args.model].revision
+        if args.positive_control is not None:
+            _print_control_outcome(args.model, args.positive_control)
+        run_sweep(args.data, args.output, args.model, revision, questions=args.questions)
     elif args.command == "certify-negative" and args.dry_run:
         rows = read_rows(args.data)
         work = plan_negative(rows, n=args.n)
