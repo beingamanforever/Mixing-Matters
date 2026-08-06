@@ -3,8 +3,12 @@
 ## Status
 
 `pythia-2.8b`: completed.
-`mamba-2.8b`: in progress.
-`mamba2-2.7b`: not started.
+`mamba-2.8b`: not run.
+`mamba2-2.7b`: not run.
+
+Both Mamba sweeps move to a separate host with a larger GPU.
+See `docs/phase2-runbook.md` for the setup, the validation step, and the run commands.
+The A10G attempt at `mamba-2.8b` was stopped during its key-value control at 444 of 500 records, and that partial file was set aside rather than overwritten.
 
 This directory is filled in one model at a time, because the three sweeps run sequentially on one GPU.
 The cross-model comparison, the interaction contrasts, and the Phase 2 report are produced once all three sweeps are present.
