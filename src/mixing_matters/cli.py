@@ -3,8 +3,10 @@ import json
 from pathlib import Path
 
 from .analysis import summarize, validate_negative, validate_order, validate_phase1
+from .audit import write_audit_sample
 from .data import read_rows
 from .download import NAME, download
+from .figures import write_figures
 from .io import read_jsonl
 from .positive_control import run_control
 from .run import (
@@ -40,6 +42,15 @@ def main() -> None:
     check = commands.add_parser("certify-check")
     check.add_argument("results", type=Path)
     check.add_argument("--kind", choices=["negative", "order"], required=True)
+
+    figures_cmd = commands.add_parser("figures")
+    figures_cmd.add_argument("--kv", type=Path, required=True)
+    figures_cmd.add_argument("--phase1", type=Path, required=True)
+    figures_cmd.add_argument("--output", type=Path, required=True)
+
+    audit_cmd = commands.add_parser("audit-sample")
+    audit_cmd.add_argument("--results", type=Path, required=True)
+    audit_cmd.add_argument("--output", type=Path, required=True)
 
     cert_neg = commands.add_parser("certify-negative")
     cert_neg.add_argument("--data", type=Path, default=Path("data") / NAME)
@@ -100,6 +111,15 @@ def main() -> None:
         elif args.kind == "order":
             validate_order(records)
             print("Distractor order certification passed.")
+    elif args.command == "figures":
+        kv_records = read_jsonl(args.kv)
+        phase1_records = read_jsonl(args.phase1)
+        paths = write_figures(kv_records, phase1_records, args.output)
+        print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
+    elif args.command == "audit-sample":
+        records = read_jsonl(args.results)
+        paths = write_audit_sample(records, args.output)
+        print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
     else:
         records = read_jsonl(args.results)
         validate_phase1(records)
