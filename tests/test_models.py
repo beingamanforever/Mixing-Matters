@@ -2,22 +2,17 @@ import dataclasses
 
 import pytest
 
-from mixing_matters.models import MODELS, ModelSpec, spec
+from mixing_matters.models import MODELS, SCALE_PAIRS, ModelSpec, spec
 
 
-def test_registry_has_the_three_pinned_models():
-    assert set(MODELS) == {"pythia-2.8b", "mamba-2.8b", "mamba2-2.7b"}
+def test_registry_pins_the_phase2_and_phase4_models():
     assert MODELS["pythia-2.8b"] == ModelSpec(
         key="pythia-2.8b",
         repo="EleutherAI/pythia-2.8b",
         revision="2a259cdd96a4beb1cdf467512e3904197345f6a9",
         family="pythia",
-    )
-    assert MODELS["mamba-2.8b"] == ModelSpec(
-        key="mamba-2.8b",
-        repo="state-spaces/mamba-2.8b-hf",
-        revision="96c48e0292b63f5346b6d30061af2551f7101e26",
-        family="mamba",
+        scale_pair="2.8b-2.8b",
+        params_millions=2800,
     )
     assert MODELS["mamba2-2.7b"] == ModelSpec(
         key="mamba2-2.7b",
@@ -25,6 +20,14 @@ def test_registry_has_the_three_pinned_models():
         revision="ef542707386fa9ec86bbf8a35ed2952af84bf566",
         family="mamba2",
     )
+
+
+def test_every_scale_pair_has_one_mamba_and_one_pythia():
+    for pair in SCALE_PAIRS:
+        members = [model for model in MODELS.values() if model.scale_pair == pair]
+        families = sorted(model.family for model in members)
+        assert families == ["mamba", "pythia"], f"{pair}: {families}"
+        assert all(model.params_millions for model in members)
 
 
 def test_registry_keys_match_their_spec_key_field():
