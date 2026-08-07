@@ -192,9 +192,33 @@ class Generator:
 
         if not torch.cuda.is_available():
             raise RuntimeError("a CUDA GPU is required")
-        exact_revision = model_info(model_spec.repo, revision=revision).sha
-        if not exact_revision:
-            raise ValueError("Hugging Face did not resolve an exact model revision")
+
+        # An original state-spaces checkpoint cannot be loaded by transformers,
+        # so it is converted to an HF directory ahead of time (see convert.py)
+        # and loaded from there. Recording the source revision from the
+        # conversion manifest keeps provenance pointing at the pinned upstream
+        # checkpoint, and loading the converted directory keeps this run on the
+        # same transformers CUDA-kernel path as every other Mamba run.
+        checkpoint_dir = None
+        if model_spec.format == "mamba_ssm":
+            from .convert import converted_dir
+
+            checkpoint_dir = converted_dir(model_spec)
+            manifest_path = checkpoint_dir / "conversion-manifest.json"
+            if not manifest_path.exists():
+                raise FileNotFoundError(
+                    f"{model_spec.key} has no converted checkpoint at {checkpoint_dir}; "
+                    "run scripts/convert_mamba_slimpj.py before the sweep"
+                )
+            exact_revision = json.loads(manifest_path.read_text())["source_revision"]
+            load_source = str(checkpoint_dir)
+            revision_kwargs: dict = {}
+        else:
+            exact_revision = model_info(model_spec.repo, revision=revision).sha
+            if not exact_revision:
+                raise ValueError("Hugging Face did not resolve an exact model revision")
+            load_source = model_spec.repo
+            revision_kwargs = {"revision": exact_revision}
 
         # Resolve the execution path before loading weights so an
         # unavailable CUDA kernel path fails fast, not after a multi-GB load.
@@ -202,17 +226,15 @@ class Generator:
 
         self.torch = torch
         self.spec = model_spec
-        self.tokenizer = AutoTokenizer.from_pretrained(model_spec.repo, revision=exact_revision)
+        self.tokenizer = AutoTokenizer.from_pretrained(load_source, **revision_kwargs)
         _assert_no_active_truncation(self.tokenizer)
 
-        model_kwargs = {"revision": exact_revision, "dtype": torch.bfloat16}
+        model_kwargs = {"dtype": torch.bfloat16, **revision_kwargs}
         attention_implementation = None
         if model_spec.family == "pythia":
             attention_implementation = "eager"
             model_kwargs["attn_implementation"] = attention_implementation
-        self.model = AutoModelForCausalLM.from_pretrained(model_spec.repo, **model_kwargs).to(
-            "cuda"
-        )
+        self.model = AutoModelForCausalLM.from_pretrained(load_source, **model_kwargs).to("cuda")
         self.model.eval()
         set_seed(SEED)
 
@@ -227,6 +249,9 @@ class Generator:
             "model_key": model_spec.key,
             "family": model_spec.family,
             "model_revision": exact_revision,
+            "checkpoint_format": model_spec.format,
+            "checkpoint_dir": str(checkpoint_dir) if checkpoint_dir is not None else None,
+            "training_corpus": model_spec.training_corpus,
             "python": platform.python_version(),
             "torch": torch.__version__,
             "transformers": transformers.__version__,

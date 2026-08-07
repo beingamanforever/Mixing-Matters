@@ -19,6 +19,19 @@ class ModelSpec:
     # Both are None for models that do not take part in the scale sweep.
     scale_pair: str | None = None
     params_millions: int | None = None
+    # Phase 5 holds the architecture fixed and changes the pretraining corpus.
+    # ``training_corpus`` records that corpus, and ``data_pair`` labels the two
+    # models that share an architecture and differ only in corpus. Both are None
+    # for models outside the data-control sweep.
+    training_corpus: str | None = None
+    data_pair: str | None = None
+    # ``format`` is "hf" for checkpoints transformers can load directly and
+    # "mamba_ssm" for original state-spaces checkpoints whose config carries no
+    # model_type. A "mamba_ssm" checkpoint must be converted to an HF-format
+    # directory before ``run.Generator`` can load it (see ``convert.py``); this
+    # keeps every Mamba run on the one transformers CUDA-kernel path so the only
+    # variable that changes across the Phase 5 contrast is the training corpus.
+    format: str = "hf"
 
 
 MODELS: dict[str, ModelSpec] = {
@@ -101,6 +114,22 @@ MODELS: dict[str, ModelSpec] = {
         family="mamba",
         scale_pair="2.8b-2.8b",
         params_millions=2800,
+        training_corpus="pile",
+        data_pair="mamba-2.8b-corpus",
+    ),
+    # Phase 5 data control: same Mamba architecture as ``mamba-2.8b`` above,
+    # trained on SlimPajama instead of the Pile. Published only in the original
+    # state-spaces format (config.json + pytorch_model.bin, no model_type), so
+    # it is converted to an HF-format directory before loading; see convert.py.
+    "mamba-2.8b-slimpj": ModelSpec(
+        key="mamba-2.8b-slimpj",
+        repo="state-spaces/mamba-2.8b-slimpj",
+        revision="a7bdd41af90ca0cc4ecfbd967e2ec28f1954b915",
+        family="mamba",
+        params_millions=2800,
+        training_corpus="slimpajama",
+        data_pair="mamba-2.8b-corpus",
+        format="mamba_ssm",
     ),
     "mamba2-2.7b": ModelSpec(
         key="mamba2-2.7b",
@@ -112,6 +141,11 @@ MODELS: dict[str, ModelSpec] = {
 
 
 SCALE_PAIRS: tuple[str, ...] = ("130m-160m", "370m-410m", "790m-1b", "1.4b-1.4b", "2.8b-2.8b")
+
+# Phase 5 data-control pair: the Pile and SlimPajama models that share the
+# 2.8B Mamba architecture. Ordered (Pile, SlimPajama) so contrasts read as the
+# Pile-minus-SlimPajama corpus effect.
+DATA_PAIR: tuple[str, str] = ("mamba-2.8b", "mamba-2.8b-slimpj")
 
 
 def spec(key: str) -> ModelSpec:

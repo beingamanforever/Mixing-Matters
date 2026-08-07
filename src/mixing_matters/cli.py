@@ -6,7 +6,12 @@ from .analysis import summarize, validate_negative, validate_order, validate_pha
 from .audit import write_audit_sample
 from .data import read_rows
 from .download import NAME, download
-from .figures import write_figures, write_phase2_figures, write_phase4_figures
+from .figures import (
+    write_figures,
+    write_phase2_figures,
+    write_phase4_figures,
+    write_phase5_figures,
+)
 from .io import read_jsonl
 from .models import MODELS
 from .positive_control import validate_control
@@ -120,6 +125,22 @@ def main() -> None:
     phase4_report.add_argument("--results", type=Path, nargs="+", required=True)
     phase4_report.add_argument("--output", type=Path, required=True)
 
+    phase5_report = commands.add_parser("phase5-report")
+    phase5_report.add_argument(
+        "--results",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="Sweep files for the Pile and SlimPajama 2.8B Mamba models",
+    )
+    phase5_report.add_argument(
+        "--architecture-results",
+        type=Path,
+        nargs="+",
+        help="Optional Phase 2 Pythia and Pile-Mamba sweeps for the cross-phase comparison",
+    )
+    phase5_report.add_argument("--output", type=Path, required=True)
+
     audit_cmd = commands.add_parser("audit-sample")
     audit_cmd.add_argument("--results", type=Path, required=True)
     audit_cmd.add_argument("--output", type=Path, required=True)
@@ -209,6 +230,19 @@ def main() -> None:
             _normalize_sweep_record(record) for path in args.results for record in read_jsonl(path)
         ]
         paths = write_phase4_figures(records, args.output)
+        print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
+    elif args.command == "phase5-report":
+        records = [
+            _normalize_sweep_record(record) for path in args.results for record in read_jsonl(path)
+        ]
+        architecture_records = None
+        if args.architecture_results:
+            architecture_records = [
+                _normalize_sweep_record(record)
+                for path in args.architecture_results
+                for record in read_jsonl(path)
+            ]
+        paths = write_phase5_figures(records, args.output, architecture_records)
         print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
     elif args.command == "audit-sample":
         records = read_jsonl(args.results)

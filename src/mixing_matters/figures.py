@@ -10,8 +10,10 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 
+from .models import DATA_PAIR, MODELS
 from .phase2 import DEFAULT_RESAMPLES, GOLD_POSITIONS, edges, interaction, position_curve
 from .phase4 import scale_trend, trend_summary
+from .phase5 import compare_to_architecture, data_control
 
 BOOTSTRAP_SEED = 240521
 N_RESAMPLES = 10000
@@ -572,3 +574,212 @@ def write_phase4_figures(
     )
 
     return [gap_path, curves_path, summary_path, *pair_paths]
+
+
+def _corpus_label(model_key: str) -> str:
+    """A figure-friendly name pairing the corpus with the model key."""
+    corpus = MODELS[model_key].training_corpus or "unknown"
+    return f"{corpus} ({model_key})"
+
+
+def phase5_summary(
+    records: list[dict],
+    architecture_records: list[dict] | None = None,
+    n_resamples: int = DEFAULT_RESAMPLES,
+) -> dict:
+    """The corpus contrast, per-model curves and edges, and floor/ceiling.
+
+    When ``architecture_records`` is given (the Phase 2 Pythia and Pile-Mamba
+    sweeps), the Pythia-minus-Mamba architecture interaction is computed and the
+    Phase 5 corpus effect is placed beside it under ``cross_phase``, so the
+    data-control result can be read against the architecture result on one
+    scale. Without it, those two keys are omitted.
+    """
+    control = data_control(records, n_resamples=n_resamples)
+    curve = position_curve(records, n_resamples=n_resamples)
+    floor_ceiling = _floor_ceiling_means(records)
+
+    summary = {
+        "models": list(DATA_PAIR),
+        "n_resamples": n_resamples,
+        "data_control": control,
+        "position_curve": curve,
+        "floor_ceiling": {key: floor_ceiling[key] for key in DATA_PAIR if key in floor_ceiling},
+    }
+
+    if architecture_records is not None:
+        architecture = interaction(
+            architecture_records, "pythia-2.8b", "mamba-2.8b", n_resamples=n_resamples
+        )
+        summary["architecture_interaction"] = {
+            "first_model": "pythia-2.8b",
+            "second_model": "mamba-2.8b",
+            **architecture,
+        }
+        summary["cross_phase"] = compare_to_architecture(control, architecture)
+
+    return summary
+
+
+def write_phase5_figures(
+    records: list[dict],
+    directory: Path,
+    architecture_records: list[dict] | None = None,
+    n_resamples: int = DEFAULT_RESAMPLES,
+) -> list[Path]:
+    """Write the Phase 5 data-control figures plus their summary.
+
+    Draws the Pile and SlimPajama position curves on one axis, the primacy and
+    recency edges per model, and the corpus edge effect (beside the Phase 2
+    architecture effect when ``architecture_records`` is given). Refuses to
+    overwrite any existing output.
+    """
+    summary = phase5_summary(records, architecture_records, n_resamples=n_resamples)
+    control = summary["data_control"]
+    curve = summary["position_curve"]
+    floor_ceiling = summary["floor_ceiling"]
+
+    curve_path = directory / "position-curves.png"
+    edges_path = directory / "position-edges.png"
+    effect_path = directory / "corpus-effect.png"
+    summary_path = directory / "phase5-summary.json"
+    for path in (curve_path, edges_path, effect_path, summary_path):
+        if path.exists():
+            raise FileExistsError(path)
+
+    directory.mkdir(parents=True, exist_ok=True)
+
+    models = list(DATA_PAIR)
+    question_counts = {model: curve[model]["positions"][0]["question_count"] for model in models}
+
+    fig, ax = plt.subplots()
+    for model, color in (
+        (DATA_PAIR[0], "tab:blue"),
+        (DATA_PAIR[1], "tab:orange"),
+    ):
+        positions = curve[model]["positions"]
+        accuracies = [positions[position]["accuracy"] for position in GOLD_POSITIONS]
+        low = [positions[position]["ci_low"] for position in GOLD_POSITIONS]
+        high = [positions[position]["ci_high"] for position in GOLD_POSITIONS]
+        lower_error = [max(0.0, value - bound) for value, bound in zip(accuracies, low)]
+        upper_error = [max(0.0, bound - value) for value, bound in zip(accuracies, high)]
+        ax.errorbar(
+            GOLD_POSITIONS,
+            accuracies,
+            yerr=[lower_error, upper_error],
+            fmt="o-",
+            capsize=4,
+            color=color,
+            label=_corpus_label(model),
+        )
+        ax.axhline(floor_ceiling[model]["floor_accuracy"], color=color, linestyle=":", alpha=0.35)
+        ax.axhline(floor_ceiling[model]["ceiling_accuracy"], color=color, linestyle=":", alpha=0.35)
+    ax.set_title(
+        "Position curve by training corpus (2.8B Mamba, architecture fixed)\n"
+        f"{_model_caption(question_counts)}"
+    )
+    ax.set_xlabel("Gold position (0 first, 9 last)")
+    ax.set_ylabel("Accuracy, 95 percent bootstrap interval")
+    ax.set_xticks(list(GOLD_POSITIONS))
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(curve_path)
+    plt.close(fig)
+
+    edge_map = {
+        DATA_PAIR[0]: control["pile_edges"],
+        DATA_PAIR[1]: control["slimpajama_edges"],
+    }
+    x = range(len(models))
+    width = 0.35
+
+    def edge_errors(edge_name: str) -> tuple[list[float], list[float], list[float]]:
+        estimates = [edge_map[model][edge_name]["estimate"] for model in models]
+        low = [edge_map[model][edge_name]["ci_low"] for model in models]
+        high = [edge_map[model][edge_name]["ci_high"] for model in models]
+        lower_error = [max(0.0, value - bound) for value, bound in zip(estimates, low)]
+        upper_error = [max(0.0, bound - value) for value, bound in zip(estimates, high)]
+        return estimates, lower_error, upper_error
+
+    primacy_estimates, primacy_lower, primacy_upper = edge_errors("primacy")
+    recency_estimates, recency_lower, recency_upper = edge_errors("recency")
+
+    fig, ax = plt.subplots()
+    ax.bar(
+        [position - width / 2 for position in x],
+        primacy_estimates,
+        width,
+        yerr=[primacy_lower, primacy_upper],
+        capsize=4,
+        label="Primacy edge",
+    )
+    ax.bar(
+        [position + width / 2 for position in x],
+        recency_estimates,
+        width,
+        yerr=[recency_lower, recency_upper],
+        capsize=4,
+        label="Recency edge",
+    )
+    ax.axhline(0.0, color="black", linewidth=0.8)
+    ax.set_title("Position edges by training corpus")
+    ax.set_xlabel("Training corpus")
+    ax.set_ylabel("Edge minus center accuracy, 95 percent bootstrap interval")
+    ax.set_xticks(list(x))
+    ax.set_xticklabels([_corpus_label(model) for model in models])
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(edges_path)
+    plt.close(fig)
+
+    # The corpus edge effect (Pile minus SlimPajama), beside the Phase 2
+    # architecture effect (Pythia minus Mamba) when it is available, so the two
+    # sources of curve difference read on one scale.
+    effect_groups = [("Primacy", "primacy_diff", "primacy"), ("Recency", "recency_diff", "recency")]
+    corpus_values = [control[field]["estimate"] for _, field, _ in effect_groups]
+    corpus_low = [control[field]["ci_low"] for _, field, _ in effect_groups]
+    corpus_high = [control[field]["ci_high"] for _, field, _ in effect_groups]
+    corpus_lower = [max(0.0, value - bound) for value, bound in zip(corpus_values, corpus_low)]
+    corpus_upper = [max(0.0, bound - value) for value, bound in zip(corpus_values, corpus_high)]
+
+    ex = range(len(effect_groups))
+    fig, ax = plt.subplots()
+    has_architecture = "architecture_interaction" in summary
+    bar_width = 0.35 if has_architecture else 0.5
+    offset = bar_width / 2 if has_architecture else 0.0
+    ax.bar(
+        [position - offset for position in ex],
+        corpus_values,
+        bar_width,
+        yerr=[corpus_lower, corpus_upper],
+        capsize=4,
+        label="Corpus effect (Pile - SlimPajama)",
+    )
+    if has_architecture:
+        architecture = summary["architecture_interaction"]
+        arch_values = [architecture[key]["estimate"] for _, _, key in effect_groups]
+        arch_low = [architecture[key]["ci_low"] for _, _, key in effect_groups]
+        arch_high = [architecture[key]["ci_high"] for _, _, key in effect_groups]
+        arch_lower = [max(0.0, value - bound) for value, bound in zip(arch_values, arch_low)]
+        arch_upper = [max(0.0, bound - value) for value, bound in zip(arch_values, arch_high)]
+        ax.bar(
+            [position + offset for position in ex],
+            arch_values,
+            bar_width,
+            yerr=[arch_lower, arch_upper],
+            capsize=4,
+            label="Architecture effect (Pythia - Mamba, Pile)",
+        )
+    ax.axhline(0.0, color="black", linewidth=0.8)
+    ax.set_title("Edge difference: training corpus vs architecture")
+    ax.set_ylabel("Edge difference, 95 percent bootstrap interval")
+    ax.set_xticks(list(ex))
+    ax.set_xticklabels([name for name, _, _ in effect_groups])
+    ax.legend(fontsize="small")
+    fig.tight_layout()
+    fig.savefig(effect_path)
+    plt.close(fig)
+
+    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
+
+    return [curve_path, edges_path, effect_path, summary_path]
