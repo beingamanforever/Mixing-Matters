@@ -2,16 +2,17 @@
 
 ## Status
 
-`pythia-2.8b`: completed.
-`mamba-2.8b`: not run.
-`mamba2-2.7b`: not run.
+Completed.
+Three models, `pythia-2.8b`, `mamba-2.8b`, and `mamba2-2.7b`, each run over the full exploratory set.
 
-Both Mamba sweeps move to a separate host with a larger GPU.
-See `docs/phase2-runbook.md` for the setup, the validation step, and the run commands.
-The A10G attempt at `mamba-2.8b` was stopped during its key-value control at 444 of 500 records, and that partial file was set aside rather than overwritten.
+## Why one host
 
-This directory is filled in one model at a time, because the three sweeps run sequentially on one GPU.
-The cross-model comparison, the interaction contrasts, and the Phase 2 report are produced once all three sweeps are present.
+Phase 2 compares accuracy curves across architectures, so the only variable that may change between models is the architecture.
+Every model reported here runs on one NVIDIA A40 with 44 GiB.
+A Pythia sweep was also run on an A10G during Phase 1 development.
+Comparing that A10G run against the A40 run of the same model, on 1,741 shared records, the primary score matched on every record, while 15 model responses and one normalized-exact-match score differed.
+Two GPUs of the same compute capability select different reduction kernels, so greedy decoding diverges on a small number of borderline tokens.
+Keeping every model on one GPU removes the hardware as a second variable.
 
 ## Experimental setup
 
@@ -21,61 +22,99 @@ The question set is identical across models, which is what allows the model comp
 Decoding is greedy with temperature 0, top_p 1, top_k unset, `num_beams` 1, 32 maximum new tokens, seed 240521, bfloat16.
 Every record carries the model revision, the resolved execution path, the dataset checksum, and the software versions.
 
+Runtime: torch 2.7.1+cu126, transformers 4.57.1, mamba-ssm 2.2.6.post3, causal-conv1d 1.5.3.post1, CUDA 12.6, driver 570.133.20, one NVIDIA A40, compute capability 8.6.
+
 Models and pinned revisions:
 
-| Key | Repository | Revision | Layers |
-|---|---|---|---|
-| `pythia-2.8b` | `EleutherAI/pythia-2.8b` | `2a259cdd96a4beb1cdf467512e3904197345f6a9` | 32 |
-| `mamba-2.8b` | `state-spaces/mamba-2.8b-hf` | `96c48e0292b63f5346b6d30061af2551f7101e26` | 64 |
-| `mamba2-2.7b` | `AntonV/mamba2-2.7b-hf` | `ef542707386fa9ec86bbf8a35ed2952af84bf566` | 64 |
+| Key | Repository | Revision | Layers | State size | Execution path |
+|---|---|---|---|---|---|
+| `pythia-2.8b` | `EleutherAI/pythia-2.8b` | `2a259cdd96a4beb1cdf467512e3904197345f6a9` | 32 | not applicable | pytorch reference, eager attention |
+| `mamba-2.8b` | `state-spaces/mamba-2.8b-hf` | `96c48e0292b63f5346b6d30061af2551f7101e26` | 64 | 16 | CUDA kernels |
+| `mamba2-2.7b` | `AntonV/mamba2-2.7b-hf` | `ef542707386fa9ec86bbf8a35ed2952af84bf566` | 64 | 128 | CUDA kernels |
 
 `state-spaces/mamba-2.8b` and `state-spaces/mamba2-2.7b` cannot be loaded by transformers 4.57.1, because their configs carry no `model_type`.
-The Mamba-1 entry above is the official transformers conversion.
-The Mamba-2 entry is a community conversion with no published numerical validation, which is recorded as a limitation in the report.
+The Mamba-1 entry is the official transformers conversion.
+The Mamba-2 entry is a community conversion.
+It was validated against the original checkpoint run through the authors' own `mamba_ssm` implementation: 5 of 5 sampled greedy generations identical, 5 of 5 top-1 next-token agreement, and maximum absolute logit differences of 0.25 to 0.38 against a logit scale of 36 to 52.
 
 Both Mamba models run on the CUDA kernel execution path, which the runner requires and records.
 A fall back to the numerically different reference path raises instead of running.
 
-## Results so far
+## Finding
 
-### pythia-2.8b
+Architecture and evidence position interact, and the interaction is concentrated in the primacy arm.
 
-800 complete questions, no excluded questions, no excluded records, no scoring failures.
+Edge contrasts per model, 10,000 paired bootstrap resamples over complete question bundles, Holm corrected across the two edge tests within a model:
 
-Accuracy by gold position, with 95 percent paired bootstrap intervals over complete question bundles:
+| Model | Primacy, mean(0,1) minus mean(4,5) | Recency, mean(8,9) minus mean(4,5) |
+|---|---|---|
+| `pythia-2.8b` | +0.0519, interval +0.0319 to +0.0719, Holm p below 0.0001 | +0.0750, interval +0.0537 to +0.0969, Holm p below 0.0001 |
+| `mamba-2.8b` | -0.0013, interval -0.0162 to +0.0137, Holm p 0.914 | +0.0769, interval +0.0575 to +0.0969, Holm p below 0.0001 |
+| `mamba2-2.7b` | -0.0181, interval -0.0338 to -0.0025, Holm p 0.023 | +0.1050, interval +0.0856 to +0.1244, Holm p below 0.0001 |
 
-| Position | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Accuracy | 0.266 | 0.198 | 0.196 | 0.190 | 0.180 | 0.180 | 0.204 | 0.217 | 0.231 | 0.279 |
+Pythia has a positive primacy edge.
+Mamba-1 has no measurable primacy edge.
+Mamba-2 has a small negative primacy edge, meaning accuracy at the first two positions is slightly below the middle.
+All three models have a positive recency edge, and it is largest for Mamba-2.
 
-Edge contrasts, 10,000 resamples, Holm corrected across the two tests:
+Interaction contrasts between models, same paired bootstrap, Holm corrected across the two edge tests in each pair:
 
-| Contrast | Estimate | 95 percent interval | Holm p |
-|---|---|---|---|
-| Primacy, mean(0,1) minus mean(4,5) | +0.0519 | +0.0319 to +0.0719 | below 0.0001 |
-| Recency, mean(8,9) minus mean(4,5) | +0.0750 | +0.0537 to +0.0969 | below 0.0001 |
+| Pair | Primacy edge difference | Recency edge difference |
+|---|---|---|
+| `mamba-2.8b` minus `pythia-2.8b` | -0.0531, interval -0.0775 to -0.0281, Holm p below 0.0001 | +0.0019, interval -0.0262 to +0.0294, Holm p 0.920 |
+| `mamba2-2.7b` minus `pythia-2.8b` | -0.0700, interval -0.0950 to -0.0450, Holm p below 0.0001 | +0.0300, interval +0.0038 to +0.0562, Holm p 0.026 |
+| `mamba-2.8b` minus `mamba2-2.7b` | +0.0169, interval -0.0044 to +0.0381, Holm p 0.125 | -0.0281, interval -0.0538 to -0.0025, Holm p 0.060 |
 
-Floor accuracy 0.092, ceiling accuracy 0.641.
-Both edges are positive and their intervals exclude zero, so accuracy at the ends of the document list exceeds accuracy in the middle.
-The recency edge is larger than the primacy edge for this model.
+The primacy edge differs between each Mamba model and Pythia, and both differences exclude zero.
+The primacy edge does not differ between the two Mamba models.
+The recency edge is similar across all three models, with Mamba-2 slightly above Pythia.
 
-Key-value positive control, run against this model before the sweep: accuracy 0.94 at slot 0 and 0.16 at slot 9, edge mean 0.55 against middle mean 0.17, difference 0.38.
-These control numbers are identical to the Phase 1 control run, as expected from the same model, seeds, and pinned revision.
+Both sequence-mixing architectures lack the primacy edge that the transformer has, and this holds across two independent Mamba variants.
+Position curves and the numbers behind them are in `report/`.
 
-Floor 0.092 and ceiling 0.641 here against 0.095 and 0.650 in Phase 1 differ because Phase 1 used the first 200 exploratory questions and Phase 2 uses all 800.
+## Anchors and controls
 
-Prompt length is unchanged across positions for 775 questions and shifts by exactly one token for 25 questions, caused by byte-pair merges at document boundaries.
-The observed span is recorded on every gold record.
-The Phase 2 report will repeat the edge analysis with those 25 questions excluded, as a sensitivity check.
+| Model | Floor, closed book | Ceiling, oracle |
+|---|---|---|
+| `pythia-2.8b` | 0.091 | 0.640 |
+| `mamba-2.8b` | 0.115 | 0.615 |
+| `mamba2-2.7b` | 0.128 | 0.619 |
+
+The three models reach a similar oracle ceiling, so the primacy difference is not explained by one architecture being unable to use the gold document.
+
+Key-value positive control, run against each model before its sweep, edge is mean of slots 0 and 9 minus mean of slots 4 and 5:
+
+| Model | Slot 0 | Slot 9 | Edge minus middle | Control gate |
+|---|---|---|---|---|
+| `pythia-2.8b` | 0.94 | 0.16 | +0.38 | passes |
+| `mamba-2.8b` | 0.00 | 0.00 | +0.00 | does not pass |
+| `mamba2-2.7b` | 0.78 | 0.52 | +0.65 | passes |
+
+The key-value control is recorded and does not gate the sweep.
+
+Mamba-1 scores zero on key-value retrieval, which is consistent with its small recurrent state, 16, being unable to store thirty random key-value pairs without loss.
+Mamba-2 passes the key-value control, consistent with its larger state, 128.
+Mamba-2 therefore recovers a specific value from an early position in the key-value task, yet it still shows no primacy in multi-document QA.
+The absence of a QA primacy edge is not explained by an inability to read early positions.
 
 ## Files per model
 
 - `sweep.jsonl.gz`: 9,600 records, one per generation.
 - `positive-control.jsonl.gz`: 500 key-value control records for that model.
 - `environment.json`: package versions, `nvidia-smi` output, and the git commit that produced the run.
-- `report/position-curves.png`: accuracy against gold position with bootstrap intervals and floor and ceiling reference lines.
-- `report/position-edges.png`: primacy and recency edges with intervals.
-- `report/phase2-summary.json`: the numbers behind the figures, including exclusion counts.
 
-The per-model `report/` directories cover one model each.
-The combined report across all three models replaces them once the sweeps finish.
+Combined report across the three models, in `report/`:
+
+- `position-curves.png`: accuracy against gold position, one line per model, with bootstrap intervals and floor and ceiling reference lines.
+- `position-edges.png`: primacy and recency edges per model with intervals.
+- `phase2-summary.json`: the numbers behind the figures, including every pairwise interaction and the exclusion counts.
+
+## Limits
+
+The comparison holds architecture against a background of other differences that are not fully separated.
+Pythia has 32 layers and partial rotary positional encoding.
+Both Mamba models have 64 layers and no explicit positional encoding.
+Depth and positional encoding are therefore confounded with the sequence-mixing architecture in this contrast.
+Phase 3 addresses depth and attention by comparing a matched pure Mamba-2 against a hybrid that adds attention layers, and later phases vary scale and training data.
+
+The two Mamba models differ from each other in state size, 16 against 128, and in the specific mixing operation, which is why the pair is reported separately rather than pooled.
