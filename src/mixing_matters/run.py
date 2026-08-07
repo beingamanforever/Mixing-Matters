@@ -199,13 +199,20 @@ class Generator:
         # Resolve the execution path before loading weights so an
         # unavailable CUDA kernel path fails fast, not after a multi-GB load.
         execution_path = _resolve_execution_path(model_spec.family)
+        trust_remote_code = model_spec.repo.startswith("nvidia/")
 
         self.torch = torch
         self.spec = model_spec
-        self.tokenizer = AutoTokenizer.from_pretrained(model_spec.repo, revision=exact_revision)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            model_spec.repo, revision=exact_revision, trust_remote_code=trust_remote_code
+        )
         _assert_no_active_truncation(self.tokenizer)
 
-        model_kwargs = {"revision": exact_revision, "dtype": torch.bfloat16}
+        model_kwargs = {
+            "revision": exact_revision,
+            "dtype": torch.bfloat16,
+            "trust_remote_code": trust_remote_code,
+        }
         attention_implementation = None
         if model_spec.family == "pythia":
             attention_implementation = "eager"

@@ -8,3 +8,4 @@ data/
 runs/
 graphify-out/
 AGENTS.md
+uv.lock
