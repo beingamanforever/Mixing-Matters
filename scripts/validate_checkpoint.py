@@ -7,7 +7,7 @@ It uses a limit of 200 examples so it runs in minutes, not hours, just to verify
 the conversion didn't destroy the weights (i.e., accuracy should be way above random guessing).
 
 Requirements:
-    pip install lm_eval
+    pip install git+https://github.com/EleutherAI/lm-evaluation-harness.git
 """
 
 import argparse
