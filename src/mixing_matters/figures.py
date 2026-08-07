@@ -14,6 +14,7 @@ from .models import DATA_PAIR, MODELS
 from .phase2 import DEFAULT_RESAMPLES, GOLD_POSITIONS, edges, interaction, position_curve
 from .phase4 import scale_trend, trend_summary
 from .phase5 import compare_to_architecture, data_control
+from .phase6 import phase6_summary
 
 BOOTSTRAP_SEED = 240521
 N_RESAMPLES = 10000
@@ -783,3 +784,159 @@ def write_phase5_figures(
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
 
     return [curve_path, edges_path, effect_path, summary_path]
+
+
+def _draw_position_curve(ax, models, curve, floor_ceiling) -> None:
+    """Draw one accuracy-by-position curve per model, with anchor reference lines."""
+    color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    for model, color in zip(models, itertools.cycle(color_cycle)):
+        positions = curve[model]["positions"]
+        accuracies = [positions[position]["accuracy"] for position in GOLD_POSITIONS]
+        low = [positions[position]["ci_low"] for position in GOLD_POSITIONS]
+        high = [positions[position]["ci_high"] for position in GOLD_POSITIONS]
+        lower_error = [max(0.0, value - bound) for value, bound in zip(accuracies, low)]
+        upper_error = [max(0.0, bound - value) for value, bound in zip(accuracies, high)]
+        ax.errorbar(
+            GOLD_POSITIONS,
+            accuracies,
+            yerr=[lower_error, upper_error],
+            fmt="o-",
+            capsize=4,
+            color=color,
+            label=model,
+        )
+        if model in floor_ceiling:
+            ax.axhline(floor_ceiling[model]["floor_accuracy"], color=color, linestyle=":", alpha=0.35)
+            ax.axhline(
+                floor_ceiling[model]["ceiling_accuracy"], color=color, linestyle=":", alpha=0.35
+            )
+    ax.set_xlabel("Needle depth (0 first, 9 last)")
+    ax.set_ylabel("Accuracy, 95 percent bootstrap interval")
+    ax.set_xticks(list(GOLD_POSITIONS))
+    ax.legend()
+
+
+def _draw_edges(ax, models, edge) -> None:
+    """Draw grouped primacy and recency edge bars per model."""
+    x = range(len(models))
+    width = 0.35
+
+    def edge_errors(edge_name: str) -> tuple[list[float], list[float], list[float]]:
+        estimates = [edge[model][edge_name]["estimate"] for model in models]
+        low = [edge[model][edge_name]["ci_low"] for model in models]
+        high = [edge[model][edge_name]["ci_high"] for model in models]
+        lower_error = [max(0.0, value - bound) for value, bound in zip(estimates, low)]
+        upper_error = [max(0.0, bound - value) for value, bound in zip(estimates, high)]
+        return estimates, lower_error, upper_error
+
+    primacy_estimates, primacy_lower, primacy_upper = edge_errors("primacy")
+    recency_estimates, recency_lower, recency_upper = edge_errors("recency")
+    ax.bar(
+        [position - width / 2 for position in x],
+        primacy_estimates,
+        width,
+        yerr=[primacy_lower, primacy_upper],
+        capsize=4,
+        label="Primacy edge",
+    )
+    ax.bar(
+        [position + width / 2 for position in x],
+        recency_estimates,
+        width,
+        yerr=[recency_lower, recency_upper],
+        capsize=4,
+        label="Recency edge",
+    )
+    ax.axhline(0.0, color="black", linewidth=0.8)
+    ax.set_ylabel("Edge minus center accuracy, 95 percent bootstrap interval")
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(models)
+    ax.legend()
+
+
+def write_phase6_figures(
+    records: list[dict],
+    directory: Path,
+    qa_records: list[dict] | None = None,
+    n_resamples: int = DEFAULT_RESAMPLES,
+) -> list[Path]:
+    """Write per-length niah position curves and edges plus a summary.
+
+    One position-curve and one edge figure per context length, so each length
+    reads on its own, and a niah-versus-QA edge comparison per length when the
+    Phase 2 sweep is supplied. Refuses to overwrite any existing output.
+    """
+    summary = phase6_summary(records, qa_records, n_resamples=n_resamples)
+    lengths = summary["lengths"]
+
+    curve_paths = {length: directory / f"position-curve-{length}.png" for length in lengths}
+    edge_paths = {length: directory / f"position-edges-{length}.png" for length in lengths}
+    summary_path = directory / "phase6-summary.json"
+    comparison_paths = {}
+    if "task_comparison" in summary:
+        comparison_paths = {
+            length: directory / f"task-comparison-{length}.png" for length in lengths
+        }
+    planned = [*curve_paths.values(), *edge_paths.values(), *comparison_paths.values(), summary_path]
+    for path in planned:
+        if path.exists():
+            raise FileExistsError(path)
+
+    directory.mkdir(parents=True, exist_ok=True)
+
+    for length in lengths:
+        entry = lengths[length]
+        models = entry["models"]
+        curve = entry["position_curve"]
+        edge = entry["edges"]
+        floor_ceiling = entry["floor_ceiling"]
+        question_count = curve[models[0]]["positions"][0]["question_count"]
+
+        fig, ax = plt.subplots()
+        _draw_position_curve(ax, models, curve, floor_ceiling)
+        ax.set_title(
+            f"niah_single_1 position curve at {length} tokens\n"
+            f"{len(models)} models, {question_count} needle instances each"
+        )
+        fig.tight_layout()
+        fig.savefig(curve_paths[length])
+        plt.close(fig)
+
+        fig, ax = plt.subplots()
+        _draw_edges(ax, models, edge)
+        ax.set_title(f"niah_single_1 position edges at {length} tokens")
+        ax.set_xlabel("Model")
+        fig.tight_layout()
+        fig.savefig(edge_paths[length])
+        plt.close(fig)
+
+    if "task_comparison" in summary:
+        qa_edges = summary["qa_edges"]
+        for length in lengths:
+            niah_edge = lengths[length]["edges"]
+            models = [model for model in lengths[length]["models"] if model in qa_edges]
+            x = range(len(models))
+            width = 0.2
+            fig, ax = plt.subplots()
+            series = [
+                ("niah primacy", niah_edge, "primacy", -1.5),
+                ("QA primacy", qa_edges, "primacy", -0.5),
+                ("niah recency", niah_edge, "recency", 0.5),
+                ("QA recency", qa_edges, "recency", 1.5),
+            ]
+            for label, edge_map, edge_name, offset in series:
+                estimates = [edge_map[model][edge_name]["estimate"] for model in models]
+                ax.bar([position + offset * width for position in x], estimates, width, label=label)
+            ax.axhline(0.0, color="black", linewidth=0.8)
+            ax.set_title(f"niah vs QA edges at {length} tokens (QA is Phase 2)")
+            ax.set_ylabel("Edge minus center accuracy")
+            ax.set_xticks(list(x))
+            ax.set_xticklabels(models)
+            ax.legend(fontsize="small")
+            fig.tight_layout()
+            fig.savefig(comparison_paths[length])
+            plt.close(fig)
+
+    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
+
+    return [*curve_paths.values(), *edge_paths.values(), *comparison_paths.values(), summary_path]
