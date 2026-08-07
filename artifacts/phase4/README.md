@@ -9,8 +9,8 @@ Five matched size pairs are swept, all on one NVIDIA A40 with 44 GiB so hardware
 | Scale pair | Mamba | Pythia | Status |
 |---|---|---|---|
 | 130m-160m | `state-spaces/mamba-130m-hf` | `EleutherAI/pythia-160m` | completed |
-| 370m-410m | `state-spaces/mamba-370m-hf` | `EleutherAI/pythia-410m` | in progress |
-| 790m-1b | `state-spaces/mamba-790m-hf` | `EleutherAI/pythia-1b` | not started |
+| 370m-410m | `state-spaces/mamba-370m-hf` | `EleutherAI/pythia-410m` | completed |
+| 790m-1b | `state-spaces/mamba-790m-hf` | `EleutherAI/pythia-1b` | in progress |
 | 1.4b-1.4b | `state-spaces/mamba-1.4b-hf` | `EleutherAI/pythia-1.4b` | not started |
 | 2.8b-2.8b | `state-spaces/mamba-2.8b-hf` | `EleutherAI/pythia-2.8b` | not started |
 
@@ -53,6 +53,31 @@ The smallest pair is therefore near the capability floor for the Pythia model, a
 It is retained as one point in the scale trend, where the larger pairs carry the capability needed to compare curve shape.
 
 Position curve for this pair: `130m-160m/report/position-curves.png`.
+
+### 370m-410m
+
+Both models in this pair reach a usable oracle ceiling, so their position curves carry shape to compare.
+
+| Model | Floor | Ceiling | Primacy edge | Recency edge |
+|---|---|---|---|---|
+| `mamba-370m` | 0.044 | 0.479 | +0.010, Holm p 0.043 | +0.078, Holm p below 0.0001 |
+| `pythia-410m` | 0.029 | 0.357 | +0.013, Holm p 0.135 | +0.033, Holm p 0.001 |
+
+Interaction, Mamba minus Pythia:
+
+| Contrast | Estimate | Interval | Holm p |
+|---|---|---|---|
+| Primacy edge | -0.0025 | -0.0206 to +0.0162 | 0.793 |
+| Recency edge | +0.0456 | see summary | below 0.0001 |
+
+At this size the primacy edge is small in both models and the primacy difference between them is not distinguishable from zero.
+This differs from the 2.8B pair reported in Phase 2, where the Pythia primacy edge is +0.052 and the Mamba primacy edge is near zero, giving a primacy difference of -0.053 that excludes zero.
+The recency edge is larger in Mamba than in Pythia at this size, and the recency difference of +0.046 excludes zero.
+
+The two completed interior points do not yet settle the trend.
+The grows, shrinks, or stable verdict is computed from the smallest and largest size points once all five pairs are present.
+
+Position curve for this pair: `370m-410m/report/position-curves.png`.
 
 ## Files per pair
 
