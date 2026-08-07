@@ -25,9 +25,9 @@ def validate(
     print(f"[*] Validating checkpoint: {model_repo}")
     print(f"[*] Tasks: {tasks} | Limit: {limit} instances")
 
-    # We must pass trust_remote_code=True for NVIDIA's Mamba architectures
-    model_args = f"pretrained={model_repo},trust_remote_code=True,dtype=bfloat16"
-
+    trust_remote_code = model_repo.startswith("nvidia/")
+    dtype = "bfloat16" if device.startswith("cuda") else "float32"
+    model_args = f"pretrained={model_repo},trust_remote_code={trust_remote_code},dtype={dtype}"
     cmd = [
         "lm_eval",
         "--model",
