@@ -34,7 +34,10 @@ class Document:
 
 
 def get_qa_prompt(
-    question: str, documents: List[Document], mention_random_ordering: bool, query_aware_contextualization: bool
+    question: str,
+    documents: List[Document],
+    mention_random_ordering: bool,
+    query_aware_contextualization: bool,
 ):
     if not question:
         raise ValueError(f"Provided `question` must be truthy, got: {question}")
@@ -42,7 +45,9 @@ def get_qa_prompt(
         raise ValueError(f"Provided `documents` must be truthy, got: {documents}")
 
     if mention_random_ordering and query_aware_contextualization:
-        raise ValueError("Mentioning random ordering cannot be currently used with query aware contextualization")
+        raise ValueError(
+            "Mentioning random ordering cannot be currently used with query aware contextualization"
+        )
 
     if mention_random_ordering:
         prompt_filename = "qa_ordered_randomly.prompt"
@@ -57,7 +62,9 @@ def get_qa_prompt(
     # Format the documents into strings
     formatted_documents = []
     for document_index, document in enumerate(documents):
-        formatted_documents.append(f"Document [{document_index+1}](Title: {document.title}) {document.text}")
+        formatted_documents.append(
+            f"Document [{document_index + 1}](Title: {document.title}) {document.text}"
+        )
     return prompt_template.format(question=question, search_results="\n".join(formatted_documents))
 
 

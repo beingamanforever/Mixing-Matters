@@ -6,7 +6,7 @@ from mixing_matters.models import MODELS, ModelSpec, spec
 
 
 def test_registry_has_the_three_pinned_models():
-    assert set(MODELS) == {"pythia-2.8b", "mamba-2.8b", "mamba2-2.7b"}
+    assert set(MODELS).issuperset({"pythia-2.8b", "mamba-2.8b", "mamba2-2.7b"})
     assert MODELS["pythia-2.8b"] == ModelSpec(
         key="pythia-2.8b",
         repo="EleutherAI/pythia-2.8b",

@@ -202,10 +202,16 @@ class Generator:
 
         self.torch = torch
         self.spec = model_spec
-        self.tokenizer = AutoTokenizer.from_pretrained(model_spec.repo, revision=exact_revision)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            model_spec.repo, revision=exact_revision, trust_remote_code=True
+        )
         _assert_no_active_truncation(self.tokenizer)
 
-        model_kwargs = {"revision": exact_revision, "dtype": torch.bfloat16}
+        model_kwargs = {
+            "revision": exact_revision,
+            "dtype": torch.bfloat16,
+            "trust_remote_code": True,
+        }
         attention_implementation = None
         if model_spec.family == "pythia":
             attention_implementation = "eager"
