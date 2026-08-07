@@ -15,7 +15,13 @@ import subprocess
 import sys
 
 
-def validate(model_repo: str, tasks: str = "hellaswag", limit: int = 200) -> None:
+def validate(
+    model_repo: str,
+    tasks: str = "hellaswag",
+    limit: int = 200,
+    device: str = "cuda:0",
+    batch_size: str = "8",
+) -> None:
     print(f"[*] Validating checkpoint: {model_repo}")
     print(f"[*] Tasks: {tasks} | Limit: {limit} instances")
 
@@ -33,9 +39,9 @@ def validate(model_repo: str, tasks: str = "hellaswag", limit: int = 200) -> Non
         "--limit",
         str(limit),
         "--device",
-        "cuda:0",
+        device,
         "--batch_size",
-        "8",
+        batch_size,
     ]
 
     print(f"[*] Running command: {' '.join(cmd)}\n")
@@ -59,5 +65,22 @@ if __name__ == "__main__":
         default="nvidia/mamba2-8b-3t-4k",
         help="HuggingFace model repo to validate",
     )
+    parser.add_argument(
+        "--tasks",
+        type=str,
+        default="hellaswag",
+        help="Tasks to evaluate (e.g. hellaswag, wikitext)",
+    )
+    parser.add_argument("--limit", type=int, default=200, help="Number of instances to evaluate")
+    parser.add_argument(
+        "--device", type=str, default="cuda:0", help="Device to run on (e.g. cuda:0, cpu)"
+    )
+    parser.add_argument("--batch_size", type=str, default="8", help="Batch size for evaluation")
     args = parser.parse_args()
-    validate(args.model)
+    validate(
+        args.model,
+        tasks=args.tasks,
+        limit=args.limit,
+        device=args.device,
+        batch_size=args.batch_size,
+    )
