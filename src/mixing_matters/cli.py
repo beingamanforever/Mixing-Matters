@@ -6,7 +6,7 @@ from .analysis import summarize, validate_negative, validate_order, validate_pha
 from .audit import write_audit_sample
 from .data import read_rows
 from .download import NAME, download
-from .figures import write_figures, write_phase2_figures
+from .figures import write_figures, write_phase2_figures, write_phase4_figures
 from .io import read_jsonl
 from .models import MODELS
 from .positive_control import validate_control
@@ -116,6 +116,10 @@ def main() -> None:
     phase2_report.add_argument("--results", type=Path, nargs="+", required=True)
     phase2_report.add_argument("--output", type=Path, required=True)
 
+    phase4_report = commands.add_parser("phase4-report")
+    phase4_report.add_argument("--results", type=Path, nargs="+", required=True)
+    phase4_report.add_argument("--output", type=Path, required=True)
+
     audit_cmd = commands.add_parser("audit-sample")
     audit_cmd.add_argument("--results", type=Path, required=True)
     audit_cmd.add_argument("--output", type=Path, required=True)
@@ -199,6 +203,12 @@ def main() -> None:
             _normalize_sweep_record(record) for path in args.results for record in read_jsonl(path)
         ]
         paths = write_phase2_figures(records, args.output)
+        print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
+    elif args.command == "phase4-report":
+        records = [
+            _normalize_sweep_record(record) for path in args.results for record in read_jsonl(path)
+        ]
+        paths = write_phase4_figures(records, args.output)
         print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
     elif args.command == "audit-sample":
         records = read_jsonl(args.results)

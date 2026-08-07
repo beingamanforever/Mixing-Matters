@@ -11,6 +11,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from .phase2 import DEFAULT_RESAMPLES, GOLD_POSITIONS, edges, interaction, position_curve
+from .phase4 import scale_trend, trend_summary
 
 BOOTSTRAP_SEED = 240521
 N_RESAMPLES = 10000
@@ -451,3 +452,108 @@ def write_phase2_figures(
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
 
     return [curve_path, edges_path, summary_path]
+
+
+def write_phase4_figures(
+    records: list[dict], directory: Path, n_resamples: int = DEFAULT_RESAMPLES
+) -> list[Path]:
+    """Write the Phase 4 scale-trend figures plus their summary.
+
+    Refuses to overwrite any of ``scale-primacy-gap.png``, ``scale-curves.png``,
+    or ``phase4-summary.json`` if they already exist in ``directory``.
+    """
+    trend = scale_trend(records, n_resamples=n_resamples)
+    trend_desc = trend_summary(trend)
+    pairs = trend["pairs"]
+
+    gap_path = directory / "scale-primacy-gap.png"
+    curves_path = directory / "scale-curves.png"
+    summary_path = directory / "phase4-summary.json"
+    for path in (gap_path, curves_path, summary_path):
+        if path.exists():
+            raise FileExistsError(path)
+
+    directory.mkdir(parents=True, exist_ok=True)
+
+    def diff_errors(field: str) -> tuple[list[float], list[float], list[float]]:
+        estimates = [pair[field]["estimate"] for pair in pairs]
+        low = [pair[field]["ci_low"] for pair in pairs]
+        high = [pair[field]["ci_high"] for pair in pairs]
+        lower_error = [max(0.0, value - bound) for value, bound in zip(estimates, low)]
+        upper_error = [max(0.0, bound - value) for value, bound in zip(estimates, high)]
+        return estimates, lower_error, upper_error
+
+    primacy_estimates, primacy_lower, primacy_upper = diff_errors("primacy_diff")
+    recency_estimates, recency_lower, recency_upper = diff_errors("recency_diff")
+
+    x = range(len(pairs))
+    width = 0.15
+    labels = [f"{pair['pair']}\n(n={pair['question_count']})" for pair in pairs]
+
+    fig, ax = plt.subplots()
+    ax.errorbar(
+        [position - width / 2 for position in x],
+        primacy_estimates,
+        yerr=[primacy_lower, primacy_upper],
+        fmt="o",
+        capsize=4,
+        label="Primacy edge difference",
+    )
+    ax.errorbar(
+        [position + width / 2 for position in x],
+        recency_estimates,
+        yerr=[recency_lower, recency_upper],
+        fmt="s",
+        capsize=4,
+        label="Recency edge difference",
+    )
+    ax.axhline(0.0, color="black", linewidth=0.8)
+    ax.set_title("Pythia minus Mamba edge difference by scale pair")
+    ax.set_xlabel("Scale pair, matched by parameter count")
+    ax.set_ylabel("Edge difference, 95 percent bootstrap interval")
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(labels)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(gap_path)
+    plt.close(fig)
+
+    curve = position_curve(records, n_resamples=n_resamples)
+    fig, axes = plt.subplots(1, len(pairs), figsize=(4 * len(pairs), 4), sharey=True, squeeze=False)
+    axes = axes[0]
+    for ax, pair in zip(axes, pairs):
+        for model_key, family_label, color in (
+            (pair["pythia_model"], "Pythia", "tab:blue"),
+            (pair["mamba_model"], "Mamba", "tab:orange"),
+        ):
+            positions = curve[model_key]["positions"]
+            accuracies = [positions[position]["accuracy"] for position in GOLD_POSITIONS]
+            low = [positions[position]["ci_low"] for position in GOLD_POSITIONS]
+            high = [positions[position]["ci_high"] for position in GOLD_POSITIONS]
+            lower_error = [max(0.0, value - bound) for value, bound in zip(accuracies, low)]
+            upper_error = [max(0.0, bound - value) for value, bound in zip(accuracies, high)]
+            question_count = positions[0]["question_count"]
+            ax.errorbar(
+                GOLD_POSITIONS,
+                accuracies,
+                yerr=[lower_error, upper_error],
+                fmt="o-",
+                capsize=3,
+                color=color,
+                label=f"{family_label} ({model_key}, {question_count} questions)",
+            )
+        ax.set_title(pair["pair"])
+        ax.set_xlabel("Gold position (0 first, 9 last)")
+        ax.set_xticks(list(GOLD_POSITIONS))
+        ax.legend(fontsize="small")
+    axes[0].set_ylabel("Accuracy, 95 percent bootstrap interval")
+    fig.suptitle("Position curves by scale pair: Pythia vs Mamba")
+    fig.tight_layout()
+    fig.savefig(curves_path)
+    plt.close(fig)
+
+    summary_path.write_text(
+        json.dumps({"scale_trend": trend, "trend_summary": trend_desc}, indent=2, sort_keys=True)
+    )
+
+    return [gap_path, curves_path, summary_path]

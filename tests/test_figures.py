@@ -10,9 +10,19 @@ from mixing_matters.figures import (
     phase2_summary,
     write_figures,
     write_phase2_figures,
+    write_phase4_figures,
 )
 from mixing_matters.phase2 import edges as phase2_edges
 from mixing_matters.phase2 import position_curve as phase2_position_curve
+
+# (pair label, pythia model key, mamba model key), matching the models registry.
+PHASE4_PAIR_KEYS = [
+    ("130m-160m", "pythia-160m", "mamba-130m"),
+    ("370m-410m", "pythia-410m", "mamba-370m"),
+    ("790m-1b", "pythia-1b", "mamba-790m"),
+    ("1.4b-1.4b", "pythia-1.4b", "mamba-1.4b"),
+    ("2.8b-2.8b", "pythia-2.8b", "mamba-2.8b"),
+]
 
 
 def _kv_records(n_bundles: int = 40, seed: int = 1) -> list[dict]:
@@ -334,3 +344,60 @@ def test_write_phase2_figures_refuses_to_overwrite(tmp_path):
     write_phase2_figures(records, directory, n_resamples=50)
     with pytest.raises(FileExistsError):
         write_phase2_figures(records, directory, n_resamples=50)
+
+
+def _phase4_scale_records(question_count: int = 20) -> list[dict]:
+    """A widening Pythia-minus-Mamba primacy gap across the five scale pairs."""
+    positions_template = {2: 0.3, 3: 0.3, 4: 0.3, 5: 0.3, 6: 0.3, 7: 0.3, 8: 0.3, 9: 0.3}
+
+    def model_records(model_key: str, primacy_score: float) -> list[dict]:
+        positions = {0: primacy_score, 1: primacy_score, **positions_template}
+        records = []
+        for question in range(question_count):
+            question_id = f"q{question}"
+            for position, score in positions.items():
+                records.append(
+                    {
+                        "model_key": model_key,
+                        "question_id": question_id,
+                        "condition": "gold",
+                        "gold_position": position,
+                        "score": score,
+                        "floor_accuracy": 0.1,
+                        "ceiling_accuracy": 0.9,
+                    }
+                )
+        return records
+
+    records = []
+    for index, (_, pythia_key, mamba_key) in enumerate(PHASE4_PAIR_KEYS):
+        records += model_records(pythia_key, 0.5 + 0.05 * (index + 1))
+        records += model_records(mamba_key, 0.5)
+    return records
+
+
+def test_write_phase4_figures_creates_expected_files(tmp_path):
+    records = _phase4_scale_records()
+    paths = write_phase4_figures(records, tmp_path / "phase4-figures", n_resamples=50)
+    for path in paths:
+        assert path.exists()
+    assert {path.name for path in paths} == {
+        "scale-primacy-gap.png",
+        "scale-curves.png",
+        "phase4-summary.json",
+    }
+    summary_path = next(path for path in paths if path.name == "phase4-summary.json")
+    summary = json.loads(summary_path.read_text())
+    assert set(summary) == {"scale_trend", "trend_summary"}
+    assert [pair["pair"] for pair in summary["scale_trend"]["pairs"]] == [
+        pair for pair, _, _ in PHASE4_PAIR_KEYS
+    ]
+    assert summary["trend_summary"]["primacy"]["direction"] == "grows"
+
+
+def test_write_phase4_figures_refuses_to_overwrite(tmp_path):
+    records = _phase4_scale_records()
+    directory = tmp_path / "phase4-figures"
+    write_phase4_figures(records, directory, n_resamples=50)
+    with pytest.raises(FileExistsError):
+        write_phase4_figures(records, directory, n_resamples=50)
