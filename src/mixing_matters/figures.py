@@ -469,7 +469,8 @@ def write_phase4_figures(
     gap_path = directory / "scale-primacy-gap.png"
     curves_path = directory / "scale-curves.png"
     summary_path = directory / "phase4-summary.json"
-    for path in (gap_path, curves_path, summary_path):
+    pair_paths = [directory / f"scale-curve-{pair['pair']}.png" for pair in pairs]
+    for path in (gap_path, curves_path, summary_path, *pair_paths):
         if path.exists():
             raise FileExistsError(path)
 
@@ -519,9 +520,8 @@ def write_phase4_figures(
     plt.close(fig)
 
     curve = position_curve(records, n_resamples=n_resamples)
-    fig, axes = plt.subplots(1, len(pairs), figsize=(4 * len(pairs), 4), sharey=True, squeeze=False)
-    axes = axes[0]
-    for ax, pair in zip(axes, pairs):
+
+    def draw_pair(ax, pair) -> None:
         for model_key, family_label, color in (
             (pair["pythia_model"], "Pythia", "tab:blue"),
             (pair["mamba_model"], "Mamba", "tab:orange"),
@@ -542,11 +542,26 @@ def write_phase4_figures(
                 color=color,
                 label=f"{family_label} ({model_key}, {question_count} questions)",
             )
-        ax.set_title(pair["pair"])
         ax.set_xlabel("Gold position (0 first, 9 last)")
         ax.set_xticks(list(GOLD_POSITIONS))
         ax.legend(fontsize="small")
-    axes[0].set_ylabel("Accuracy, 95 percent bootstrap interval")
+
+    # One standalone figure per size pair, so each comparison reads on its own.
+    for pair, pair_path in zip(pairs, pair_paths):
+        fig, ax = plt.subplots()
+        draw_pair(ax, pair)
+        ax.set_ylabel("Accuracy, 95 percent bootstrap interval")
+        ax.set_title(f"Position curve at scale pair {pair['pair']}: Pythia vs Mamba")
+        fig.tight_layout()
+        fig.savefig(pair_path)
+        plt.close(fig)
+
+    # A shared-axis grid for a single side-by-side view of the whole trend.
+    fig, axes = plt.subplots(1, len(pairs), figsize=(4 * len(pairs), 4), sharey=True, squeeze=False)
+    for ax, pair in zip(axes[0], pairs):
+        draw_pair(ax, pair)
+        ax.set_title(pair["pair"])
+    axes[0][0].set_ylabel("Accuracy, 95 percent bootstrap interval")
     fig.suptitle("Position curves by scale pair: Pythia vs Mamba")
     fig.tight_layout()
     fig.savefig(curves_path)
@@ -556,4 +571,4 @@ def write_phase4_figures(
         json.dumps({"scale_trend": trend, "trend_summary": trend_desc}, indent=2, sort_keys=True)
     )
 
-    return [gap_path, curves_path, summary_path]
+    return [gap_path, curves_path, summary_path, *pair_paths]

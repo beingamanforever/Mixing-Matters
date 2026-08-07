@@ -381,11 +381,12 @@ def test_write_phase4_figures_creates_expected_files(tmp_path):
     paths = write_phase4_figures(records, tmp_path / "phase4-figures", n_resamples=50)
     for path in paths:
         assert path.exists()
+    per_pair = {f"scale-curve-{pair}.png" for pair, _, _ in PHASE4_PAIR_KEYS}
     assert {path.name for path in paths} == {
         "scale-primacy-gap.png",
         "scale-curves.png",
         "phase4-summary.json",
-    }
+    } | per_pair
     summary_path = next(path for path in paths if path.name == "phase4-summary.json")
     summary = json.loads(summary_path.read_text())
     assert set(summary) == {"scale_trend", "trend_summary"}
