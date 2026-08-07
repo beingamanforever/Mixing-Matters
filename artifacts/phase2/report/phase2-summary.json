@@ -19,6 +19,25 @@
         "p_value_holm": 0.0
       }
     },
+    "mamba2-2.7b": {
+      "excluded_question_count": 0,
+      "excluded_record_count": 0,
+      "primacy": {
+        "ci_high": -0.0025000000000000022,
+        "ci_low": -0.03375,
+        "estimate": -0.018125000000000002,
+        "p_value": 0.0226,
+        "p_value_holm": 0.0226
+      },
+      "question_count": 800,
+      "recency": {
+        "ci_high": 0.12437499999999999,
+        "ci_low": 0.08562500000000003,
+        "estimate": 0.10500000000000001,
+        "p_value": 0.0,
+        "p_value_holm": 0.0
+      }
+    },
     "pythia-2.8b": {
       "excluded_question_count": 0,
       "excluded_record_count": 0,
@@ -44,12 +63,43 @@
       "ceiling_accuracy": 0.615,
       "floor_accuracy": 0.115
     },
+    "mamba2-2.7b": {
+      "ceiling_accuracy": 0.61875,
+      "floor_accuracy": 0.1275
+    },
     "pythia-2.8b": {
       "ceiling_accuracy": 0.64,
       "floor_accuracy": 0.09125
     }
   },
   "interactions": [
+    {
+      "excluded_question_count": {
+        "mamba-2.8b": 0,
+        "mamba2-2.7b": 0
+      },
+      "excluded_record_count": {
+        "mamba-2.8b": 0,
+        "mamba2-2.7b": 0
+      },
+      "first_model": "mamba-2.8b",
+      "primacy": {
+        "ci_high": 0.03812500000000002,
+        "ci_low": -0.00437499999999999,
+        "estimate": 0.016875,
+        "p_value": 0.125,
+        "p_value_holm": 0.125
+      },
+      "question_count": 800,
+      "recency": {
+        "ci_high": -0.0025000000000000022,
+        "ci_low": -0.05375000000000002,
+        "estimate": -0.028124999999999983,
+        "p_value": 0.03,
+        "p_value_holm": 0.06
+      },
+      "second_model": "mamba2-2.7b"
+    },
     {
       "excluded_question_count": {
         "mamba-2.8b": 0,
@@ -76,10 +126,38 @@
         "p_value_holm": 0.9204
       },
       "second_model": "pythia-2.8b"
+    },
+    {
+      "excluded_question_count": {
+        "mamba2-2.7b": 0,
+        "pythia-2.8b": 0
+      },
+      "excluded_record_count": {
+        "mamba2-2.7b": 0,
+        "pythia-2.8b": 0
+      },
+      "first_model": "mamba2-2.7b",
+      "primacy": {
+        "ci_high": -0.044999999999999984,
+        "ci_low": -0.095,
+        "estimate": -0.07,
+        "p_value": 0.0,
+        "p_value_holm": 0.0
+      },
+      "question_count": 800,
+      "recency": {
+        "ci_high": 0.056249999999999994,
+        "ci_low": 0.0037500000000000033,
+        "estimate": 0.03,
+        "p_value": 0.0264,
+        "p_value_holm": 0.0264
+      },
+      "second_model": "pythia-2.8b"
     }
   ],
   "models": [
     "mamba-2.8b",
+    "mamba2-2.7b",
     "pythia-2.8b"
   ],
   "n_resamples": 10000,
@@ -146,6 +224,72 @@
           "accuracy": 0.31625,
           "ci_high": 0.34875,
           "ci_low": 0.28375,
+          "question_count": 800
+        }
+      }
+    },
+    "mamba2-2.7b": {
+      "excluded_question_count": 0,
+      "excluded_record_count": 0,
+      "positions": {
+        "0": {
+          "accuracy": 0.18125,
+          "ci_high": 0.20875,
+          "ci_low": 0.155,
+          "question_count": 800
+        },
+        "1": {
+          "accuracy": 0.175,
+          "ci_high": 0.20125,
+          "ci_low": 0.14875,
+          "question_count": 800
+        },
+        "2": {
+          "accuracy": 0.17375,
+          "ci_high": 0.2,
+          "ci_low": 0.1475,
+          "question_count": 800
+        },
+        "3": {
+          "accuracy": 0.1725,
+          "ci_high": 0.2,
+          "ci_low": 0.14625,
+          "question_count": 800
+        },
+        "4": {
+          "accuracy": 0.18375,
+          "ci_high": 0.21125,
+          "ci_low": 0.15625,
+          "question_count": 800
+        },
+        "5": {
+          "accuracy": 0.20875,
+          "ci_high": 0.2375,
+          "ci_low": 0.18125,
+          "question_count": 800
+        },
+        "6": {
+          "accuracy": 0.19875,
+          "ci_high": 0.2275,
+          "ci_low": 0.1725,
+          "question_count": 800
+        },
+        "7": {
+          "accuracy": 0.2125,
+          "ci_high": 0.24125,
+          "ci_low": 0.185,
+          "question_count": 800
+        },
+        "8": {
+          "accuracy": 0.24375,
+          "ci_high": 0.27375,
+          "ci_low": 0.215,
+          "question_count": 800
+        },
+        "9": {
+          "accuracy": 0.35875,
+          "ci_high": 0.39125,
+          "ci_low": 0.32625,
           "question_count": 800
         }
       }
