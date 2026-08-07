@@ -46,6 +46,8 @@ MODELS: dict[str, ModelSpec] = {
         revision="main",
         family="mamba2",
     ),
+    # Entries below are exploratory scaffolds on floating refs; pass
+    # --revision=<commit_sha> explicitly for reproducible runs.
     # Phase 4: Scale and Family Trend
     "pythia-160m": ModelSpec(
         key="pythia-160m", repo="EleutherAI/pythia-160m", revision="main", family="pythia"
