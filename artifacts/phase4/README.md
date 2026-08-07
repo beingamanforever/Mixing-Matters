@@ -10,8 +10,8 @@ Five matched size pairs are swept, all on one NVIDIA A40 with 44 GiB so hardware
 |---|---|---|---|
 | 130m-160m | `state-spaces/mamba-130m-hf` | `EleutherAI/pythia-160m` | completed |
 | 370m-410m | `state-spaces/mamba-370m-hf` | `EleutherAI/pythia-410m` | completed |
-| 790m-1b | `state-spaces/mamba-790m-hf` | `EleutherAI/pythia-1b` | in progress |
-| 1.4b-1.4b | `state-spaces/mamba-1.4b-hf` | `EleutherAI/pythia-1.4b` | not started |
+| 790m-1b | `state-spaces/mamba-790m-hf` | `EleutherAI/pythia-1b` | completed |
+| 1.4b-1.4b | `state-spaces/mamba-1.4b-hf` | `EleutherAI/pythia-1.4b` | in progress |
 | 2.8b-2.8b | `state-spaces/mamba-2.8b-hf` | `EleutherAI/pythia-2.8b` | not started |
 
 This directory fills in one pair at a time, since the ten sweeps run sequentially on one GPU.
@@ -78,6 +78,31 @@ The two completed interior points do not yet settle the trend.
 The grows, shrinks, or stable verdict is computed from the smallest and largest size points once all five pairs are present.
 
 Position curve for this pair: `370m-410m/report/position-curves.png`.
+
+### 790m-1b
+
+| Model | Ceiling | Primacy edge | Recency edge |
+|---|---|---|---|
+| `mamba-790m` | 0.539 | -0.010, Holm p 0.109 | +0.062, Holm p below 0.0001 |
+| `pythia-1b` | 0.496 | +0.052, Holm p below 0.0001 | +0.071, Holm p below 0.0001 |
+
+Interaction, Mamba minus Pythia:
+
+| Contrast | Estimate | Interval | Holm p |
+|---|---|---|---|
+| Primacy edge | -0.0619 | -0.0831 to -0.0419 | below 0.0001 |
+| Recency edge | -0.0087 | see summary | 0.481 |
+
+At this size the Pythia model has a primacy edge of +0.052 and the Mamba model has none, giving a primacy difference of -0.062 that excludes zero.
+The recency edge is similar in both.
+This matches the 2.8B pair from Phase 2, where the primacy difference is -0.053.
+
+Reading the three informative points together, the smallest pair aside, the primacy difference is close to zero at 410M, then -0.062 at the 790M-to-1B point, then -0.053 at 2.8B.
+The Pythia primacy edge specifically strengthens with size, from +0.013 at Holm p 0.135 at 410M to +0.052 at Holm p below 0.0001 at 1B and again at 2.8B, while the Mamba primacy edge stays near zero at every size.
+The gap between the two architectures in the primacy arm therefore appears to emerge with scale rather than being present at every size.
+The formal grows, shrinks, or stable verdict from `phase4-report` compares the smallest and largest size endpoints and is produced once all five pairs are present.
+
+Position curve for this pair: `790m-1b/report/position-curves.png`.
 
 ## Files per pair
 
