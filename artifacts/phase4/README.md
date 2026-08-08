@@ -11,8 +11,8 @@ Five matched size pairs are swept, all on one NVIDIA A40 with 44 GiB so hardware
 | 130m-160m | `state-spaces/mamba-130m-hf` | `EleutherAI/pythia-160m` | completed |
 | 370m-410m | `state-spaces/mamba-370m-hf` | `EleutherAI/pythia-410m` | completed |
 | 790m-1b | `state-spaces/mamba-790m-hf` | `EleutherAI/pythia-1b` | completed |
-| 1.4b-1.4b | `state-spaces/mamba-1.4b-hf` | `EleutherAI/pythia-1.4b` | in progress |
-| 2.8b-2.8b | `state-spaces/mamba-2.8b-hf` | `EleutherAI/pythia-2.8b` | not started |
+| 1.4b-1.4b | `state-spaces/mamba-1.4b-hf` | `EleutherAI/pythia-1.4b` | completed |
+| 2.8b-2.8b | `state-spaces/mamba-2.8b-hf` | `EleutherAI/pythia-2.8b` | in progress |
 
 This directory fills in one pair at a time, since the ten sweeps run sequentially on one GPU.
 The scale-trend figures and the grows/shrinks/stable verdict are produced once all five pairs are present, using `phase4-report`.
@@ -103,6 +103,33 @@ The gap between the two architectures in the primacy arm therefore appears to em
 The formal grows, shrinks, or stable verdict from `phase4-report` compares the smallest and largest size endpoints and is produced once all five pairs are present.
 
 Position curve for this pair: `790m-1b/report/position-curves.png`.
+
+### 1.4b-1.4b
+
+Both models in this pair reach a usable oracle ceiling, so their position curves carry shape to compare.
+
+| Model | Ceiling | Primacy edge | Recency edge |
+|---|---|---|---|
+| `mamba-1.4b` | 0.554 | -0.016, Holm p 0.017 | +0.091, Holm p below 0.0001 |
+| `pythia-1.4b` | 0.594 | +0.053, Holm p below 0.0001 | +0.068, Holm p below 0.0001 |
+
+Interaction, Mamba minus Pythia:
+
+| Contrast | Estimate | Interval | Holm p |
+|---|---|---|---|
+| Primacy edge | -0.0694 | -0.0931 to -0.0462 | below 0.0001 |
+| Recency edge | +0.0225 | see summary | 0.111 |
+
+At this size the Pythia model has a primacy edge of +0.053 and the Mamba model has a small negative one, giving a primacy difference of -0.069 that excludes zero.
+The recency difference does not exclude zero.
+This is the same direction and roughly the same magnitude as the 790M-to-1B and 2.8B pairs.
+
+Reading the four informative points together, the smallest pair aside, the primacy difference is close to zero at 410M, then -0.062 at the 790M-to-1B point, -0.069 at 1.4B, and -0.053 at 2.8B.
+The Pythia primacy edge specifically strengthens with size, from +0.013 at Holm p 0.135 at 410M to +0.052 or more from 1B upward, while the Mamba primacy edge stays at or below zero at every size.
+The gap between the two architectures in the primacy arm therefore appears to emerge with scale rather than being present at every size.
+The formal grows, shrinks, or stable verdict from `phase4-report` compares the smallest and largest size endpoints and is produced once all five pairs are present.
+
+Position curve for this pair: `1.4b-1.4b/report/position-curves.png`.
 
 ## Files per pair
 
