@@ -283,12 +283,20 @@ class Generator:
         if trust_remote_code:
             model_kwargs["trust_remote_code"] = True
         attention_implementation = None
-        # Every dense-attention family pins the eager implementation to keep
-        # runs on one deterministic pytorch reference path. Nemotron-H's SSM
-        # blocks dispatch through mamba-ssm and causal-conv1d, and its
-        # attention blocks also honor attn_implementation.
-        if model_spec.family in ("pythia", "llama", "qwen2", "nemotron-h"):
+        # Attention implementation, resolved per family. Pythia and Nemotron-H
+        # pin ``eager`` to match the earlier phases' deterministic pytorch
+        # reference path (Nemotron-H's SSM blocks separately dispatch through
+        # mamba-ssm and causal-conv1d). The Phase 8 dense transformers,
+        # Llama-3.1 and Qwen2.5, use ``sdpa`` for throughput: descriptive
+        # comparison across full systems is not a matched control and their
+        # 8B-scale eager attention runs prohibitively slow on a single GPU.
+        # SDPA still runs entirely under torch; only the attention kernel
+        # differs from the earlier eager runs.
+        if model_spec.family in ("pythia", "nemotron-h"):
             attention_implementation = "eager"
+        elif model_spec.family in ("llama", "qwen2"):
+            attention_implementation = "sdpa"
+        if attention_implementation is not None:
             model_kwargs["attn_implementation"] = attention_implementation
         self.model = AutoModelForCausalLM.from_pretrained(load_source, **model_kwargs).to("cuda")
         self.model.eval()
