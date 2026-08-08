@@ -12,10 +12,10 @@ Five matched size pairs are swept, all on one NVIDIA A40 with 44 GiB so hardware
 | 370m-410m | `state-spaces/mamba-370m-hf` | `EleutherAI/pythia-410m` | completed |
 | 790m-1b | `state-spaces/mamba-790m-hf` | `EleutherAI/pythia-1b` | completed |
 | 1.4b-1.4b | `state-spaces/mamba-1.4b-hf` | `EleutherAI/pythia-1.4b` | completed |
-| 2.8b-2.8b | `state-spaces/mamba-2.8b-hf` | `EleutherAI/pythia-2.8b` | in progress |
+| 2.8b-2.8b | `state-spaces/mamba-2.8b-hf` | `EleutherAI/pythia-2.8b` | completed |
 
-This directory fills in one pair at a time, since the ten sweeps run sequentially on one GPU.
-The scale-trend figures and the grows/shrinks/stable verdict are produced once all five pairs are present, using `phase4-report`.
+The ten sweeps ran sequentially on one GPU, one pair at a time; all five pairs are now present.
+The scale-trend figures and the grows, shrinks, or stable verdict are in `report/`, produced with `phase4-report` across all ten sweeps.
 
 ## Experimental setup
 
@@ -130,6 +130,56 @@ The gap between the two architectures in the primacy arm therefore appears to em
 The formal grows, shrinks, or stable verdict from `phase4-report` compares the smallest and largest size endpoints and is produced once all five pairs are present.
 
 Position curve for this pair: `1.4b-1.4b/report/position-curves.png`.
+
+### 2.8b-2.8b
+
+Both models reach a usable oracle ceiling, and this pair is the single-host reproduction of the 2.8B point that Phase 2 measured on separate hardware.
+
+| Model | Ceiling | Primacy edge | Recency edge |
+|---|---|---|---|
+| `mamba-2.8b` | 0.615 | -0.001, Holm p 0.914 | +0.077, Holm p below 0.0001 |
+| `pythia-2.8b` | 0.640 | +0.052, Holm p below 0.0001 | +0.075, Holm p below 0.0001 |
+
+Interaction, Mamba minus Pythia:
+
+| Contrast | Estimate | Interval | Holm p |
+|---|---|---|---|
+| Primacy edge | -0.0531 | -0.0775 to -0.0281 | below 0.0001 |
+| Recency edge | +0.0019 | -0.0262 to +0.0294 | 0.920 |
+
+The Pythia model has a primacy edge of +0.052 and the Mamba model none, a primacy difference of -0.053 that excludes zero, while the recency difference does not.
+This reproduces the Phase 2 result of -0.053 on this single A40, so the cross-hardware split in Phase 2 was not driving the effect.
+
+Position curve for this pair: `2.8b-2.8b/report/position-curves.png`.
+
+## Scale trend and verdict
+
+With all five pairs present, `phase4-report` reads the trend across size and writes it to `report/`.
+The primacy and recency contrasts here are stated as Pythia minus Mamba, the sign convention of `phase4-summary.json`; each per-pair section above states the same numbers as Mamba minus Pythia, so the signs are flipped between the two but the magnitudes match.
+
+Primacy edge difference, Pythia minus Mamba, by scale pair:
+
+| Scale pair | Estimate | Interval |
+|---|---|---|
+| 130m-160m | -0.0006 | -0.0094 to +0.0075 |
+| 370m-410m | +0.0025 | -0.0162 to +0.0206 |
+| 790m-1b | +0.0619 | +0.0419 to +0.0831 |
+| 1.4b-1.4b | +0.0694 | +0.0462 to +0.0931 |
+| 2.8b-2.8b | +0.0531 | +0.0281 to +0.0775 |
+
+The verdict compares the smallest and largest size endpoints.
+The primacy edge difference **grows** with scale, from -0.0006 at 130m-160m to +0.0531 at 2.8b-2.8b, a change of +0.054; it is indistinguishable from zero at the two smallest pairs and excludes zero from 790m-1b upward.
+The recency edge difference is **stable**, staying near zero across the informative pairs.
+
+Read with the capability caveat, the picture is consistent: the Pythia transformer develops a primacy edge that the matched Mamba model does not, and that gap in the primacy arm widens as the models grow, while neither family's recency edge pulls apart with size.
+The 130m-160m pair sits near the Pythia capability floor (oracle ceiling 0.009) and carries no curve shape, so it anchors the small end of the trend without being read as a shape comparison on its own.
+
+Scale-trend figures:
+
+- `report/scale-primacy-gap.png`: the headline, both edge differences against scale pair with 95 percent intervals.
+- `report/scale-curves.png`: the five position curves on one shared axis, Pythia against Mamba.
+- `report/scale-curve-<pair>.png`: the same comparison as one standalone panel per pair.
+- `report/phase4-summary.json`: every estimate, interval, and the grows/shrinks/stable verdict behind the figures.
 
 ## Files per pair
 
