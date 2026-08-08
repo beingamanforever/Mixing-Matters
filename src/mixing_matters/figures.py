@@ -10,11 +10,12 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 
-from .models import DATA_PAIR, MODELS
+from .models import DATA_PAIR, MODELS, PHASE8_SYSTEMS
 from .phase2 import DEFAULT_RESAMPLES, GOLD_POSITIONS, edges, interaction, position_curve
 from .phase4 import scale_trend, trend_summary
 from .phase5 import compare_to_architecture, data_control
 from .phase6 import phase6_summary
+from .phase8 import phase8_summary
 
 BOOTSTRAP_SEED = 240521
 N_RESAMPLES = 10000
@@ -940,3 +941,116 @@ def write_phase6_figures(
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
 
     return [*curve_paths.values(), *edge_paths.values(), *comparison_paths.values(), summary_path]
+
+
+def write_phase8_figures(
+    records: list[dict], directory: Path, n_resamples: int = DEFAULT_RESAMPLES
+) -> list[Path]:
+    """Write the Phase 8 descriptive system comparison figures plus summary.
+
+    Draws position curves for every Phase 8 system on one axis with per-model
+    floor and ceiling reference lines, a grouped primacy/recency edge chart,
+    and writes ``phase8-summary.json`` carrying per-model curves, edges,
+    every pairwise interaction, and the small system descriptor block.
+    Refuses to overwrite any existing output.
+    """
+    summary = phase8_summary(records, n_resamples=n_resamples)
+    models = summary["models"]
+    curve = summary["position_curve"]
+    edge = summary["edges"]
+    floor_ceiling = summary["floor_ceiling"]
+
+    curve_path = directory / "position-curves.png"
+    edges_path = directory / "position-edges.png"
+    summary_path = directory / "phase8-summary.json"
+    for path in (curve_path, edges_path, summary_path):
+        if path.exists():
+            raise FileExistsError(path)
+
+    directory.mkdir(parents=True, exist_ok=True)
+
+    question_counts = {model: curve[model]["positions"][0]["question_count"] for model in models}
+
+    fig, ax = plt.subplots()
+    color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    for model, color in zip(models, itertools.cycle(color_cycle)):
+        positions = curve[model]["positions"]
+        accuracies = [positions[position]["accuracy"] for position in GOLD_POSITIONS]
+        low = [positions[position]["ci_low"] for position in GOLD_POSITIONS]
+        high = [positions[position]["ci_high"] for position in GOLD_POSITIONS]
+        lower_error = [max(0.0, value - bound) for value, bound in zip(accuracies, low)]
+        upper_error = [max(0.0, bound - value) for value, bound in zip(accuracies, high)]
+        ax.errorbar(
+            GOLD_POSITIONS,
+            accuracies,
+            yerr=[lower_error, upper_error],
+            fmt="o-",
+            capsize=4,
+            color=color,
+            label=model,
+        )
+        if model in floor_ceiling:
+            ax.axhline(
+                floor_ceiling[model]["floor_accuracy"], color=color, linestyle=":", alpha=0.35
+            )
+            ax.axhline(
+                floor_ceiling[model]["ceiling_accuracy"], color=color, linestyle=":", alpha=0.35
+            )
+    ax.set_title(
+        "Phase 8 position curves (descriptive comparison across full systems)\n"
+        f"{_model_caption(question_counts)}"
+    )
+    ax.set_xlabel("Gold position (0 first, 9 last)")
+    ax.set_ylabel("Accuracy, 95 percent bootstrap interval")
+    ax.set_xticks(list(GOLD_POSITIONS))
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(curve_path)
+    plt.close(fig)
+
+    edge_question_counts = {model: edge[model]["question_count"] for model in models}
+    x = range(len(models))
+    width = 0.35
+
+    def edge_errors(edge_name: str) -> tuple[list[float], list[float], list[float]]:
+        estimates = [edge[model][edge_name]["estimate"] for model in models]
+        low = [edge[model][edge_name]["ci_low"] for model in models]
+        high = [edge[model][edge_name]["ci_high"] for model in models]
+        lower_error = [max(0.0, value - bound) for value, bound in zip(estimates, low)]
+        upper_error = [max(0.0, bound - value) for value, bound in zip(estimates, high)]
+        return estimates, lower_error, upper_error
+
+    primacy_estimates, primacy_lower, primacy_upper = edge_errors("primacy")
+    recency_estimates, recency_lower, recency_upper = edge_errors("recency")
+
+    fig, ax = plt.subplots()
+    ax.bar(
+        [position - width / 2 for position in x],
+        primacy_estimates,
+        width,
+        yerr=[primacy_lower, primacy_upper],
+        capsize=4,
+        label="Primacy edge",
+    )
+    ax.bar(
+        [position + width / 2 for position in x],
+        recency_estimates,
+        width,
+        yerr=[recency_lower, recency_upper],
+        capsize=4,
+        label="Recency edge",
+    )
+    ax.axhline(0.0, color="black", linewidth=0.8)
+    ax.set_title(f"Phase 8 position edges by system\n{_model_caption(edge_question_counts)}")
+    ax.set_xlabel("System")
+    ax.set_ylabel("Edge minus center accuracy, 95 percent bootstrap interval")
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(models)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(edges_path)
+    plt.close(fig)
+
+    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
+
+    return [curve_path, edges_path, summary_path]

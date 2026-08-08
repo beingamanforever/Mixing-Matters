@@ -130,6 +130,30 @@ def _require_mamba2_kernels(mamba2_module) -> None:
         )
 
 
+def _require_nemotron_h_kernels() -> None:
+    """Require the mamba-ssm and causal-conv1d packages Nemotron-H dispatches to.
+
+    Nemotron-H is a hybrid model whose SSM blocks call into mamba-ssm and
+    causal-conv1d when they are importable and fall back to a pure-pytorch
+    reference implementation otherwise. Failing loudly on missing kernels
+    keeps every Phase 8 nemotron-h run on the same execution path.
+    """
+    missing = []
+    try:
+        import causal_conv1d  # noqa: F401
+    except ImportError:
+        missing.append("causal_conv1d")
+    try:
+        import mamba_ssm  # noqa: F401
+    except ImportError:
+        missing.append("mamba_ssm")
+    if missing:
+        raise RuntimeError(
+            "nemotron-h CUDA kernel path unavailable, missing: "
+            f"{', '.join(missing)}; refusing to fall back to the pytorch reference path"
+        )
+
+
 def _resolve_execution_path(family: str) -> str:
     if family == "pythia":
         return "pytorch_reference"
@@ -142,6 +166,14 @@ def _resolve_execution_path(family: str) -> str:
         from transformers.models.mamba2 import modeling_mamba2
 
         _require_mamba2_kernels(modeling_mamba2)
+        return "cuda_kernels"
+    if family in ("llama", "qwen2"):
+        # Dense attention transformers. The eager attention implementation
+        # keeps them on the same deterministic pytorch reference path Pythia
+        # runs on.
+        return "pytorch_reference"
+    if family == "nemotron-h":
+        _require_nemotron_h_kernels()
         return "cuda_kernels"
     raise ValueError(f"unknown model family: {family!r}")
 
@@ -239,7 +271,11 @@ class Generator:
 
         model_kwargs = {"dtype": torch.bfloat16, **revision_kwargs}
         attention_implementation = None
-        if model_spec.family == "pythia":
+        # Every dense-attention family pins the eager implementation to keep
+        # runs on one deterministic pytorch reference path. Nemotron-H's SSM
+        # blocks dispatch through mamba-ssm and causal-conv1d, and its
+        # attention blocks also honor attn_implementation.
+        if model_spec.family in ("pythia", "llama", "qwen2", "nemotron-h"):
             attention_implementation = "eager"
             model_kwargs["attn_implementation"] = attention_implementation
         self.model = AutoModelForCausalLM.from_pretrained(load_source, **model_kwargs).to("cuda")
@@ -430,13 +466,25 @@ def _gold_prompt(row: dict, position: int) -> str:
 
 
 def run_sweep(
-    data_path: Path, output: Path, model_key: str, revision: str, questions: int = 800
+    data_path: Path,
+    output: Path,
+    model_key: str,
+    revision: str,
+    questions: int = 800,
+    max_prompt_token_span: int = MAX_PROMPT_TOKEN_SPAN,
 ) -> None:
     """Run the closed_book/oracle/gold(0-9) sweep for one model.
 
     Unlike run_tracer, this never validates or gates on the key-value
     positive control: a model failing that control is a finding about the
     model, not a reason to abort the position sweep.
+
+    ``max_prompt_token_span`` gates the byte-pair-merge noise across the
+    ten gold positions of a question. The default ``MAX_PROMPT_TOKEN_SPAN``
+    (``2``) is tight enough for the GPTNeoX and Mamba tokenizers used in
+    Phases 2 through 6; Phase 8 raises it because Llama, Qwen, and
+    Nemotron-H tokenizers each have their own merge behavior at document
+    boundaries.
     """
     model_spec = models.spec(model_key)
 
@@ -546,10 +594,10 @@ def run_sweep(
                 gold_token_counts.append(prompt_tokens)
 
             span = max(gold_token_counts) - min(gold_token_counts)
-            if span > MAX_PROMPT_TOKEN_SPAN:
+            if span > max_prompt_token_span:
                 raise ValueError(
                     f"gold prompt length span too large for source index {index}: "
-                    f"{span} tokens across positions 0-9"
+                    f"{span} tokens across positions 0-9 (limit {max_prompt_token_span})"
                 )
             for gold_record in gold_records:
                 gold_record["prompt_token_span"] = span
