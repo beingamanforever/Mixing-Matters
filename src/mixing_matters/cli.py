@@ -11,12 +11,14 @@ from .figures import (
     write_phase2_figures,
     write_phase4_figures,
     write_phase5_figures,
+    write_phase6_figures,
 )
 from .io import read_jsonl
 from .models import MODELS
 from .positive_control import validate_control
 from .run import (
     MODEL,
+    NIAH_LENGTHS,
     SEED,
     generation_count,
     plan,
@@ -26,6 +28,7 @@ from .run import (
     run_certify_negative,
     run_certify_order,
     run_kv_control,
+    run_ruler_sweep,
     run_sweep,
     run_tracer,
 )
@@ -105,6 +108,23 @@ def main() -> None:
     sweep_cmd.add_argument("--positive-control", type=Path)
     sweep_cmd.add_argument("--dry-run", action="store_true")
 
+    ruler_cmd = commands.add_parser("ruler-sweep")
+    ruler_cmd.add_argument("--model", choices=sorted(MODELS), required=True)
+    ruler_cmd.add_argument("--output", type=Path, required=True)
+    ruler_cmd.add_argument(
+        "--revision",
+        help="Model tag or commit to resolve; defaults to the pinned registry revision",
+    )
+    ruler_cmd.add_argument(
+        "--lengths",
+        type=int,
+        nargs="+",
+        default=list(NIAH_LENGTHS),
+        help="Context length targets in tokens, generation budget included",
+    )
+    ruler_cmd.add_argument("--num-samples", type=int, default=100)
+    ruler_cmd.add_argument("--dry-run", action="store_true")
+
     analyze = commands.add_parser("analyze")
     analyze.add_argument("results", type=Path)
 
@@ -140,6 +160,22 @@ def main() -> None:
         help="Optional Phase 2 Pythia and Pile-Mamba sweeps for the cross-phase comparison",
     )
     phase5_report.add_argument("--output", type=Path, required=True)
+
+    phase6_report = commands.add_parser("phase6-report")
+    phase6_report.add_argument(
+        "--results",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="niah_single_1 sweep files for the Phase 2 models",
+    )
+    phase6_report.add_argument(
+        "--qa-results",
+        type=Path,
+        nargs="+",
+        help="Optional Phase 2 QA sweeps for the niah-versus-QA edge comparison",
+    )
+    phase6_report.add_argument("--output", type=Path, required=True)
 
     audit_cmd = commands.add_parser("audit-sample")
     audit_cmd.add_argument("--results", type=Path, required=True)
@@ -186,6 +222,41 @@ def main() -> None:
         if args.positive_control is not None:
             _print_control_outcome(args.model, args.positive_control)
         run_sweep(args.data, args.output, args.model, revision, questions=args.questions)
+    elif args.command == "ruler-sweep" and args.dry_run:
+        lengths = tuple(args.lengths)
+        print(
+            json.dumps(
+                {
+                    "model": args.model,
+                    "seed": SEED,
+                    "lengths": list(lengths),
+                    "num_samples": args.num_samples,
+                    "generations": len(lengths) * args.num_samples * 12,
+                }
+            )
+        )
+    elif args.command == "ruler-sweep":
+        revision = args.revision or MODELS[args.model].revision
+        run_ruler_sweep(
+            args.output,
+            args.model,
+            revision,
+            lengths=tuple(args.lengths),
+            num_samples=args.num_samples,
+        )
+    elif args.command == "phase6-report":
+        records = [
+            _normalize_sweep_record(record) for path in args.results for record in read_jsonl(path)
+        ]
+        qa_records = None
+        if args.qa_results:
+            qa_records = [
+                _normalize_sweep_record(record)
+                for path in args.qa_results
+                for record in read_jsonl(path)
+            ]
+        paths = write_phase6_figures(records, args.output, qa_records)
+        print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
     elif args.command == "certify-negative" and args.dry_run:
         rows = read_rows(args.data)
         work = plan_negative(rows, n=args.n)

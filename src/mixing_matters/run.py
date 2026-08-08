@@ -22,6 +22,14 @@ MAX_NEW_TOKENS = 32
 # document moves position, caused by byte-pair merges at document boundaries.
 # A span above this is a real invariance violation, not BPE noise.
 MAX_PROMPT_TOKEN_SPAN = 2
+# Phase 6 niah_single_1 length targets, in tokens including the generation
+# budget, run for the 2,048-token Phase 2 models. 2K sits just under Pythia's
+# hard 2,048 limit once MAX_NEW_TOKENS is reserved.
+NIAH_LENGTHS = (1024, 2048)
+# The needle sentence is constant length and the noise count is fixed within a
+# length, so the ten depths of one instance differ only by byte-pair merges at
+# the needle boundary. A span above this is a real invariance violation.
+MAX_NIAH_PROMPT_TOKEN_SPAN = 4
 
 
 def _resolve_driver_version(torch_module) -> str:
@@ -546,6 +554,178 @@ def run_sweep(
             for gold_record in gold_records:
                 gold_record["prompt_token_span"] = span
                 yield gold_record
+
+    write_jsonl(output, records())
+
+
+def _niah_question_id(length: int, instance: dict) -> str:
+    value = f"niah_single_1:{length}:{instance['index']}:{instance['key']}:{instance['value']}"
+    return hashlib.sha256(value.encode()).hexdigest()[:20]
+
+
+def run_ruler_sweep(
+    output: Path,
+    model_key: str,
+    revision: str,
+    lengths: tuple[int, ...] = NIAH_LENGTHS,
+    num_samples: int = 100,
+) -> None:
+    """Run the RULER niah_single_1 depth sweep for one model at each length.
+
+    For every length target and every needle instance the runner writes twelve
+    records, in the same shape as ``run_sweep``: a closed-book floor (haystack
+    with no needle), an oracle ceiling (the needle with no noise), and the
+    needle at depths 0 through 9. gold_position carries the depth so the Phase 2
+    position-curve and edge statistics apply unchanged, one length at a time.
+    Records also carry ``context_length`` and ``num_haystack`` so the report can
+    separate the lengths. Never validates or gates on any control.
+    """
+    from . import ruler
+
+    model_spec = models.spec(model_key)
+    if output.exists():
+        raise FileExistsError(output)
+    failures = output.with_suffix(".failures.jsonl")
+    if failures.exists():
+        raise FileExistsError(failures)
+    if num_samples < 1:
+        raise ValueError(f"num_samples must be positive: {num_samples}")
+
+    generator = Generator(model_spec, revision)
+    run_id = str(uuid.uuid4())
+    software_versions = {
+        "python": generator.metadata["python"],
+        "torch": generator.metadata["torch"],
+        "transformers": generator.metadata["transformers"],
+        "cuda": generator.metadata["cuda"],
+        "driver": generator.metadata["driver"],
+        "gpu": generator.metadata["gpu"],
+        "attention_implementation": generator.metadata["attention_implementation"],
+        "dtype": generator.metadata["dtype"],
+        "model_key": generator.metadata["model_key"],
+        "family": generator.metadata["family"],
+        "execution_path": generator.metadata["execution_path"],
+        "compute_capability": generator.metadata["compute_capability"],
+        "mamba_ssm": generator.metadata["mamba_ssm"],
+        "causal_conv1d": generator.metadata["causal_conv1d"],
+    }
+
+    def count_tokens(text: str) -> int:
+        return len(generator.tokenizer(text).input_ids)
+
+    def score_and_log(generation: str, answers: list[str], qid: str, condition: str) -> dict:
+        try:
+            return ruler.score_variants(generation, answers)
+        except Exception as error:  # noqa: BLE001 - scoring failures are logged, not fatal
+            with failures.open("a") as stream:
+                stream.write(
+                    json.dumps(
+                        {
+                            "run_id": run_id,
+                            "question_id": qid,
+                            "condition": condition,
+                            "error": str(error),
+                        }
+                    )
+                    + "\n"
+                )
+            return {"score": None, "score_normalized_em": None, "score_first_line": None}
+
+    def base_record(
+        qid: str,
+        condition: str,
+        gold_position: int | None,
+        prompt: str,
+        generation: str,
+        answers: list[str],
+        prompt_tokens: int,
+        generated_tokens: int,
+        length: int,
+        num_haystack: int,
+        instance: dict,
+        scores: dict,
+    ) -> dict:
+        return {
+            "task": "niah_single_1",
+            "ruler_commit": ruler.RULER_COMMIT,
+            "context_length": length,
+            "num_haystack": num_haystack,
+            "needle_key": instance["key"],
+            "instance_index": instance["index"],
+            "instance_seed": instance["seed"],
+            "question_id": qid,
+            "condition": condition,
+            "gold_position": gold_position,
+            "prompt": prompt,
+            "model_response": generation,
+            "correct_answer": answers[0],
+            "answers": answers,
+            "prompt_token_count": prompt_tokens,
+            "generated_token_count": generated_tokens,
+            "prompt_token_span": None,
+            **scores,
+            **_provenance(run_id, generator, None, None, software_versions),
+        }
+
+    def records():
+        for length in lengths:
+            reference = ruler.make_instance(0)
+            num_haystack = ruler.solve_haystack_size(
+                count_tokens, length, MAX_NEW_TOKENS, reference
+            )
+            for index in range(num_samples):
+                instance = ruler.make_instance(index)
+                answers = [instance["value"]]
+                qid = _niah_question_id(length, instance)
+
+                floor_prompt = ruler.build_floor_prompt(instance, num_haystack)
+                floor_gen, floor_tokens, floor_new = generator(floor_prompt)
+                floor_scores = score_and_log(floor_gen, answers, qid, "closed_book")
+                floor = floor_scores["score"]
+
+                ceiling_prompt = ruler.build_ceiling_prompt(instance)
+                ceiling_gen, ceiling_tokens, ceiling_new = generator(ceiling_prompt)
+                ceiling_scores = score_and_log(ceiling_gen, answers, qid, "oracle")
+                ceiling = ceiling_scores["score"]
+
+                floor_record = base_record(
+                    qid, "closed_book", None, floor_prompt, floor_gen, answers,
+                    floor_tokens, floor_new, length, num_haystack, instance, floor_scores,
+                )
+                ceiling_record = base_record(
+                    qid, "oracle", None, ceiling_prompt, ceiling_gen, answers,
+                    ceiling_tokens, ceiling_new, length, num_haystack, instance, ceiling_scores,
+                )
+                for record in (floor_record, ceiling_record):
+                    record["floor_accuracy"] = floor
+                    record["ceiling_accuracy"] = ceiling
+                yield floor_record
+                yield ceiling_record
+
+                gold_records = []
+                gold_token_counts = []
+                for depth in ruler.DEPTHS:
+                    prompt = ruler.build_gold_prompt(instance, depth, num_haystack)
+                    generation, prompt_tokens, generated_tokens = generator(prompt)
+                    scores = score_and_log(generation, answers, qid, "gold")
+                    record = base_record(
+                        qid, "gold", depth, prompt, generation, answers,
+                        prompt_tokens, generated_tokens, length, num_haystack, instance, scores,
+                    )
+                    record["floor_accuracy"] = floor
+                    record["ceiling_accuracy"] = ceiling
+                    gold_records.append(record)
+                    gold_token_counts.append(prompt_tokens)
+
+                span = max(gold_token_counts) - min(gold_token_counts)
+                if span > MAX_NIAH_PROMPT_TOKEN_SPAN:
+                    raise ValueError(
+                        f"niah prompt length span too large at length {length} for "
+                        f"instance {index}: {span} tokens across depths 0-9"
+                    )
+                for record in gold_records:
+                    record["prompt_token_span"] = span
+                    yield record
 
     write_jsonl(output, records())
 
