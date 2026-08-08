@@ -13,6 +13,70 @@ import matplotlib.pyplot as plt
 from .phase2 import DEFAULT_RESAMPLES, GOLD_POSITIONS, edges, interaction, position_curve
 from .phase4 import scale_trend, trend_summary
 
+# Publication-grade defaults applied to every figure this module writes, so the
+# committed PNGs are consistent and re-running any report reproduces the same
+# look. Styling only: no estimate, interval, or label is computed here.
+plt.rcParams.update(
+    {
+        "figure.dpi": 120,
+        "savefig.dpi": 200,
+        "savefig.bbox": "tight",
+        "savefig.pad_inches": 0.06,
+        "figure.figsize": (7.2, 4.6),
+        "font.size": 11,
+        "axes.titlesize": 12.5,
+        "axes.titleweight": "bold",
+        "axes.labelsize": 11,
+        "axes.linewidth": 0.9,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        "axes.axisbelow": True,
+        "axes.grid": True,
+        "grid.color": "#b0b0b0",
+        "grid.linestyle": "--",
+        "grid.linewidth": 0.5,
+        "grid.alpha": 0.45,
+        "xtick.labelsize": 10,
+        "ytick.labelsize": 10,
+        "xtick.direction": "out",
+        "ytick.direction": "out",
+        "legend.fontsize": 9.5,
+        "legend.frameon": True,
+        "legend.framealpha": 0.92,
+        "legend.edgecolor": "#cccccc",
+        "lines.linewidth": 1.9,
+        "lines.markersize": 5.5,
+        "lines.markeredgewidth": 0.8,
+    }
+)
+
+# Fixed family colors so Pythia and Mamba read the same across every panel.
+PYTHIA_COLOR = "#1f77b4"
+MAMBA_COLOR = "#ff7f0e"
+
+
+def _family_colors(models: list[str]) -> dict[str, str]:
+    """Map each model to a stable color: Pythia blue, Mamba orange.
+
+    A study can contain more than one Mamba variant (Phase 2 has two), so the
+    first Mamba takes the family color and any further model falls through to a
+    distinct palette color, never colliding with the two family colors.
+    """
+    palette = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    spare = (color for color in palette if color not in (PYTHIA_COLOR, MAMBA_COLOR))
+    colors: dict[str, str] = {}
+    mamba_taken = False
+    for model in models:
+        lowered = model.lower()
+        if "pythia" in lowered:
+            colors[model] = PYTHIA_COLOR
+        elif "mamba" in lowered and not mamba_taken:
+            colors[model] = MAMBA_COLOR
+            mamba_taken = True
+        else:
+            colors[model] = next(spare)
+    return colors
+
 BOOTSTRAP_SEED = 240521
 N_RESAMPLES = 10000
 
@@ -376,8 +440,9 @@ def write_phase2_figures(
     question_counts = {model: curve[model]["positions"][0]["question_count"] for model in models}
 
     fig, ax = plt.subplots()
-    color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-    for model, color in zip(models, itertools.cycle(color_cycle)):
+    family_colors = _family_colors(models)
+    for model in models:
+        color = family_colors[model]
         positions = curve[model]["positions"]
         accuracies = [positions[position]["accuracy"] for position in GOLD_POSITIONS]
         low = [positions[position]["ci_low"] for position in GOLD_POSITIONS]
@@ -492,29 +557,42 @@ def write_phase4_figures(
     labels = [f"{pair['pair']}\n(n={pair['question_count']})" for pair in pairs]
 
     fig, ax = plt.subplots()
+    ax.axhline(0.0, color="#333333", linewidth=1.0, zorder=1)
+    primacy_x = [position - width / 2 for position in x]
+    recency_x = [position + width / 2 for position in x]
+    # Faint connecting lines carry the eye along the trend; the markers and
+    # intervals carry the numbers.
+    ax.plot(primacy_x, primacy_estimates, "-", color=PYTHIA_COLOR, alpha=0.35, zorder=2)
+    ax.plot(recency_x, recency_estimates, "-", color="#ff7f0e", alpha=0.35, zorder=2)
     ax.errorbar(
-        [position - width / 2 for position in x],
+        primacy_x,
         primacy_estimates,
         yerr=[primacy_lower, primacy_upper],
         fmt="o",
         capsize=4,
+        color=PYTHIA_COLOR,
+        markeredgecolor="white",
+        zorder=3,
         label="Primacy edge difference",
     )
     ax.errorbar(
-        [position + width / 2 for position in x],
+        recency_x,
         recency_estimates,
         yerr=[recency_lower, recency_upper],
         fmt="s",
         capsize=4,
+        color="#ff7f0e",
+        markeredgecolor="white",
+        zorder=3,
         label="Recency edge difference",
     )
-    ax.axhline(0.0, color="black", linewidth=0.8)
     ax.set_title("Pythia minus Mamba edge difference by scale pair")
     ax.set_xlabel("Scale pair, matched by parameter count")
     ax.set_ylabel("Edge difference, 95 percent bootstrap interval")
     ax.set_xticks(list(x))
     ax.set_xticklabels(labels)
-    ax.legend()
+    ax.margins(x=0.08)
+    ax.legend(loc="upper left")
     fig.tight_layout()
     fig.savefig(gap_path)
     plt.close(fig)
@@ -523,8 +601,8 @@ def write_phase4_figures(
 
     def draw_pair(ax, pair) -> None:
         for model_key, family_label, color in (
-            (pair["pythia_model"], "Pythia", "tab:blue"),
-            (pair["mamba_model"], "Mamba", "tab:orange"),
+            (pair["pythia_model"], "Pythia", PYTHIA_COLOR),
+            (pair["mamba_model"], "Mamba", MAMBA_COLOR),
         ):
             positions = curve[model_key]["positions"]
             accuracies = [positions[position]["accuracy"] for position in GOLD_POSITIONS]
