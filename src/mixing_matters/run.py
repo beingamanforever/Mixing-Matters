@@ -266,10 +266,22 @@ class Generator:
 
         self.torch = torch
         self.spec = model_spec
-        self.tokenizer = AutoTokenizer.from_pretrained(load_source, **revision_kwargs)
+        tokenizer_kwargs = dict(revision_kwargs)
+        # Nemotron-H ships an auto_map for tokenizer and model that requires
+        # transformers to execute repository code. Trust is scoped by
+        # repository namespace: only the NVIDIA Nemotron-H family gets it, so
+        # other models continue to load through the standard classes.
+        trust_remote_code = model_spec.family == "nemotron-h" and model_spec.repo.startswith(
+            "nvidia/"
+        )
+        if trust_remote_code:
+            tokenizer_kwargs["trust_remote_code"] = True
+        self.tokenizer = AutoTokenizer.from_pretrained(load_source, **tokenizer_kwargs)
         _assert_no_active_truncation(self.tokenizer)
 
         model_kwargs = {"dtype": torch.bfloat16, **revision_kwargs}
+        if trust_remote_code:
+            model_kwargs["trust_remote_code"] = True
         attention_implementation = None
         # Every dense-attention family pins the eager implementation to keep
         # runs on one deterministic pytorch reference path. Nemotron-H's SSM
