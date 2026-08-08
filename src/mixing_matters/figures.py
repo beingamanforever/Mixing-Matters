@@ -10,8 +10,9 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 
-from .models import DATA_PAIR, MODELS, PHASE8_SYSTEMS
+from .models import ARCH_PAIR, DATA_PAIR, MODELS, PHASE8_SYSTEMS
 from .phase2 import DEFAULT_RESAMPLES, GOLD_POSITIONS, edges, interaction, position_curve
+from .phase3 import attention_control
 from .phase4 import scale_trend, trend_summary
 from .phase5 import compare_to_architecture, data_control
 from .phase6 import phase6_summary
@@ -456,6 +457,112 @@ def write_phase2_figures(
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
 
     return [curve_path, edges_path, summary_path]
+
+
+def phase3_summary(records: list[dict], n_resamples: int = DEFAULT_RESAMPLES) -> dict:
+    """The attention contrast, per-model curves and edges, and floor/ceiling.
+
+    Phase 3 is self-contained: it reports the hybrid-minus-pure attention effect
+    on each edge, each model's own edges over the shared questions, and the two
+    position curves with their floor and ceiling anchors.
+    """
+    control = attention_control(records, n_resamples=n_resamples)
+    curve = position_curve(records, n_resamples=n_resamples)
+    floor_ceiling = _floor_ceiling_means(records)
+
+    return {
+        "models": list(ARCH_PAIR),
+        "n_resamples": n_resamples,
+        "attention_control": control,
+        "position_curve": curve,
+        "floor_ceiling": {key: floor_ceiling[key] for key in ARCH_PAIR if key in floor_ceiling},
+    }
+
+
+def write_phase3_figures(
+    records: list[dict],
+    directory: Path,
+    n_resamples: int = DEFAULT_RESAMPLES,
+) -> list[Path]:
+    """Write the Phase 3 attention-control figures plus their summary.
+
+    Draws the pure and hybrid position curves on one axis, the primacy and
+    recency edges per model, and the hybrid-minus-pure attention edge effect.
+    Refuses to overwrite any existing output.
+    """
+    summary = phase3_summary(records, n_resamples=n_resamples)
+    control = summary["attention_control"]
+    curve = summary["position_curve"]
+    floor_ceiling = summary["floor_ceiling"]
+
+    curve_path = directory / "position-curves.png"
+    edges_path = directory / "position-edges.png"
+    effect_path = directory / "attention-effect.png"
+    summary_path = directory / "phase3-summary.json"
+    for path in (curve_path, edges_path, effect_path, summary_path):
+        if path.exists():
+            raise FileExistsError(path)
+
+    directory.mkdir(parents=True, exist_ok=True)
+
+    hybrid_key, pure_key = ARCH_PAIR
+    # Order the axes pure then hybrid so the curves read left to right as the
+    # baseline followed by the model with attention added.
+    models = [pure_key, hybrid_key]
+    question_counts = {model: curve[model]["positions"][0]["question_count"] for model in models}
+
+    fig, ax = plt.subplots()
+    _draw_position_curve(ax, models, curve, floor_ceiling)
+    ax.set_title(
+        "Position curve by sequence mixer (NVIDIA 8B, training data fixed)\n"
+        f"{_model_caption(question_counts)}"
+    )
+    ax.set_xlabel("Gold position (0 first, 9 last)")
+    fig.tight_layout()
+    fig.savefig(curve_path)
+    plt.close(fig)
+
+    edge_map = {pure_key: control["pure_edges"], hybrid_key: control["hybrid_edges"]}
+    fig, ax = plt.subplots()
+    _draw_edges(ax, models, edge_map)
+    ax.set_title("Position edges by sequence mixer")
+    ax.set_xlabel("Sequence mixer")
+    fig.tight_layout()
+    fig.savefig(edges_path)
+    plt.close(fig)
+
+    # The attention edge effect (hybrid minus pure): a positive bar means adding
+    # attention widened that edge.
+    effect_groups = [("Primacy", "primacy_diff"), ("Recency", "recency_diff")]
+    effect_values = [control[field]["estimate"] for _, field in effect_groups]
+    effect_low = [control[field]["ci_low"] for _, field in effect_groups]
+    effect_high = [control[field]["ci_high"] for _, field in effect_groups]
+    effect_lower = [max(0.0, value - bound) for value, bound in zip(effect_values, effect_low)]
+    effect_upper = [max(0.0, bound - value) for value, bound in zip(effect_values, effect_high)]
+
+    ex = range(len(effect_groups))
+    fig, ax = plt.subplots()
+    ax.bar(
+        list(ex),
+        effect_values,
+        0.5,
+        yerr=[effect_lower, effect_upper],
+        capsize=4,
+        label="Attention effect (hybrid - pure)",
+    )
+    ax.axhline(0.0, color="black", linewidth=0.8)
+    ax.set_title("Edge difference from adding attention layers")
+    ax.set_ylabel("Edge difference, 95 percent bootstrap interval")
+    ax.set_xticks(list(ex))
+    ax.set_xticklabels([name for name, _ in effect_groups])
+    ax.legend(fontsize="small")
+    fig.tight_layout()
+    fig.savefig(effect_path)
+    plt.close(fig)
+
+    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
+
+    return [curve_path, edges_path, effect_path, summary_path]
 
 
 def write_phase4_figures(
