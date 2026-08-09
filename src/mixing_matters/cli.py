@@ -118,6 +118,25 @@ def main() -> None:
             "produce different byte-pair merges at document boundaries."
         ),
     )
+    sweep_cmd.add_argument(
+        "--prompt-variant",
+        choices=("baseline", "question_first", "bookend", "gold_padded"),
+        default="baseline",
+        help=(
+            "Prompt-order variant used only for the gold conditions of the sweep. "
+            "``baseline`` keeps the Liu et al. documents-then-question layout used "
+            "in Phases 2 through 6 and Phase 8. ``question_first`` places the "
+            "question before the document block; ``bookend`` places it before and "
+            "after; ``gold_padded`` reserves a run of pad tokens between the "
+            "document block and the closing question line."
+        ),
+    )
+    sweep_cmd.add_argument(
+        "--gold-padded-tokens",
+        type=int,
+        default=0,
+        help="Number of pad tokens to reserve after the document block. Only meaningful with --prompt-variant=gold_padded.",
+    )
     sweep_cmd.add_argument("--positive-control", type=Path)
     sweep_cmd.add_argument("--dry-run", action="store_true")
 
@@ -257,6 +276,10 @@ def main() -> None:
         sweep_kwargs = {"questions": args.questions}
         if args.max_prompt_token_span is not None:
             sweep_kwargs["max_prompt_token_span"] = args.max_prompt_token_span
+        if args.prompt_variant != "baseline":
+            sweep_kwargs["prompt_variant"] = args.prompt_variant
+        if args.gold_padded_tokens:
+            sweep_kwargs["gold_padded_tokens"] = args.gold_padded_tokens
         run_sweep(args.data, args.output, args.model, revision, **sweep_kwargs)
     elif args.command == "ruler-sweep" and args.dry_run:
         lengths = tuple(args.lengths)
