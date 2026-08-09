@@ -1087,11 +1087,21 @@ def write_phase7_figures(
     families: dict[str, list[dict]] = {}
     for entry in trend:
         families.setdefault(entry["family"], []).append(entry)
-    fig, ax = plt.subplots()
-    color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-    for (family, entries), color in zip(sorted(families.items()), itertools.cycle(color_cycle)):
-        entries = sorted(entries, key=lambda entry: entry["layers"])
-        xs = [entry["layers"] for entry in entries]
+    family_order = [family for family in ("pythia", "mamba", "mamba2") if family in families]
+    other = [family for family in sorted(families) if family not in family_order]
+    family_order.extend(other)
+
+    fig, axes = plt.subplots(
+        1, len(family_order), figsize=(4.6 * len(family_order), 4.2), sharey=True, squeeze=False
+    )
+    family_colors = {"pythia": "tab:green", "mamba": "tab:blue", "mamba2": "tab:orange"}
+    y_min = min(entry["primacy"]["ci_low"] for entry in trend)
+    y_max = max(entry["primacy"]["ci_high"] for entry in trend)
+    y_padding = 0.02
+    for ax, family in zip(axes[0], family_order):
+        entries = sorted(families[family], key=lambda entry: entry["layers"])
+        color = family_colors.get(family, "tab:gray")
+        xs = list(range(len(entries)))
         ys = [entry["primacy"]["estimate"] for entry in entries]
         lower = [
             max(0.0, entry["primacy"]["estimate"] - entry["primacy"]["ci_low"]) for entry in entries
@@ -1099,19 +1109,21 @@ def write_phase7_figures(
         upper = [
             max(0.0, entry["primacy"]["ci_high"] - entry["primacy"]["estimate"]) for entry in entries
         ]
-        labels = [f"{entry['model_key']} ({entry['layers']}L)" for entry in entries]
         ax.errorbar(
-            xs, ys, yerr=[lower, upper], fmt="o-", capsize=4, color=color, label=family
+            xs, ys, yerr=[lower, upper], fmt="o-", capsize=5, color=color, linewidth=1.5, markersize=6
         )
-        for x, y, text in zip(xs, ys, labels):
-            ax.annotate(text, (x, y), textcoords="offset points", xytext=(4, 4), fontsize=7)
-    ax.axhline(0.0, color="black", linewidth=0.8)
-    ax.set_title("Primacy edge by depth (Phase 4 + Phase 2 sweeps)")
-    ax.set_xlabel("Layer count")
-    ax.set_ylabel("Primacy edge, 95 percent bootstrap interval")
-    ax.legend()
+        ax.axhline(0.0, color="black", linewidth=0.7, alpha=0.6)
+        ax.set_xticks(xs)
+        labels = [f"{entry['model_key']}\n{entry['layers']}L" for entry in entries]
+        ax.set_xticklabels(labels, fontsize=8)
+        ax.set_title(f"{family} family")
+        ax.grid(axis="y", linestyle=":", alpha=0.35)
+        ax.set_ylim(y_min - y_padding, y_max + y_padding)
+        ax.set_xlim(-0.5, len(entries) - 0.5)
+    axes[0][0].set_ylabel("Primacy edge, 95 percent bootstrap interval")
+    fig.suptitle("Primacy edge by model within family (x-axis ordered by layer count)")
     fig.tight_layout()
-    fig.savefig(depth_path)
+    fig.savefig(depth_path, dpi=140)
     plt.close(fig)
 
     variants = summary["scoring_sensitivity"]["variants"]
