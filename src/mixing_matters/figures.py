@@ -10,14 +10,79 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 
-from .models import DATA_PAIR, MODELS, PHASE8_SYSTEMS
+from .models import ARCH_PAIR, DATA_PAIR, MODELS, PHASE8_SYSTEMS
 from .phase2 import DEFAULT_RESAMPLES, GOLD_POSITIONS, edges, interaction, position_curve
+from .phase3 import attention_control
 from .phase4 import scale_trend, trend_summary
 from .phase5 import compare_to_architecture, data_control
 from .phase6 import phase6_summary
 from .phase7 import phase7_summary
 from .phase8 import phase8_summary
 from .sink_scan import sink_mass_summary
+
+# Publication-grade defaults applied to every figure this module writes, so the
+# committed PNGs are consistent and re-running any report reproduces the same
+# look. Styling only: no estimate, interval, or label is computed here.
+plt.rcParams.update(
+    {
+        "figure.dpi": 120,
+        "savefig.dpi": 200,
+        "savefig.bbox": "tight",
+        "savefig.pad_inches": 0.06,
+        "figure.figsize": (7.2, 4.6),
+        "font.size": 11,
+        "axes.titlesize": 12.5,
+        "axes.titleweight": "bold",
+        "axes.labelsize": 11,
+        "axes.linewidth": 0.9,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        "axes.axisbelow": True,
+        "axes.grid": True,
+        "grid.color": "#b0b0b0",
+        "grid.linestyle": "--",
+        "grid.linewidth": 0.5,
+        "grid.alpha": 0.45,
+        "xtick.labelsize": 10,
+        "ytick.labelsize": 10,
+        "xtick.direction": "out",
+        "ytick.direction": "out",
+        "legend.fontsize": 9.5,
+        "legend.frameon": True,
+        "legend.framealpha": 0.92,
+        "legend.edgecolor": "#cccccc",
+        "lines.linewidth": 1.9,
+        "lines.markersize": 5.5,
+        "lines.markeredgewidth": 0.8,
+    }
+)
+
+# Fixed family colors so Pythia and Mamba read the same across every panel.
+PYTHIA_COLOR = "#1f77b4"
+MAMBA_COLOR = "#ff7f0e"
+
+
+def _family_colors(models: list[str]) -> dict[str, str]:
+    """Map each model to a stable color: Pythia blue, Mamba orange.
+
+    A study can contain more than one Mamba variant (Phase 2 has two), so the
+    first Mamba takes the family color and any further model falls through to a
+    distinct palette color, never colliding with the two family colors.
+    """
+    palette = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    spare = (color for color in palette if color not in (PYTHIA_COLOR, MAMBA_COLOR))
+    colors: dict[str, str] = {}
+    mamba_taken = False
+    for model in models:
+        lowered = model.lower()
+        if "pythia" in lowered:
+            colors[model] = PYTHIA_COLOR
+        elif "mamba" in lowered and not mamba_taken:
+            colors[model] = MAMBA_COLOR
+            mamba_taken = True
+        else:
+            colors[model] = next(spare)
+    return colors
 
 BOOTSTRAP_SEED = 240521
 N_RESAMPLES = 10000
@@ -382,8 +447,9 @@ def write_phase2_figures(
     question_counts = {model: curve[model]["positions"][0]["question_count"] for model in models}
 
     fig, ax = plt.subplots()
-    color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-    for model, color in zip(models, itertools.cycle(color_cycle)):
+    family_colors = _family_colors(models)
+    for model in models:
+        color = family_colors[model]
         positions = curve[model]["positions"]
         accuracies = [positions[position]["accuracy"] for position in GOLD_POSITIONS]
         low = [positions[position]["ci_low"] for position in GOLD_POSITIONS]
@@ -460,6 +526,112 @@ def write_phase2_figures(
     return [curve_path, edges_path, summary_path]
 
 
+def phase3_summary(records: list[dict], n_resamples: int = DEFAULT_RESAMPLES) -> dict:
+    """The attention contrast, per-model curves and edges, and floor/ceiling.
+
+    Phase 3 is self-contained: it reports the hybrid-minus-pure attention effect
+    on each edge, each model's own edges over the shared questions, and the two
+    position curves with their floor and ceiling anchors.
+    """
+    control = attention_control(records, n_resamples=n_resamples)
+    curve = position_curve(records, n_resamples=n_resamples)
+    floor_ceiling = _floor_ceiling_means(records)
+
+    return {
+        "models": list(ARCH_PAIR),
+        "n_resamples": n_resamples,
+        "attention_control": control,
+        "position_curve": curve,
+        "floor_ceiling": {key: floor_ceiling[key] for key in ARCH_PAIR if key in floor_ceiling},
+    }
+
+
+def write_phase3_figures(
+    records: list[dict],
+    directory: Path,
+    n_resamples: int = DEFAULT_RESAMPLES,
+) -> list[Path]:
+    """Write the Phase 3 attention-control figures plus their summary.
+
+    Draws the pure and hybrid position curves on one axis, the primacy and
+    recency edges per model, and the hybrid-minus-pure attention edge effect.
+    Refuses to overwrite any existing output.
+    """
+    summary = phase3_summary(records, n_resamples=n_resamples)
+    control = summary["attention_control"]
+    curve = summary["position_curve"]
+    floor_ceiling = summary["floor_ceiling"]
+
+    curve_path = directory / "position-curves.png"
+    edges_path = directory / "position-edges.png"
+    effect_path = directory / "attention-effect.png"
+    summary_path = directory / "phase3-summary.json"
+    for path in (curve_path, edges_path, effect_path, summary_path):
+        if path.exists():
+            raise FileExistsError(path)
+
+    directory.mkdir(parents=True, exist_ok=True)
+
+    hybrid_key, pure_key = ARCH_PAIR
+    # Order the axes pure then hybrid so the curves read left to right as the
+    # baseline followed by the model with attention added.
+    models = [pure_key, hybrid_key]
+    question_counts = {model: curve[model]["positions"][0]["question_count"] for model in models}
+
+    fig, ax = plt.subplots()
+    _draw_position_curve(ax, models, curve, floor_ceiling)
+    ax.set_title(
+        "Position curve by sequence mixer (NVIDIA 8B, training data fixed)\n"
+        f"{_model_caption(question_counts)}"
+    )
+    ax.set_xlabel("Gold position (0 first, 9 last)")
+    fig.tight_layout()
+    fig.savefig(curve_path)
+    plt.close(fig)
+
+    edge_map = {pure_key: control["pure_edges"], hybrid_key: control["hybrid_edges"]}
+    fig, ax = plt.subplots()
+    _draw_edges(ax, models, edge_map)
+    ax.set_title("Position edges by sequence mixer")
+    ax.set_xlabel("Sequence mixer")
+    fig.tight_layout()
+    fig.savefig(edges_path)
+    plt.close(fig)
+
+    # The attention edge effect (hybrid minus pure): a positive bar means adding
+    # attention widened that edge.
+    effect_groups = [("Primacy", "primacy_diff"), ("Recency", "recency_diff")]
+    effect_values = [control[field]["estimate"] for _, field in effect_groups]
+    effect_low = [control[field]["ci_low"] for _, field in effect_groups]
+    effect_high = [control[field]["ci_high"] for _, field in effect_groups]
+    effect_lower = [max(0.0, value - bound) for value, bound in zip(effect_values, effect_low)]
+    effect_upper = [max(0.0, bound - value) for value, bound in zip(effect_values, effect_high)]
+
+    ex = range(len(effect_groups))
+    fig, ax = plt.subplots()
+    ax.bar(
+        list(ex),
+        effect_values,
+        0.5,
+        yerr=[effect_lower, effect_upper],
+        capsize=4,
+        label="Attention effect (hybrid - pure)",
+    )
+    ax.axhline(0.0, color="black", linewidth=0.8)
+    ax.set_title("Edge difference from adding attention layers")
+    ax.set_ylabel("Edge difference, 95 percent bootstrap interval")
+    ax.set_xticks(list(ex))
+    ax.set_xticklabels([name for name, _ in effect_groups])
+    ax.legend(fontsize="small")
+    fig.tight_layout()
+    fig.savefig(effect_path)
+    plt.close(fig)
+
+    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
+
+    return [curve_path, edges_path, effect_path, summary_path]
+
+
 def write_phase4_figures(
     records: list[dict], directory: Path, n_resamples: int = DEFAULT_RESAMPLES
 ) -> list[Path]:
@@ -498,29 +670,42 @@ def write_phase4_figures(
     labels = [f"{pair['pair']}\n(n={pair['question_count']})" for pair in pairs]
 
     fig, ax = plt.subplots()
+    ax.axhline(0.0, color="#333333", linewidth=1.0, zorder=1)
+    primacy_x = [position - width / 2 for position in x]
+    recency_x = [position + width / 2 for position in x]
+    # Faint connecting lines carry the eye along the trend; the markers and
+    # intervals carry the numbers.
+    ax.plot(primacy_x, primacy_estimates, "-", color=PYTHIA_COLOR, alpha=0.35, zorder=2)
+    ax.plot(recency_x, recency_estimates, "-", color="#ff7f0e", alpha=0.35, zorder=2)
     ax.errorbar(
-        [position - width / 2 for position in x],
+        primacy_x,
         primacy_estimates,
         yerr=[primacy_lower, primacy_upper],
         fmt="o",
         capsize=4,
+        color=PYTHIA_COLOR,
+        markeredgecolor="white",
+        zorder=3,
         label="Primacy edge difference",
     )
     ax.errorbar(
-        [position + width / 2 for position in x],
+        recency_x,
         recency_estimates,
         yerr=[recency_lower, recency_upper],
         fmt="s",
         capsize=4,
+        color="#ff7f0e",
+        markeredgecolor="white",
+        zorder=3,
         label="Recency edge difference",
     )
-    ax.axhline(0.0, color="black", linewidth=0.8)
     ax.set_title("Pythia minus Mamba edge difference by scale pair")
     ax.set_xlabel("Scale pair, matched by parameter count")
     ax.set_ylabel("Edge difference, 95 percent bootstrap interval")
     ax.set_xticks(list(x))
     ax.set_xticklabels(labels)
-    ax.legend()
+    ax.margins(x=0.08)
+    ax.legend(loc="upper left")
     fig.tight_layout()
     fig.savefig(gap_path)
     plt.close(fig)
@@ -529,8 +714,8 @@ def write_phase4_figures(
 
     def draw_pair(ax, pair) -> None:
         for model_key, family_label, color in (
-            (pair["pythia_model"], "Pythia", "tab:blue"),
-            (pair["mamba_model"], "Mamba", "tab:orange"),
+            (pair["pythia_model"], "Pythia", PYTHIA_COLOR),
+            (pair["mamba_model"], "Mamba", MAMBA_COLOR),
         ):
             positions = curve[model_key]["positions"]
             accuracies = [positions[position]["accuracy"] for position in GOLD_POSITIONS]
