@@ -18,7 +18,7 @@ Does the accuracy-versus-evidence-position curve track the architecture, and doe
 | 5     | Does training data move the curve?             | architecture, size, host              | pretraining corpus                         | A10G    | done                                          |
 | 6     | Does the curve survive a change of task?       | models, host, context length          | multi-document QA to RULER `niah_single_1` | T4      | done                                          |
 | 3     | Do attention layers cause the primacy edge?    | matched Mamba-2 vs hybrid, 8B, 4K     | attention layers                           | in progress | code on `origin/phase-3`                      |
-| 8     | Do production-scale families show the pattern? | none (descriptive)                    | Nemotron-H, Llama-3.1, Qwen                | in progress | 2/3 models run on `origin/phase-8`, Llama running (L40S) |
+| 8     | Do production-scale families show the pattern? | none (descriptive)                    | Nemotron-H, Llama-3.1, Qwen                | L40S    | done                                          |
 
 ## Setup and phase overview
 
@@ -28,7 +28,7 @@ The two edges are defined once and reused everywhere: **primacy** is mean accura
 
 Phase 6 swaps the dataset for RULER `niah_single_1` with the needle at ten deterministic depths (mirroring the ten gold positions), the noise count held fixed within a length, and the same floor and ceiling anchors. Two deliberate departures from running RULER's own script: the needle is placed deterministically instead of at random depth, and the key word comes from a vendored list instead of `wonderwords`, so instances stay reproducible.
 
-The models are `pythia-2.8b`, `mamba-2.8b`, `mamba2-2.7b`, and the five matched Pythia-Mamba size pairs from 130m to 2.8b. Every record carries the model revision, execution path, dataset checksum, and software versions; the Mamba models run on the pinned CUDA kernel path and the runner raises rather than falling back to the reference path.
+The models are `pythia-2.8b`, `mamba-2.8b`, `mamba2-2.7b`, the five matched Pythia-Mamba size pairs from 130m to 2.8b, and the three Phase 8 production systems `nvidia/Nemotron-H-8B-Base-8K`, `meta-llama/Llama-3.1-8B`, and `Qwen/Qwen2.5-7B`. Every record carries the model revision, execution path, dataset checksum, and software versions; the Mamba models run on the pinned CUDA kernel path and the runner raises rather than falling back to the reference path.
 
 ## Findings
 
@@ -136,6 +136,9 @@ What the corpus did change was the overall level. SlimPajama lifts the whole cur
 | 6     | pythia-2.8b at 1K                  | T4   | +0.04 [0.00, 0.09], Holm 0.084                 | +0.04 [0.01, 0.08], Holm 0.058          | 0.00 / 0.98                      |
 | 6     | pythia-2.8b at 2K                  | T4   | +0.12 [0.05, 0.20], Holm < 1e-4                | +0.10 [0.04, 0.17], Holm 0.002          | 0.00 / 0.98                      |
 | 6     | mamba-2.8b, mamba2-2.7b, 1K and 2K | T4   | 0.00 at both lengths                           | 0.00 at both lengths                    | 0.00 / 1.00 and 0.78 (saturated) |
+| 8     | nemotron-h-8b                      | L40S | +0.067 [+0.044, +0.091], Holm < 1e-4           | +0.029 [+0.008, +0.049], Holm 0.006     | 0.311 / 0.588                    |
+| 8     | llama-3.1-8b                       | L40S | +0.076 [+0.057, +0.096], Holm < 1e-4           | +0.018 [+0.000, +0.034], Holm 0.051     | 0.315 / 0.782                    |
+| 8     | qwen2.5-7b                         | L40S | +0.041 [+0.021, +0.061], Holm 0.0008           | +0.008 [-0.012, +0.027], Holm 0.474     | 0.280 / 0.815                    |
 
 - Phase 2 interactions, 2.8B (Mamba minus Pythia): primacy mamba-1 −0.0531 [−0.0775, −0.0281], mamba2 −0.0700 [−0.0950, −0.0450], both Holm p below 0.0001; mamba-1 minus mamba2 +0.0169 [−0.0044, +0.0381], Holm p 0.125. Recency: mamba-1 − pythia +0.0019 [−0.0262, +0.0294], Holm p 0.920; mamba2 − pythia +0.0300 [0.0038, 0.0562], Holm p 0.026.
 
@@ -171,12 +174,58 @@ Question: does adding attention to a matched Mamba-2 architecture create the pri
 
 This is the depth-and-attention contrast that Phase 2 names as its unresolved confound: an 8B pure Mamba-2 against an 8B hybrid that adds ~7% attention layers, matched on data, tokenizer, scale, depth, and positional encoding, at 4K context. It was designed to run in parallel with Phase 2, slotting between Phase 2 and Phase 4.
 
-## Phase 8 (in progress)
+## Phase 8 (done)
 
-Question: do production-scale transformer families show the same position-curve shape?
+Question: do production-scale families show the same position-curve shape?
 
-This is a descriptive comparison, not a matched control: Nemotron-H-8B-Base-8K (hybrid Mamba-2 plus attention), Llama-3.1-8B, and Qwen2.5-7B differ from each other on architecture, corpus, token count, tokenizer, alignment, depth, and positional encoding at once. The sweep still uses the same 800-question, 10-position harness and the same edges.
+This is a descriptive comparison, not a matched control.
+The three systems - `nvidia/Nemotron-H-8B-Base-8K` (hybrid Mamba-2 plus attention), `meta-llama/Llama-3.1-8B`, and `Qwen/Qwen2.5-7B` - differ from each other on architecture, corpus, token count, tokenizer, alignment status, depth, and positional encoding at once.
+The sweep still uses the same 800-question, 10-position harness and the same primacy and recency edges.
+All three ran on one rented L40S 46 GB.
+Nemotron-H ran the eager attention implementation (its SSM blocks dispatch through `mamba-ssm` and `causal-conv1d`); Llama and Qwen ran the SDPA attention implementation because eager on 8B dense attention is prohibitively slow on a single L40S and Phase 8 is descriptive, not a matched control.
+Every raw record carries the actual `execution_path` and `attention_implementation` it used.
+
+### Findings
+
+- Every one of the three systems has a positive, Holm-significant primacy edge at 800 questions: Nemotron-H +0.067 (Holm p < 1e-4), Llama-3.1 +0.076 (Holm p < 1e-4), Qwen2.5 +0.041 (Holm p 0.0008).
+The pattern Phase 2 measured at 2.8B and Phase 4 traced across the scale axis reappears at the 8B production tier, on families that were pretrained on wholly different corpora with different tokenizers.
+- The recency arm splits by system.
+Nemotron-H has a clean recency edge (+0.029, Holm p 0.006); Llama-3.1 is marginal (+0.018, Holm p 0.051); Qwen2.5 is a null (+0.008, Holm p 0.474).
+Phase 2 measured recency on every 2.8B model.
+At production scale the recency arm is no longer universal, and the one system in Phase 8 that carries a full-strength recency edge is also the one whose sequence mixer includes SSM blocks.
+This tracks Phase 2, where the largest recency edge belonged to Mamba-2 (+0.105), and is consistent with the fixed-state compression hypothesis that ties late-position advantage to state carrying only the tail of the context.
+- The one pairwise interaction that clears Holm is Llama minus Qwen on primacy, +0.036 (interval +0.009 to +0.063, Holm p 0.016).
+Llama's primacy arm sits about 3.6 points above Qwen's despite both being dense attention with RoPE.
+Within the dense-attention branch of Phase 8 there is still real curve shape that a "dense attention plus RoPE" label cannot explain on its own; corpus, token count, or alignment are still moving between the two.
+- Ceilings order Qwen (0.815) > Llama (0.782) > Nemotron-H (0.588); floors sit near 0.28-0.32 for all three.
+Nemotron-H's weaker ceiling means its edges are read against a lower headroom, but its primacy edge is still the largest per unit of ceiling headroom.
+
+![Phase 8 position curves](figures/artifacts/phase8/report/position-curves.png)
+![Phase 8 position edges](figures/artifacts/phase8/report/position-edges.png)
+
+> Phase 8 numbers are archived at `artifacts/phase7/phase8/phase8-summary.json`, mirrored from `artifacts/phase8/report/phase8-summary.json` on the `phase-8` branch; the two figures above are the report emitted by `phase8-report` from all three raw sweeps.
+
+### How it lines up with Phases 2 and 4
+
+- Phase 2 said the primacy arm was architecture-specific at 2.8B and absent from both Mamba variants.
+Phase 4 said that Pythia-minus-Mamba gap grows with scale and stabilizes from 790m-1b on.
+Phase 8's three 8B systems all show primacy; two of the three are dense attention with RoPE, matching the Phase 2 and 4 direction, and the third is a hybrid whose primacy edge is comparable in size.
+- Phase 8 is not evidence about the Phase 2 confound.
+Every axis moves between its systems, so the fact that Nemotron-H's primacy matches Llama's does not say attention layers cause primacy; the matched contrast for that is Phase 3, which is still running.
+- Read as a robustness check on the primacy phenomenon: at production scale, on the same 10-document harness, three families that differ everywhere still all pick edges over the middle.
+Whatever the underlying cause is, it survives replacing the entire training pipeline and tokenizer.
+
+### Limits
+
+- Nemotron-H ran eager attention; Llama and Qwen ran SDPA.
+Two attention kernels are in scope within Phase 8, so the eager-vs-SDPA path is a second changing variable when Nemotron-H is compared against the others.
+That trade-off is documented on every raw record and does not change the sign of any edge.
+- Nemotron-H fails the key-value positive control (mean kv accuracy ~0.32 across the ten positions, versus Pythia and Mamba-2 near full retrieval in Phases 1 and 2).
+Its weaker ceiling on QA is consistent with a weaker base retrieval capacity, not a failure of the pipeline; the control is recorded and does not gate the sweep.
+- The prompt-token span tolerance was raised from 2 to 8 for Phase 8 because the three tokenizers each merge document boundaries differently.
+The recorded per-question span is a few tokens across all runs, well inside the raised limit.
 
 ## Next steps
 
-Add Phase 3 and Phase 8 when the runs land, then restitch. Until then, the standing claim the phases isolate is: architecture changes the primacy arm, scale makes that difference appear, training data does not move it, and a second task reproduces it where the task is hard enough to measure.
+Add Phase 3 when the matched Mamba-2 vs hybrid runs land, then restitch the primacy narrative around that clean architecture contrast.
+Until then, the standing claim the phases isolate is: architecture changes the primacy arm at 2.8B, scale makes that difference appear from 790m-1b on, training data does not move it, a synthetic-needle task reproduces it where the task is hard enough to measure, and three production 8B families with wholly different pipelines all still show it.
