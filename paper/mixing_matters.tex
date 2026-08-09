@@ -90,6 +90,42 @@ and a training-free prompt reordering recovers the arm in Mamba. Corpus and
 task change the level of the curve, not its shape.
 
 
+\section{Related work}
+\label{sec:related}
+
+
+\paragraph{Position bias in long contexts.}
+\citet{liu2024lost} documented the lost-in-the-middle curve for
+retrieval-augmented and multi-document QA in transformers, and later work
+studied how far models use their nominal context window
+\citep{hsieh2024ruler} and how to make them use it more fully
+\citep{an2024make}. Mitigations that reorder or reweight context, such as
+attention sorting \citep{peysakhovich2023attention}, treat the bias as a
+property to be corrected; we instead ask where it comes from and whether it
+is architectural.
+
+
+\paragraph{Sequence mixers.}
+Dense self-attention \citep{vaswani2017attention} mixes all token pairs and
+encodes order through position embeddings such as rotary
+\citep{su2024roformer} or additive biases \citep{press2022train}. State-space
+models replace attention with a linear recurrence: S4 \citep{gu2022efficiently},
+Mamba \citep{gu2023mamba}, and Mamba-2 \citep{dao2024mamba2} carry context in
+a fixed-size state, and related recurrent designs include RWKV
+\citep{peng2023rwkv}. Hybrids interleave attention and state-space blocks,
+for example Jamba \citep{lieber2024jamba} and Nemotron-H
+\citep{nvidia2025nemotronh}; \citet{waleffe2024empirical} study Mamba-based
+models at scale and release the matched pure and hybrid 8B checkpoints we use.
+
+
+\paragraph{Attention sinks.}
+\citet{xiao2024efficient} showed that causal transformers concentrate
+attention on the first tokens of a sequence, the attention-sink effect, and
+used it for streaming inference. We connect sink mass to the primacy arm and
+show it is the mechanism that separates attention from state-space mixing on
+the position curve.
+
+
 \section{Measurement and statistics}
 \label{sec:method}
 
@@ -415,6 +451,12 @@ one of utilisation, not storage.
 \begin{thebibliography}{99}
 
 
+\bibitem[An et al.(2024)]{an2024make}
+C.~An, S.~Huang, J.~Zhang, et al.
+\newblock Make your LLM fully utilize the context.
+\newblock \emph{arXiv:2404.16811}, 2024.
+
+
 \bibitem[Biderman et al.(2023)]{biderman2023pythia}
 S.~Biderman, H.~Schoelkopf, Q.~Anthony, et al.
 \newblock Pythia: A suite for analyzing large language models across training
@@ -441,6 +483,12 @@ L.~Gao, S.~Biderman, S.~Black, et al.
 \newblock \emph{arXiv:2101.00027}, 2020.
 
 
+\bibitem[Gu et al.(2022)]{gu2022efficiently}
+A.~Gu, K.~Goel, and C.~R\'e.
+\newblock Efficiently modeling long sequences with structured state spaces.
+\newblock In \emph{International Conference on Learning Representations}, 2022.
+
+
 \bibitem[Gu and Dao(2023)]{gu2023mamba}
 A.~Gu and T.~Dao.
 \newblock Mamba: Linear-time sequence modeling with selective state spaces.
@@ -452,6 +500,12 @@ C.-P. Hsieh, S.~Sun, S.~Kriman, et al.
 \newblock RULER: What's the real context size of your long-context language
 models?
 \newblock \emph{arXiv:2404.06654}, 2024.
+
+
+\bibitem[Lieber et al.(2024)]{lieber2024jamba}
+O.~Lieber, B.~Lenz, H.~Bata, et al.
+\newblock Jamba: A hybrid Transformer-Mamba language model.
+\newblock \emph{arXiv:2403.19887}, 2024.
 
 
 \bibitem[Liu et al.(2024)]{liu2024lost}
@@ -469,11 +523,43 @@ Mamba-Transformer models.
 \newblock \emph{arXiv:2504.03624}, 2025.
 
 
+\bibitem[Peng et al.(2023)]{peng2023rwkv}
+B.~Peng, E.~Alcaide, Q.~Anthony, et al.
+\newblock RWKV: Reinventing RNNs for the transformer era.
+\newblock In \emph{Findings of EMNLP}, 2023.
+
+
+\bibitem[Peysakhovich and Lerer(2023)]{peysakhovich2023attention}
+A.~Peysakhovich and A.~Lerer.
+\newblock Attention sorting combats recency bias in long context language
+models.
+\newblock \emph{arXiv:2310.01427}, 2023.
+
+
+\bibitem[Press et al.(2022)]{press2022train}
+O.~Press, N.~A. Smith, and M.~Lewis.
+\newblock Train short, test long: Attention with linear biases enables input
+length extrapolation.
+\newblock In \emph{International Conference on Learning Representations}, 2022.
+
+
 \bibitem[Soboleva et al.(2023)]{soboleva2023slimpajama}
 D.~Soboleva, F.~Al-Khateeb, R.~Myers, et al.
 \newblock SlimPajama: A 627B token cleaned and deduplicated version of
 RedPajama.
 \newblock Cerebras technical report, 2023.
+
+
+\bibitem[Su et al.(2024)]{su2024roformer}
+J.~Su, M.~Ahmed, Y.~Lu, S.~Pan, W.~Bo, and Y.~Liu.
+\newblock RoFormer: Enhanced transformer with rotary position embedding.
+\newblock \emph{Neurocomputing}, 2024.
+
+
+\bibitem[Vaswani et al.(2017)]{vaswani2017attention}
+A.~Vaswani, N.~Shazeer, N.~Parmar, et al.
+\newblock Attention is all you need.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2017.
 
 
 \bibitem[Waleffe et al.(2024)]{waleffe2024empirical}
@@ -496,6 +582,10 @@ A.~Yang, B.~Yang, B.~Zhang, et al.
 
 \end{thebibliography}
 }
+
+
+\newpage
+\input{checklist.tex}
 
 
 \end{document}
