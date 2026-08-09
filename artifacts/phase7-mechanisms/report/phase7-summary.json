@@ -1,0 +1,1448 @@
+{
+  "depth_trend": {
+    "models": [
+      {
+        "family": "mamba",
+        "layers": 64,
+        "model_key": "mamba-2.8b",
+        "primacy": {
+          "ci_high": 0.013749999999999984,
+          "ci_low": -0.016249999999999987,
+          "estimate": -0.0012500000000000011,
+          "p_value": 0.9136,
+          "p_value_holm": 0.9136
+        },
+        "question_count": 800,
+        "recency": {
+          "ci_high": 0.09687499999999999,
+          "ci_low": 0.057499999999999996,
+          "estimate": 0.07687500000000003,
+          "p_value": 0.0,
+          "p_value_holm": 0.0
+        }
+      },
+      {
+        "family": "mamba2",
+        "layers": 64,
+        "model_key": "mamba2-2.7b",
+        "primacy": {
+          "ci_high": -0.0025000000000000022,
+          "ci_low": -0.03375,
+          "estimate": -0.018125000000000002,
+          "p_value": 0.0226,
+          "p_value_holm": 0.0226
+        },
+        "question_count": 800,
+        "recency": {
+          "ci_high": 0.12437499999999999,
+          "ci_low": 0.08562500000000003,
+          "estimate": 0.10500000000000001,
+          "p_value": 0.0,
+          "p_value_holm": 0.0
+        }
+      },
+      {
+        "family": "pythia",
+        "layers": 12,
+        "model_key": "pythia-160m",
+        "primacy": {
+          "ci_high": 0.004375,
+          "ci_low": -0.005625000000000001,
+          "estimate": -0.0006249999999999997,
+          "p_value": 0.8944,
+          "p_value_holm": 1.0
+        },
+        "question_count": 800,
+        "recency": {
+          "ci_high": 0.003125000000000001,
+          "ci_low": -0.006875000000000001,
+          "estimate": -0.001875,
+          "p_value": 0.5458,
+          "p_value_holm": 1.0
+        }
+      },
+      {
+        "family": "pythia",
+        "layers": 16,
+        "model_key": "pythia-1b",
+        "primacy": {
+          "ci_high": 0.068125,
+          "ci_low": 0.036250000000000004,
+          "estimate": 0.051875000000000004,
+          "p_value": 0.0,
+          "p_value_holm": 0.0
+        },
+        "question_count": 800,
+        "recency": {
+          "ci_high": 0.08875000000000001,
+          "ci_low": 0.053125000000000006,
+          "estimate": 0.070625,
+          "p_value": 0.0,
+          "p_value_holm": 0.0
+        }
+      },
+      {
+        "family": "pythia",
+        "layers": 24,
+        "model_key": "pythia-1.4b",
+        "primacy": {
+          "ci_high": 0.07187500000000002,
+          "ci_low": 0.03437499999999999,
+          "estimate": 0.053125000000000006,
+          "p_value": 0.0,
+          "p_value_holm": 0.0
+        },
+        "question_count": 800,
+        "recency": {
+          "ci_high": 0.08875000000000002,
+          "ci_low": 0.046875,
+          "estimate": 0.06812499999999999,
+          "p_value": 0.0,
+          "p_value_holm": 0.0
+        }
+      },
+      {
+        "family": "pythia",
+        "layers": 24,
+        "model_key": "pythia-410m",
+        "primacy": {
+          "ci_high": 0.02875000000000001,
+          "ci_low": -0.0037500000000000033,
+          "estimate": 0.012499999999999997,
+          "p_value": 0.135,
+          "p_value_holm": 0.135
+        },
+        "question_count": 800,
+        "recency": {
+          "ci_high": 0.049375,
+          "ci_low": 0.015625,
+          "estimate": 0.03249999999999999,
+          "p_value": 0.0004,
+          "p_value_holm": 0.0008
+        }
+      },
+      {
+        "family": "pythia",
+        "layers": 32,
+        "model_key": "pythia-2.8b",
+        "primacy": {
+          "ci_high": 0.07187500000000002,
+          "ci_low": 0.031875000000000014,
+          "estimate": 0.051875000000000004,
+          "p_value": 0.0,
+          "p_value_holm": 0.0
+        },
+        "question_count": 800,
+        "recency": {
+          "ci_high": 0.09687499999999999,
+          "ci_low": 0.05374999999999999,
+          "estimate": 0.07500000000000001,
+          "p_value": 0.0,
+          "p_value_holm": 0.0
+        }
+      }
+    ],
+    "n_resamples": 10000
+  },
+  "length_sensitivity": {
+    "bins": [
+      {
+        "edges": {
+          "mamba-2.8b": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": 0.028301886792452824,
+              "ci_low": -0.02075471698113207,
+              "estimate": 0.0037735849056603765,
+              "p_value": 0.827,
+              "p_value_holm": 0.827
+            },
+            "question_count": 265,
+            "recency": {
+              "ci_high": 0.11320754716981132,
+              "ci_low": 0.04339622641509433,
+              "estimate": 0.07735849056603775,
+              "p_value": 0.0,
+              "p_value_holm": 0.0
+            }
+          },
+          "mamba2-2.7b": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": 0.015094339622641506,
+              "ci_low": -0.03773584905660379,
+              "estimate": -0.01132075471698113,
+              "p_value": 0.4464,
+              "p_value_holm": 0.4464
+            },
+            "question_count": 265,
+            "recency": {
+              "ci_high": 0.1132075471698113,
+              "ci_low": 0.049056603773584895,
+              "estimate": 0.07924528301886793,
+              "p_value": 0.0,
+              "p_value_holm": 0.0
+            }
+          },
+          "pythia-1.4b": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": 0.09433962264150944,
+              "ci_low": 0.02075471698113207,
+              "estimate": 0.056603773584905676,
+              "p_value": 0.0044,
+              "p_value_holm": 0.0044
+            },
+            "question_count": 265,
+            "recency": {
+              "ci_high": 0.10754716981132076,
+              "ci_low": 0.02830188679245285,
+              "estimate": 0.0679245283018868,
+              "p_value": 0.0006,
+              "p_value_holm": 0.0012
+            }
+          },
+          "pythia-160m": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": 0.013207547169811323,
+              "ci_low": -0.0075471698113207565,
+              "estimate": 0.0018867924528301883,
+              "p_value": 0.9004,
+              "p_value_holm": 0.9004
+            },
+            "question_count": 265,
+            "recency": {
+              "ci_high": 0.0018867924528301883,
+              "ci_low": -0.015094339622641508,
+              "estimate": -0.0056603773584905665,
+              "p_value": 0.2518,
+              "p_value_holm": 0.5036
+            }
+          },
+          "pythia-1b": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": 0.05660377358490566,
+              "ci_low": 0.0037735849056603765,
+              "estimate": 0.030188679245283012,
+              "p_value": 0.037,
+              "p_value_holm": 0.037
+            },
+            "question_count": 265,
+            "recency": {
+              "ci_high": 0.06792452830188679,
+              "ci_low": 0.01132075471698113,
+              "estimate": 0.03962264150943395,
+              "p_value": 0.0096,
+              "p_value_holm": 0.0192
+            }
+          },
+          "pythia-2.8b": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": 0.05283018867924527,
+              "ci_low": -0.0207547169811321,
+              "estimate": 0.015094339622641506,
+              "p_value": 0.4336,
+              "p_value_holm": 0.494
+            },
+            "question_count": 265,
+            "recency": {
+              "ci_high": 0.05471698113207549,
+              "ci_low": -0.013207547169811318,
+              "estimate": 0.02075471698113207,
+              "p_value": 0.247,
+              "p_value_holm": 0.494
+            }
+          },
+          "pythia-410m": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": 0.04528301886792453,
+              "ci_low": -0.005660377358490565,
+              "estimate": 0.018867924528301896,
+              "p_value": 0.1546,
+              "p_value_holm": 0.3092
+            },
+            "question_count": 265,
+            "recency": {
+              "ci_high": 0.04716981132075472,
+              "ci_low": -0.01132075471698113,
+              "estimate": 0.018867924528301896,
+              "p_value": 0.22,
+              "p_value_holm": 0.3092
+            }
+          }
+        },
+        "lower": 1278,
+        "question_count": 265,
+        "upper": 1427
+      },
+      {
+        "edges": {
+          "mamba-2.8b": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": 0.024344569288389517,
+              "ci_low": -0.024344569288389517,
+              "estimate": 0.0,
+              "p_value": 1.0,
+              "p_value_holm": 1.0
+            },
+            "question_count": 267,
+            "recency": {
+              "ci_high": 0.09925093632958801,
+              "ci_low": 0.03745318352059923,
+              "estimate": 0.06741573033707865,
+              "p_value": 0.0002,
+              "p_value_holm": 0.0004
+            }
+          },
+          "mamba2-2.7b": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": 0.018726591760299616,
+              "ci_low": -0.039325842696629226,
+              "estimate": -0.011235955056179775,
+              "p_value": 0.4724,
+              "p_value_holm": 0.4724
+            },
+            "question_count": 267,
+            "recency": {
+              "ci_high": 0.1554307116104869,
+              "ci_low": 0.08988764044943817,
+              "estimate": 0.12172284644194759,
+              "p_value": 0.0,
+              "p_value_holm": 0.0
+            }
+          },
+          "pythia-1.4b": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": 0.06928838951310862,
+              "ci_low": 0.005617977528089901,
+              "estimate": 0.03745318352059923,
+              "p_value": 0.0228,
+              "p_value_holm": 0.0228
+            },
+            "question_count": 267,
+            "recency": {
+              "ci_high": 0.11610486891385768,
+              "ci_low": 0.0449438202247191,
+              "estimate": 0.08052434456928839,
+              "p_value": 0.0,
+              "p_value_holm": 0.0
+            }
+          },
+          "pythia-160m": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": 0.00749063670411985,
+              "ci_low": -0.013108614232209737,
+              "estimate": -0.0018726591760299624,
+              "p_value": 0.9192,
+              "p_value_holm": 1.0
+            },
+            "question_count": 267,
+            "recency": {
+              "ci_high": 0.0149812734082397,
+              "ci_low": -0.011235955056179775,
+              "estimate": 0.0018726591760299628,
+              "p_value": 0.9072,
+              "p_value_holm": 1.0
+            }
+          },
+          "pythia-1b": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": 0.10486891385767791,
+              "ci_low": 0.04681647940074907,
+              "estimate": 0.07490636704119852,
+              "p_value": 0.0,
+              "p_value_holm": 0.0
+            },
+            "question_count": 267,
+            "recency": {
+              "ci_high": 0.1310861423220974,
+              "ci_low": 0.0692883895131086,
+              "estimate": 0.09925093632958801,
+              "p_value": 0.0,
+              "p_value_holm": 0.0
+            }
+          },
+          "pythia-2.8b": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": 0.09925093632958801,
+              "ci_low": 0.03183520599250936,
+              "estimate": 0.06554307116104868,
+              "p_value": 0.0002,
+              "p_value_holm": 0.0002
+            },
+            "question_count": 267,
+            "recency": {
+              "ci_high": 0.11423220973782769,
+              "ci_low": 0.03745318352059926,
+              "estimate": 0.07490636704119852,
+              "p_value": 0.0,
+              "p_value_holm": 0.0
+            }
+          },
+          "pythia-410m": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": 0.039325842696629226,
+              "ci_low": -0.02621722846441947,
+              "estimate": 0.007490636704119855,
+              "p_value": 0.697,
+              "p_value_holm": 0.697
+            },
+            "question_count": 267,
+            "recency": {
+              "ci_high": 0.07865168539325842,
+              "ci_low": 0.01685393258426965,
+              "estimate": 0.04681647940074905,
+              "p_value": 0.003,
+              "p_value_holm": 0.006
+            }
+          }
+        },
+        "lower": 1427,
+        "question_count": 267,
+        "upper": 1504
+      },
+      {
+        "edges": {
+          "mamba-2.8b": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": 0.020522388059701496,
+              "ci_low": -0.03544776119402984,
+              "estimate": -0.007462686567164173,
+              "p_value": 0.6464,
+              "p_value_holm": 0.6464
+            },
+            "question_count": 268,
+            "recency": {
+              "ci_high": 0.1212686567164179,
+              "ci_low": 0.05223880597014924,
+              "estimate": 0.08582089552238803,
+              "p_value": 0.0,
+              "p_value_holm": 0.0
+            }
+          },
+          "mamba2-2.7b": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": -0.005597014925373123,
+              "ci_low": -0.05970149253731344,
+              "estimate": -0.03171641791044777,
+              "p_value": 0.019,
+              "p_value_holm": 0.019
+            },
+            "question_count": 268,
+            "recency": {
+              "ci_high": 0.1492537313432836,
+              "ci_low": 0.08022388059701491,
+              "estimate": 0.11380597014925373,
+              "p_value": 0.0,
+              "p_value_holm": 0.0
+            }
+          },
+          "pythia-1.4b": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": 0.09514925373134328,
+              "ci_low": 0.03731343283582089,
+              "estimate": 0.06529850746268656,
+              "p_value": 0.0,
+              "p_value_holm": 0.0
+            },
+            "question_count": 268,
+            "recency": {
+              "ci_high": 0.09141791044776118,
+              "ci_low": 0.020522388059701496,
+              "estimate": 0.05597014925373134,
+              "p_value": 0.002,
+              "p_value_holm": 0.002
+            }
+          },
+          "pythia-160m": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": 0.0,
+              "ci_low": -0.005597014925373134,
+              "estimate": -0.0018656716417910447,
+              "p_value": 0.7312,
+              "p_value_holm": 1.0
+            },
+            "question_count": 268,
+            "recency": {
+              "ci_high": 0.0,
+              "ci_low": -0.005597014925373134,
+              "estimate": -0.0018656716417910447,
+              "p_value": 0.7312,
+              "p_value_holm": 1.0
+            }
+          },
+          "pythia-1b": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": 0.07649253731343283,
+              "ci_low": 0.024253731343283597,
+              "estimate": 0.05037313432835819,
+              "p_value": 0.0002,
+              "p_value_holm": 0.0002
+            },
+            "question_count": 268,
+            "recency": {
+              "ci_high": 0.10447761194029852,
+              "ci_low": 0.042910447761194015,
+              "estimate": 0.07276119402985073,
+              "p_value": 0.0,
+              "p_value_holm": 0.0
+            }
+          },
+          "pythia-2.8b": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": 0.1082089552238806,
+              "ci_low": 0.04104477611940299,
+              "estimate": 0.07462686567164178,
+              "p_value": 0.0,
+              "p_value_holm": 0.0
+            },
+            "question_count": 268,
+            "recency": {
+              "ci_high": 0.16791044776119401,
+              "ci_low": 0.09141791044776118,
+              "estimate": 0.12873134328358207,
+              "p_value": 0.0,
+              "p_value_holm": 0.0
+            }
+          },
+          "pythia-410m": {
+            "excluded_question_count": 0,
+            "excluded_record_count": 0,
+            "primacy": {
+              "ci_high": 0.035447761194029856,
+              "ci_low": -0.01305970149253731,
+              "estimate": 0.011194029850746273,
+              "p_value": 0.4132,
+              "p_value_holm": 0.4132
+            },
+            "question_count": 268,
+            "recency": {
+              "ci_high": 0.059701492537313425,
+              "ci_low": 0.005597014925373137,
+              "estimate": 0.031716417910447756,
+              "p_value": 0.0196,
+              "p_value_holm": 0.0392
+            }
+          }
+        },
+        "lower": 1504,
+        "question_count": 268,
+        "upper": 1882
+      }
+    ],
+    "n_bins": 3,
+    "n_resamples": 10000
+  },
+  "n_resamples": 10000,
+  "position_curve": {
+    "mamba-2.8b": {
+      "excluded_question_count": 0,
+      "excluded_record_count": 0,
+      "positions": {
+        "0": {
+          "accuracy": 0.19875,
+          "ci_high": 0.2275,
+          "ci_low": 0.17125,
+          "question_count": 800
+        },
+        "1": {
+          "accuracy": 0.185,
+          "ci_high": 0.2125,
+          "ci_low": 0.15875,
+          "question_count": 800
+        },
+        "2": {
+          "accuracy": 0.185,
+          "ci_high": 0.2125,
+          "ci_low": 0.15875,
+          "question_count": 800
+        },
+        "3": {
+          "accuracy": 0.18875,
+          "ci_high": 0.21625,
+          "ci_low": 0.1625,
+          "question_count": 800
+        },
+        "4": {
+          "accuracy": 0.18875,
+          "ci_high": 0.215,
+          "ci_low": 0.16125,
+          "question_count": 800
+        },
+        "5": {
+          "accuracy": 0.1975,
+          "ci_high": 0.225,
+          "ci_low": 0.17,
+          "question_count": 800
+        },
+        "6": {
+          "accuracy": 0.19375,
+          "ci_high": 0.22125,
+          "ci_low": 0.16625,
+          "question_count": 800
+        },
+        "7": {
+          "accuracy": 0.20375,
+          "ci_high": 0.23125,
+          "ci_low": 0.17625,
+          "question_count": 800
+        },
+        "8": {
+          "accuracy": 0.22375,
+          "ci_high": 0.2525,
+          "ci_low": 0.195,
+          "question_count": 800
+        },
+        "9": {
+          "accuracy": 0.31625,
+          "ci_high": 0.34875,
+          "ci_low": 0.28375,
+          "question_count": 800
+        }
+      }
+    },
+    "mamba2-2.7b": {
+      "excluded_question_count": 0,
+      "excluded_record_count": 0,
+      "positions": {
+        "0": {
+          "accuracy": 0.18125,
+          "ci_high": 0.20875,
+          "ci_low": 0.155,
+          "question_count": 800
+        },
+        "1": {
+          "accuracy": 0.175,
+          "ci_high": 0.20125,
+          "ci_low": 0.14875,
+          "question_count": 800
+        },
+        "2": {
+          "accuracy": 0.17375,
+          "ci_high": 0.2,
+          "ci_low": 0.1475,
+          "question_count": 800
+        },
+        "3": {
+          "accuracy": 0.1725,
+          "ci_high": 0.2,
+          "ci_low": 0.14625,
+          "question_count": 800
+        },
+        "4": {
+          "accuracy": 0.18375,
+          "ci_high": 0.21125,
+          "ci_low": 0.15625,
+          "question_count": 800
+        },
+        "5": {
+          "accuracy": 0.20875,
+          "ci_high": 0.2375,
+          "ci_low": 0.18125,
+          "question_count": 800
+        },
+        "6": {
+          "accuracy": 0.19875,
+          "ci_high": 0.2275,
+          "ci_low": 0.1725,
+          "question_count": 800
+        },
+        "7": {
+          "accuracy": 0.2125,
+          "ci_high": 0.24125,
+          "ci_low": 0.185,
+          "question_count": 800
+        },
+        "8": {
+          "accuracy": 0.24375,
+          "ci_high": 0.27375,
+          "ci_low": 0.215,
+          "question_count": 800
+        },
+        "9": {
+          "accuracy": 0.35875,
+          "ci_high": 0.39125,
+          "ci_low": 0.32625,
+          "question_count": 800
+        }
+      }
+    },
+    "pythia-1.4b": {
+      "excluded_question_count": 0,
+      "excluded_record_count": 0,
+      "positions": {
+        "0": {
+          "accuracy": 0.235,
+          "ci_high": 0.265,
+          "ci_low": 0.20625,
+          "question_count": 800
+        },
+        "1": {
+          "accuracy": 0.19625,
+          "ci_high": 0.225,
+          "ci_low": 0.16875,
+          "question_count": 800
+        },
+        "2": {
+          "accuracy": 0.1875,
+          "ci_high": 0.215,
+          "ci_low": 0.16125,
+          "question_count": 800
+        },
+        "3": {
+          "accuracy": 0.17625,
+          "ci_high": 0.20375,
+          "ci_low": 0.15125,
+          "question_count": 800
+        },
+        "4": {
+          "accuracy": 0.1675,
+          "ci_high": 0.19375,
+          "ci_low": 0.14125,
+          "question_count": 800
+        },
+        "5": {
+          "accuracy": 0.1575,
+          "ci_high": 0.18375,
+          "ci_low": 0.1325,
+          "question_count": 800
+        },
+        "6": {
+          "accuracy": 0.15,
+          "ci_high": 0.17625,
+          "ci_low": 0.12625,
+          "question_count": 800
+        },
+        "7": {
+          "accuracy": 0.16625,
+          "ci_high": 0.1925,
+          "ci_low": 0.14125,
+          "question_count": 800
+        },
+        "8": {
+          "accuracy": 0.1875,
+          "ci_high": 0.215,
+          "ci_low": 0.16125,
+          "question_count": 800
+        },
+        "9": {
+          "accuracy": 0.27375,
+          "ci_high": 0.305,
+          "ci_low": 0.24375,
+          "question_count": 800
+        }
+      }
+    },
+    "pythia-160m": {
+      "excluded_question_count": 0,
+      "excluded_record_count": 0,
+      "positions": {
+        "0": {
+          "accuracy": 0.0075,
+          "ci_high": 0.01375,
+          "ci_low": 0.0025,
+          "question_count": 800
+        },
+        "1": {
+          "accuracy": 0.00625,
+          "ci_high": 0.0125,
+          "ci_low": 0.00125,
+          "question_count": 800
+        },
+        "2": {
+          "accuracy": 0.00625,
+          "ci_high": 0.0125,
+          "ci_low": 0.00125,
+          "question_count": 800
+        },
+        "3": {
+          "accuracy": 0.00375,
+          "ci_high": 0.00875,
+          "ci_low": 0.0,
+          "question_count": 800
+        },
+        "4": {
+          "accuracy": 0.0075,
+          "ci_high": 0.01375,
+          "ci_low": 0.0025,
+          "question_count": 800
+        },
+        "5": {
+          "accuracy": 0.0075,
+          "ci_high": 0.01375,
+          "ci_low": 0.0025,
+          "question_count": 800
+        },
+        "6": {
+          "accuracy": 0.0025,
+          "ci_high": 0.00625,
+          "ci_low": 0.0,
+          "question_count": 800
+        },
+        "7": {
+          "accuracy": 0.0025,
+          "ci_high": 0.00625,
+          "ci_low": 0.0,
+          "question_count": 800
+        },
+        "8": {
+          "accuracy": 0.005,
+          "ci_high": 0.01,
+          "ci_low": 0.00125,
+          "question_count": 800
+        },
+        "9": {
+          "accuracy": 0.00625,
+          "ci_high": 0.0125,
+          "ci_low": 0.00125,
+          "question_count": 800
+        }
+      }
+    },
+    "pythia-1b": {
+      "excluded_question_count": 0,
+      "excluded_record_count": 0,
+      "positions": {
+        "0": {
+          "accuracy": 0.2,
+          "ci_high": 0.2275,
+          "ci_low": 0.1725,
+          "question_count": 800
+        },
+        "1": {
+          "accuracy": 0.15125,
+          "ci_high": 0.17625,
+          "ci_low": 0.1275,
+          "question_count": 800
+        },
+        "2": {
+          "accuracy": 0.13,
+          "ci_high": 0.15375,
+          "ci_low": 0.1075,
+          "question_count": 800
+        },
+        "3": {
+          "accuracy": 0.13375,
+          "ci_high": 0.1575,
+          "ci_low": 0.11125,
+          "question_count": 800
+        },
+        "4": {
+          "accuracy": 0.125,
+          "ci_high": 0.1475,
+          "ci_low": 0.1025,
+          "question_count": 800
+        },
+        "5": {
+          "accuracy": 0.1225,
+          "ci_high": 0.145,
+          "ci_low": 0.1,
+          "question_count": 800
+        },
+        "6": {
+          "accuracy": 0.125,
+          "ci_high": 0.1475,
+          "ci_low": 0.1025,
+          "question_count": 800
+        },
+        "7": {
+          "accuracy": 0.12625,
+          "ci_high": 0.15,
+          "ci_low": 0.10375,
+          "question_count": 800
+        },
+        "8": {
+          "accuracy": 0.15375,
+          "ci_high": 0.17875,
+          "ci_low": 0.13,
+          "question_count": 800
+        },
+        "9": {
+          "accuracy": 0.235,
+          "ci_high": 0.265,
+          "ci_low": 0.20625,
+          "question_count": 800
+        }
+      }
+    },
+    "pythia-2.8b": {
+      "excluded_question_count": 0,
+      "excluded_record_count": 0,
+      "positions": {
+        "0": {
+          "accuracy": 0.26625,
+          "ci_high": 0.2975,
+          "ci_low": 0.23625,
+          "question_count": 800
+        },
+        "1": {
+          "accuracy": 0.1975,
+          "ci_high": 0.225,
+          "ci_low": 0.17125,
+          "question_count": 800
+        },
+        "2": {
+          "accuracy": 0.19625,
+          "ci_high": 0.22375,
+          "ci_low": 0.16875,
+          "question_count": 800
+        },
+        "3": {
+          "accuracy": 0.19,
+          "ci_high": 0.2175,
+          "ci_low": 0.1625,
+          "question_count": 800
+        },
+        "4": {
+          "accuracy": 0.18,
+          "ci_high": 0.2075,
+          "ci_low": 0.15375,
+          "question_count": 800
+        },
+        "5": {
+          "accuracy": 0.18,
+          "ci_high": 0.20625,
+          "ci_low": 0.15375,
+          "question_count": 800
+        },
+        "6": {
+          "accuracy": 0.20375,
+          "ci_high": 0.2325,
+          "ci_low": 0.17625,
+          "question_count": 800
+        },
+        "7": {
+          "accuracy": 0.2175,
+          "ci_high": 0.24625,
+          "ci_low": 0.18875,
+          "question_count": 800
+        },
+        "8": {
+          "accuracy": 0.23125,
+          "ci_high": 0.26,
+          "ci_low": 0.2025,
+          "question_count": 800
+        },
+        "9": {
+          "accuracy": 0.27875,
+          "ci_high": 0.31,
+          "ci_low": 0.2475,
+          "question_count": 800
+        }
+      }
+    },
+    "pythia-410m": {
+      "excluded_question_count": 0,
+      "excluded_record_count": 0,
+      "positions": {
+        "0": {
+          "accuracy": 0.1175,
+          "ci_high": 0.14,
+          "ci_low": 0.09625,
+          "question_count": 800
+        },
+        "1": {
+          "accuracy": 0.09875,
+          "ci_high": 0.12,
+          "ci_low": 0.07875,
+          "question_count": 800
+        },
+        "2": {
+          "accuracy": 0.0925,
+          "ci_high": 0.1125,
+          "ci_low": 0.0725,
+          "question_count": 800
+        },
+        "3": {
+          "accuracy": 0.09875,
+          "ci_high": 0.12,
+          "ci_low": 0.07875,
+          "question_count": 800
+        },
+        "4": {
+          "accuracy": 0.095,
+          "ci_high": 0.11625,
+          "ci_low": 0.075,
+          "question_count": 800
+        },
+        "5": {
+          "accuracy": 0.09625,
+          "ci_high": 0.1175,
+          "ci_low": 0.07625,
+          "question_count": 800
+        },
+        "6": {
+          "accuracy": 0.095,
+          "ci_high": 0.115,
+          "ci_low": 0.075,
+          "question_count": 800
+        },
+        "7": {
+          "accuracy": 0.1075,
+          "ci_high": 0.13,
+          "ci_low": 0.08625,
+          "question_count": 800
+        },
+        "8": {
+          "accuracy": 0.10125,
+          "ci_high": 0.1225,
+          "ci_low": 0.08125,
+          "question_count": 800
+        },
+        "9": {
+          "accuracy": 0.155,
+          "ci_high": 0.18,
+          "ci_low": 0.13125,
+          "question_count": 800
+        }
+      }
+    }
+  },
+  "scoring_sensitivity": {
+    "n_resamples": 10000,
+    "variants": {
+      "score": {
+        "mamba-2.8b": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": 0.013749999999999984,
+            "ci_low": -0.016249999999999987,
+            "estimate": -0.0012500000000000011,
+            "p_value": 0.9136,
+            "p_value_holm": 0.9136
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.09687499999999999,
+            "ci_low": 0.057499999999999996,
+            "estimate": 0.07687500000000003,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          }
+        },
+        "mamba2-2.7b": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": -0.0025000000000000022,
+            "ci_low": -0.03375,
+            "estimate": -0.018125000000000002,
+            "p_value": 0.0226,
+            "p_value_holm": 0.0226
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.12437499999999999,
+            "ci_low": 0.08562500000000003,
+            "estimate": 0.10500000000000001,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          }
+        },
+        "pythia-1.4b": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": 0.07187500000000002,
+            "ci_low": 0.03437499999999999,
+            "estimate": 0.053125000000000006,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.08875000000000002,
+            "ci_low": 0.046875,
+            "estimate": 0.06812499999999999,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          }
+        },
+        "pythia-160m": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": 0.004375,
+            "ci_low": -0.005625000000000001,
+            "estimate": -0.0006249999999999997,
+            "p_value": 0.8944,
+            "p_value_holm": 1.0
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.003125000000000001,
+            "ci_low": -0.006875000000000001,
+            "estimate": -0.001875,
+            "p_value": 0.5458,
+            "p_value_holm": 1.0
+          }
+        },
+        "pythia-1b": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": 0.068125,
+            "ci_low": 0.036250000000000004,
+            "estimate": 0.051875000000000004,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.08875000000000001,
+            "ci_low": 0.053125000000000006,
+            "estimate": 0.070625,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          }
+        },
+        "pythia-2.8b": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": 0.07187500000000002,
+            "ci_low": 0.031875000000000014,
+            "estimate": 0.051875000000000004,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.09687499999999999,
+            "ci_low": 0.05374999999999999,
+            "estimate": 0.07500000000000001,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          }
+        },
+        "pythia-410m": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": 0.02875000000000001,
+            "ci_low": -0.0037500000000000033,
+            "estimate": 0.012499999999999997,
+            "p_value": 0.135,
+            "p_value_holm": 0.135
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.049375,
+            "ci_low": 0.015625,
+            "estimate": 0.03249999999999999,
+            "p_value": 0.0004,
+            "p_value_holm": 0.0008
+          }
+        }
+      },
+      "score_first_line": {
+        "mamba-2.8b": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": 0.012500000000000011,
+            "ci_low": -0.016249999999999987,
+            "estimate": -0.0018750000000000155,
+            "p_value": 0.8484,
+            "p_value_holm": 0.8484
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.0925,
+            "ci_low": 0.05687499999999998,
+            "estimate": 0.074375,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          }
+        },
+        "mamba2-2.7b": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": -0.0018750000000000155,
+            "ci_low": -0.03312499999999999,
+            "estimate": -0.017499999999999988,
+            "p_value": 0.0256,
+            "p_value_holm": 0.0256
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.12125,
+            "ci_low": 0.081875,
+            "estimate": 0.10125,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          }
+        },
+        "pythia-1.4b": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": 0.070625,
+            "ci_low": 0.03312499999999999,
+            "estimate": 0.051875000000000004,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.08875000000000002,
+            "ci_low": 0.046875,
+            "estimate": 0.06812499999999999,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          }
+        },
+        "pythia-160m": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": 0.00375,
+            "ci_low": -0.00625,
+            "estimate": -0.0012500000000000002,
+            "p_value": 0.7028,
+            "p_value_holm": 1.0
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.003125,
+            "ci_low": -0.005625000000000001,
+            "estimate": -0.0012500000000000002,
+            "p_value": 0.6778,
+            "p_value_holm": 1.0
+          }
+        },
+        "pythia-1b": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": 0.06624999999999999,
+            "ci_low": 0.035625000000000004,
+            "estimate": 0.050625,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.09125000000000001,
+            "ci_low": 0.056874999999999995,
+            "estimate": 0.07375000000000001,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          }
+        },
+        "pythia-2.8b": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": 0.07187500000000002,
+            "ci_low": 0.033125000000000016,
+            "estimate": 0.05250000000000002,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.089375,
+            "ci_low": 0.04874999999999999,
+            "estimate": 0.06875,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          }
+        },
+        "pythia-410m": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": 0.025624999999999995,
+            "ci_low": -0.0050000000000000044,
+            "estimate": 0.010000000000000009,
+            "p_value": 0.2086,
+            "p_value_holm": 0.2086
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.04625,
+            "ci_low": 0.012500000000000011,
+            "estimate": 0.029375000000000012,
+            "p_value": 0.0014,
+            "p_value_holm": 0.0028
+          }
+        }
+      },
+      "score_normalized_em": {
+        "mamba-2.8b": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": 0.0,
+            "ci_low": -0.018125000000000002,
+            "estimate": -0.008749999999999994,
+            "p_value": 0.0604,
+            "p_value_holm": 0.0604
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.04625000000000001,
+            "ci_low": 0.022500000000000006,
+            "estimate": 0.034375,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          }
+        },
+        "mamba2-2.7b": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": -0.004375000000000004,
+            "ci_low": -0.026249999999999996,
+            "estimate": -0.015,
+            "p_value": 0.0064,
+            "p_value_holm": 0.0064
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.088125,
+            "ci_low": 0.05625000000000001,
+            "estimate": 0.07187500000000001,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          }
+        },
+        "pythia-1.4b": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": 0.035625000000000004,
+            "ci_low": 0.013749999999999998,
+            "estimate": 0.024374999999999994,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.053125,
+            "ci_low": 0.026249999999999996,
+            "estimate": 0.03937500000000001,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          }
+        },
+        "pythia-160m": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": 0.001875,
+            "ci_low": 0.0,
+            "estimate": 0.000625,
+            "p_value": 0.7404,
+            "p_value_holm": 1.0
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.001875,
+            "ci_low": 0.0,
+            "estimate": 0.000625,
+            "p_value": 0.7404,
+            "p_value_holm": 1.0
+          }
+        },
+        "pythia-1b": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": 0.032499999999999994,
+            "ci_low": 0.011874999999999997,
+            "estimate": 0.021875000000000006,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.050624999999999996,
+            "ci_low": 0.024374999999999994,
+            "estimate": 0.036875000000000005,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          }
+        },
+        "pythia-2.8b": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": 0.04000000000000001,
+            "ci_low": 0.011249999999999996,
+            "estimate": 0.025624999999999995,
+            "p_value": 0.0002,
+            "p_value_holm": 0.0002
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.06,
+            "ci_low": 0.028749999999999998,
+            "estimate": 0.044375,
+            "p_value": 0.0,
+            "p_value_holm": 0.0
+          }
+        },
+        "pythia-410m": {
+          "excluded_question_count": 0,
+          "excluded_record_count": 0,
+          "primacy": {
+            "ci_high": 0.005625000000000001,
+            "ci_low": -0.005625000000000001,
+            "estimate": 0.0,
+            "p_value": 1.0,
+            "p_value_holm": 1.0
+          },
+          "question_count": 800,
+          "recency": {
+            "ci_high": 0.00875,
+            "ci_low": -0.00375,
+            "estimate": 0.0025000000000000005,
+            "p_value": 0.4972,
+            "p_value_holm": 0.9944
+          }
+        }
+      }
+    }
+  }
+}

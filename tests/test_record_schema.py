@@ -52,7 +52,13 @@ def _tracer_generator_metadata():
     }
 
 
-SWEEP_EXPECTED_KEYS = TRACER_EXPECTED_KEYS | {"prompt_token_span"}
+SWEEP_EXPECTED_KEYS = TRACER_EXPECTED_KEYS | {
+    "prompt_token_span",
+    "prompt_variant",
+    "gold_padded_tokens",
+    "sink_block",
+    "prompt_template",
+}
 
 
 def _sweep_generator_metadata():

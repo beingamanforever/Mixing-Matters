@@ -13,7 +13,9 @@ from .figures import (
     write_phase4_figures,
     write_phase5_figures,
     write_phase6_figures,
+    write_phase7_figures,
     write_phase8_figures,
+    write_sink_mass_figures,
 )
 from .io import read_jsonl
 from .models import MODELS
@@ -118,6 +120,36 @@ def main() -> None:
             "produce different byte-pair merges at document boundaries."
         ),
     )
+    sweep_cmd.add_argument(
+        "--prompt-variant",
+        choices=("baseline", "question_first", "bookend", "gold_padded"),
+        default="baseline",
+        help=(
+            "Prompt-order variant used only for the gold conditions of the sweep. "
+            "``baseline`` keeps the Liu et al. documents-then-question layout used "
+            "in Phases 2 through 6 and Phase 8. ``question_first`` places the "
+            "question before the document block; ``bookend`` places it before and "
+            "after; ``gold_padded`` reserves a run of pad tokens between the "
+            "document block and the closing question line."
+        ),
+    )
+    sweep_cmd.add_argument(
+        "--gold-padded-tokens",
+        type=int,
+        default=0,
+        help="Number of pad tokens to reserve after the document block. Only meaningful with --prompt-variant=gold_padded.",
+    )
+    sweep_cmd.add_argument(
+        "--sink-block",
+        action="store_true",
+        help="Install the Phase 7 attention-sink-block hooks (mask token 0 in every dense-attention module) for the sweep.",
+    )
+    sweep_cmd.add_argument(
+        "--prompt-template",
+        choices=("liu", "concise", "instructional"),
+        default="liu",
+        help="Phase 7 4e instruction-template variation. 'liu' is the vendored default; the others paraphrase the instruction and answer cue with the documents-then-question order kept fixed.",
+    )
     sweep_cmd.add_argument("--positive-control", type=Path)
     sweep_cmd.add_argument("--dry-run", action="store_true")
 
@@ -200,6 +232,58 @@ def main() -> None:
     )
     phase6_report.add_argument("--output", type=Path, required=True)
 
+    phase7_variant_report = commands.add_parser("phase7-variant-report")
+    phase7_variant_report.add_argument(
+        "--results",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="Sweep JSONL files across prompt variants. Records lacking a prompt_variant field are treated as baseline.",
+    )
+    phase7_variant_report.add_argument("--output", type=Path, required=True)
+
+    probe_scan_cmd = commands.add_parser("probe-scan")
+    probe_scan_cmd.add_argument("--model", choices=sorted(MODELS), required=True)
+    probe_scan_cmd.add_argument("--data", type=Path, default=Path("data") / NAME)
+    probe_scan_cmd.add_argument("--output", type=Path, required=True)
+    probe_scan_cmd.add_argument("--revision")
+    probe_scan_cmd.add_argument("--layer", type=int, required=True, help="Hidden-state layer index to capture; fix before viewing QA results.")
+    probe_scan_cmd.add_argument("--questions", type=int, default=200)
+
+    probe_fit_cmd = commands.add_parser("probe-fit")
+    probe_fit_cmd.add_argument("--results", type=Path, nargs="+", required=True)
+    probe_fit_cmd.add_argument("--output", type=Path, required=True)
+
+    sink_report_cmd = commands.add_parser("sink-report")
+    sink_report_cmd.add_argument("--results", type=Path, nargs="+", required=True)
+    sink_report_cmd.add_argument("--output", type=Path, required=True)
+
+    sink_scan_cmd = commands.add_parser("sink-scan")
+    sink_scan_cmd.add_argument("--model", choices=sorted(MODELS), required=True)
+    sink_scan_cmd.add_argument("--data", type=Path, default=Path("data") / NAME)
+    sink_scan_cmd.add_argument("--output", type=Path, required=True)
+    sink_scan_cmd.add_argument(
+        "--revision",
+        help="Model tag or commit to resolve; defaults to the pinned registry revision",
+    )
+    sink_scan_cmd.add_argument("--questions", type=int, default=200)
+    sink_scan_cmd.add_argument(
+        "--prompt-variant",
+        choices=("baseline", "question_first", "bookend", "gold_padded"),
+        default="baseline",
+    )
+    sink_scan_cmd.add_argument("--gold-padded-tokens", type=int, default=0)
+
+    phase7_report = commands.add_parser("phase7-report")
+    phase7_report.add_argument(
+        "--results",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="Sweep files spanning the Pythia depths, Phase 2, and any other model whose gold-condition records should join the mechanism analyses",
+    )
+    phase7_report.add_argument("--output", type=Path, required=True)
+
     phase8_report = commands.add_parser("phase8-report")
     phase8_report.add_argument(
         "--results",
@@ -257,6 +341,14 @@ def main() -> None:
         sweep_kwargs = {"questions": args.questions}
         if args.max_prompt_token_span is not None:
             sweep_kwargs["max_prompt_token_span"] = args.max_prompt_token_span
+        if args.prompt_variant != "baseline":
+            sweep_kwargs["prompt_variant"] = args.prompt_variant
+        if args.gold_padded_tokens:
+            sweep_kwargs["gold_padded_tokens"] = args.gold_padded_tokens
+        if args.sink_block:
+            sweep_kwargs["sink_block"] = True
+        if args.prompt_template != "liu":
+            sweep_kwargs["prompt_template"] = args.prompt_template
         run_sweep(args.data, args.output, args.model, revision, **sweep_kwargs)
     elif args.command == "ruler-sweep" and args.dry_run:
         lengths = tuple(args.lengths)
@@ -356,6 +448,59 @@ def main() -> None:
                 for record in read_jsonl(path)
             ]
         paths = write_phase5_figures(records, args.output, architecture_records)
+        print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
+    elif args.command == "phase7-variant-report":
+        from .phase7_variants import phase7_variant_summary
+
+        records = [
+            _normalize_sweep_record(record) for path in args.results for record in read_jsonl(path)
+        ]
+        summary = phase7_variant_summary(records)
+        args.output.mkdir(parents=True, exist_ok=True)
+        summary_path = args.output / "phase7-variants-summary.json"
+        if summary_path.exists():
+            raise FileExistsError(summary_path)
+        summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
+        print(json.dumps({"paths": [str(summary_path)]}, indent=2))
+    elif args.command == "probe-scan":
+        from .probe_scan import run_probe_scan
+
+        revision = args.revision or MODELS[args.model].revision
+        run_probe_scan(
+            args.data, args.output, args.model, revision, args.layer, questions=args.questions
+        )
+    elif args.command == "probe-fit":
+        from .probe import probe_gold_position
+
+        records = [record for path in args.results for record in read_jsonl(path)]
+        result = probe_gold_position(records)
+        if args.output.exists():
+            raise FileExistsError(args.output)
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(result, indent=2, sort_keys=True))
+        print(json.dumps(result, indent=2, sort_keys=True))
+    elif args.command == "sink-report":
+        records = [record for path in args.results for record in read_jsonl(path)]
+        paths = write_sink_mass_figures(records, args.output)
+        print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
+    elif args.command == "sink-scan":
+        from .sink_scan import run_sink_scan
+
+        revision = args.revision or MODELS[args.model].revision
+        run_sink_scan(
+            args.data,
+            args.output,
+            args.model,
+            revision,
+            questions=args.questions,
+            prompt_variant=args.prompt_variant,
+            gold_padded_tokens=args.gold_padded_tokens,
+        )
+    elif args.command == "phase7-report":
+        records = [
+            _normalize_sweep_record(record) for path in args.results for record in read_jsonl(path)
+        ]
+        paths = write_phase7_figures(records, args.output)
         print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
     elif args.command == "phase8-report":
         records = [

@@ -16,7 +16,9 @@ from .phase3 import attention_control
 from .phase4 import scale_trend, trend_summary
 from .phase5 import compare_to_architecture, data_control
 from .phase6 import phase6_summary
+from .phase7 import phase7_summary
 from .phase8 import phase8_summary
+from .sink_scan import sink_mass_summary
 
 # Publication-grade defaults applied to every figure this module writes, so the
 # committed PNGs are consistent and re-running any report reproduces the same
@@ -1239,3 +1241,210 @@ def write_phase8_figures(
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
 
     return [curve_path, edges_path, summary_path]
+
+
+def write_phase7_figures(
+    records: list[dict], directory: Path, n_resamples: int = DEFAULT_RESAMPLES
+) -> list[Path]:
+    """Write the compute-free Phase 7 mechanism-lens figures and summary.
+
+    Emits:
+    - ``depth-primacy.png``: primacy edge per Pythia model vs layer count.
+    - ``scoring-sensitivity.png``: primacy edge under each of the three
+      scoring variants, one bar group per model.
+    - ``length-sensitivity.png``: primacy edge per model per prompt-token
+      length bin.
+    - ``phase7-summary.json``: full machine-readable summary.
+
+    Refuses to overwrite any of the outputs if they already exist.
+    """
+    summary = phase7_summary(records, n_resamples=n_resamples)
+    depth_path = directory / "depth-primacy.png"
+    scoring_path = directory / "scoring-sensitivity.png"
+    length_path = directory / "length-sensitivity.png"
+    summary_path = directory / "phase7-summary.json"
+    for path in (depth_path, scoring_path, length_path, summary_path):
+        if path.exists():
+            raise FileExistsError(path)
+
+    directory.mkdir(parents=True, exist_ok=True)
+
+    trend = summary["depth_trend"]["models"]
+    families: dict[str, list[dict]] = {}
+    for entry in trend:
+        families.setdefault(entry["family"], []).append(entry)
+    family_order = [family for family in ("pythia", "mamba", "mamba2") if family in families]
+    other = [family for family in sorted(families) if family not in family_order]
+    family_order.extend(other)
+
+    fig, axes = plt.subplots(
+        1, len(family_order), figsize=(4.6 * len(family_order), 4.2), sharey=True, squeeze=False
+    )
+    family_colors = {"pythia": "tab:green", "mamba": "tab:blue", "mamba2": "tab:orange"}
+    y_min = min(entry["primacy"]["ci_low"] for entry in trend)
+    y_max = max(entry["primacy"]["ci_high"] for entry in trend)
+    y_padding = 0.02
+    for ax, family in zip(axes[0], family_order):
+        entries = sorted(families[family], key=lambda entry: entry["layers"])
+        color = family_colors.get(family, "tab:gray")
+        xs = list(range(len(entries)))
+        ys = [entry["primacy"]["estimate"] for entry in entries]
+        lower = [
+            max(0.0, entry["primacy"]["estimate"] - entry["primacy"]["ci_low"]) for entry in entries
+        ]
+        upper = [
+            max(0.0, entry["primacy"]["ci_high"] - entry["primacy"]["estimate"]) for entry in entries
+        ]
+        ax.errorbar(
+            xs, ys, yerr=[lower, upper], fmt="o-", capsize=5, color=color, linewidth=1.5, markersize=6
+        )
+        ax.axhline(0.0, color="black", linewidth=0.7, alpha=0.6)
+        ax.set_xticks(xs)
+        labels = [f"{entry['model_key']}\n{entry['layers']}L" for entry in entries]
+        ax.set_xticklabels(labels, fontsize=8)
+        ax.set_title(f"{family} family")
+        ax.grid(axis="y", linestyle=":", alpha=0.35)
+        ax.set_ylim(y_min - y_padding, y_max + y_padding)
+        ax.set_xlim(-0.5, len(entries) - 0.5)
+    axes[0][0].set_ylabel("Primacy edge, 95 percent bootstrap interval")
+    fig.suptitle("Primacy edge by model within family (x-axis ordered by layer count)")
+    fig.tight_layout()
+    fig.savefig(depth_path, dpi=140)
+    plt.close(fig)
+
+    variants = summary["scoring_sensitivity"]["variants"]
+    variant_keys = ("score", "score_normalized_em", "score_first_line")
+    variant_labels = {
+        "score": "primary (best_subspan_em)",
+        "score_normalized_em": "normalized EM",
+        "score_first_line": "first-line only",
+    }
+    models = sorted({
+        model
+        for variant in variant_keys
+        for model, entry in variants.get(variant, {}).items()
+        if isinstance(entry, dict) and "primacy" in entry
+    })
+    if models:
+        fig, ax = plt.subplots(figsize=(max(6.0, 0.9 * len(models) * len(variant_keys)), 4.0))
+        width = 0.25
+        x = range(len(models))
+        for offset, variant in zip(range(len(variant_keys)), variant_keys):
+            entry = variants.get(variant, {})
+            if not isinstance(entry, dict):
+                continue
+            missing = [model for model in models if model not in entry]
+            if missing:
+                continue
+            estimates = [entry[model]["primacy"]["estimate"] for model in models]
+            low = [entry[model]["primacy"]["ci_low"] for model in models]
+            high = [entry[model]["primacy"]["ci_high"] for model in models]
+            lower_error = [max(0.0, value - bound) for value, bound in zip(estimates, low)]
+            upper_error = [max(0.0, bound - value) for value, bound in zip(estimates, high)]
+            positions = [i + (offset - (len(variant_keys) - 1) / 2) * width for i in x]
+            ax.bar(
+                positions,
+                estimates,
+                width,
+                yerr=[lower_error, upper_error],
+                capsize=3,
+                label=variant_labels.get(variant, variant),
+            )
+        ax.axhline(0.0, color="black", linewidth=0.8)
+        ax.set_title("Primacy edge under three scoring variants")
+        ax.set_ylabel("Primacy edge, 95 percent bootstrap interval")
+        ax.set_xticks(list(x))
+        ax.set_xticklabels(models, rotation=15, ha="right")
+        ax.legend(fontsize="small")
+        fig.tight_layout()
+        fig.savefig(scoring_path)
+        plt.close(fig)
+
+    bins = summary["length_sensitivity"]["bins"]
+    models_length = sorted({model for entry in bins for model in entry.get("edges", {})})
+    if bins and models_length:
+        fig, ax = plt.subplots(figsize=(max(6.0, 0.9 * len(models_length) * len(bins)), 4.0))
+        width = 0.8 / max(1, len(bins))
+        x = range(len(models_length))
+        for offset, bin_entry in enumerate(bins):
+            edges_in_bin = bin_entry.get("edges", {})
+            estimates = [
+                edges_in_bin[model]["primacy"]["estimate"] if model in edges_in_bin else 0.0
+                for model in models_length
+            ]
+            low = [
+                edges_in_bin[model]["primacy"]["ci_low"] if model in edges_in_bin else 0.0
+                for model in models_length
+            ]
+            high = [
+                edges_in_bin[model]["primacy"]["ci_high"] if model in edges_in_bin else 0.0
+                for model in models_length
+            ]
+            lower_error = [max(0.0, value - bound) for value, bound in zip(estimates, low)]
+            upper_error = [max(0.0, bound - value) for value, bound in zip(estimates, high)]
+            positions = [i + (offset - (len(bins) - 1) / 2) * width for i in x]
+            ax.bar(
+                positions,
+                estimates,
+                width,
+                yerr=[lower_error, upper_error],
+                capsize=3,
+                label=f"{bin_entry['lower']}-{bin_entry['upper']} tokens (n={bin_entry['question_count']})",
+            )
+        ax.axhline(0.0, color="black", linewidth=0.8)
+        ax.set_title("Primacy edge by prompt-length bin")
+        ax.set_ylabel("Primacy edge, 95 percent bootstrap interval")
+        ax.set_xticks(list(x))
+        ax.set_xticklabels(models_length, rotation=15, ha="right")
+        ax.legend(fontsize="small")
+        fig.tight_layout()
+        fig.savefig(length_path)
+        plt.close(fig)
+
+    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
+
+    outputs = [depth_path, scoring_path, length_path, summary_path]
+    return [path for path in outputs if path.exists()]
+
+
+def write_sink_mass_figures(records: list[dict], directory: Path) -> list[Path]:
+    """Write the Phase 7 4c sink-mass-by-layer figure and summary.
+
+    Draws mean token-0 attention share against layer index, one line per
+    model, averaged over questions and gold positions. Also writes the
+    machine-readable ``sink-mass-summary.json``. Refuses to overwrite
+    existing output.
+    """
+    summary = sink_mass_summary(records)
+    figure_path = directory / "sink-mass-by-layer.png"
+    summary_path = directory / "sink-mass-summary.json"
+    for path in (figure_path, summary_path):
+        if path.exists():
+            raise FileExistsError(path)
+    directory.mkdir(parents=True, exist_ok=True)
+
+    fig, ax = plt.subplots()
+    color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    for model, color in zip(summary["models"], itertools.cycle(color_cycle)):
+        entry = summary["by_model"][model]
+        layers = entry["layers"]
+        # Average the per-position curves into one mean sink-mass curve per layer.
+        positions = entry["positions"]
+        per_layer_mean = []
+        for layer_index in range(len(layers)):
+            values = [
+                positions[position]["mean_sink_mass_per_layer"][layer_index]
+                for position in positions
+            ]
+            per_layer_mean.append(sum(values) / len(values) if values else 0.0)
+        ax.plot(layers, per_layer_mean, "o-", color=color, markersize=3, label=model)
+    ax.set_title("Attention-sink mass by layer (token-0 share, mean over positions)")
+    ax.set_xlabel("Layer index")
+    ax.set_ylabel("Mean token-0 attention share")
+    ax.legend(fontsize="small")
+    fig.tight_layout()
+    fig.savefig(figure_path, dpi=140)
+    plt.close(fig)
+
+    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
+    return [figure_path, summary_path]
