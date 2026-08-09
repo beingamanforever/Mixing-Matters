@@ -498,6 +498,7 @@ def run_sweep(
     max_prompt_token_span: int = MAX_PROMPT_TOKEN_SPAN,
     prompt_variant: str = "baseline",
     gold_padded_tokens: int = 0,
+    sink_block: bool = False,
 ) -> None:
     """Run the closed_book/oracle/gold(0-9) sweep for one model.
 
@@ -582,6 +583,7 @@ def run_sweep(
             "prompt": prompt,
             "prompt_variant": prompt_variant,
             "gold_padded_tokens": gold_padded_tokens,
+            "sink_block": sink_block,
             "model_response": generation,
             "correct_answer": row["answers"][0] if row["answers"] else "",
             "answers": row["answers"],
@@ -633,7 +635,18 @@ def run_sweep(
                 gold_record["prompt_token_span"] = span
                 yield gold_record
 
-    write_jsonl(output, records())
+    if sink_block:
+        from contextlib import nullcontext
+
+        from .sink_block import block_attention_sink
+
+        context = block_attention_sink(generator.model)
+    else:
+        from contextlib import nullcontext
+
+        context = nullcontext()
+    with context:
+        write_jsonl(output, records())
 
 
 def _niah_question_id(length: int, instance: dict) -> str:
