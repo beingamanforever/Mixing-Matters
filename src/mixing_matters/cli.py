@@ -209,6 +209,16 @@ def main() -> None:
     )
     phase6_report.add_argument("--output", type=Path, required=True)
 
+    phase7_variant_report = commands.add_parser("phase7-variant-report")
+    phase7_variant_report.add_argument(
+        "--results",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="Sweep JSONL files across prompt variants. Records lacking a prompt_variant field are treated as baseline.",
+    )
+    phase7_variant_report.add_argument("--output", type=Path, required=True)
+
     sink_scan_cmd = commands.add_parser("sink-scan")
     sink_scan_cmd.add_argument("--model", choices=sorted(MODELS), required=True)
     sink_scan_cmd.add_argument("--data", type=Path, default=Path("data") / NAME)
@@ -390,6 +400,19 @@ def main() -> None:
             ]
         paths = write_phase5_figures(records, args.output, architecture_records)
         print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
+    elif args.command == "phase7-variant-report":
+        from .phase7_variants import phase7_variant_summary
+
+        records = [
+            _normalize_sweep_record(record) for path in args.results for record in read_jsonl(path)
+        ]
+        summary = phase7_variant_summary(records)
+        args.output.mkdir(parents=True, exist_ok=True)
+        summary_path = args.output / "phase7-variants-summary.json"
+        if summary_path.exists():
+            raise FileExistsError(summary_path)
+        summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
+        print(json.dumps({"paths": [str(summary_path)]}, indent=2))
     elif args.command == "sink-scan":
         from .sink_scan import run_sink_scan
 
