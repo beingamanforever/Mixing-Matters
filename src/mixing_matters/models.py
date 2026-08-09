@@ -25,6 +25,11 @@ class ModelSpec:
     # for models outside the data-control sweep.
     training_corpus: str | None = None
     data_pair: str | None = None
+    # Phase 3 holds training data, scale, tokenizer, and positional encoding
+    # fixed and changes only whether attention layers are present.
+    # ``arch_pair`` labels the pure and hybrid Mamba-2 models that differ only
+    # by that. None for models outside the architecture-control sweep.
+    arch_pair: str | None = None
     # Phase 8 groups a set of complete production 7-8B systems into a
     # descriptive comparison. ``phase8_system`` labels a model as part of that
     # sweep so callers can iterate the group without hardcoding keys.
@@ -36,7 +41,10 @@ class ModelSpec:
     # model_type. A "mamba_ssm" checkpoint must be converted to an HF-format
     # directory before ``run.Generator`` can load it (see ``convert.py``); this
     # keeps every Mamba run on the one transformers CUDA-kernel path so the only
-    # variable that changes across the Phase 5 contrast is the training corpus.
+    # variable that changes across the Phase 5 contrast is the training corpus,
+    # and "megatron" for checkpoints published only as Megatron-LM distributed
+    # checkpoints, loaded through a separate Megatron backend and never by
+    # transformers.
     format: str = "hf"
 
 
@@ -143,6 +151,33 @@ MODELS: dict[str, ModelSpec] = {
         revision="ef542707386fa9ec86bbf8a35ed2952af84bf566",
         family="mamba2",
     ),
+    # Phase 3 architecture control: pure Mamba-2 versus the same NVIDIA
+    # checkpoint family with attention layers mixed in. Both checkpoints are
+    # published only as Megatron-LM distributed checkpoints that transformers
+    # cannot load, so both run through the Megatron backend (see
+    # scripts/megatron_sweep.py) on one shared execution path, which is the
+    # cleanest form of the within-phase contrast: the only variable that moves
+    # between the two models is the presence of attention layers. The pure
+    # model is gated on a published zero-shot benchmark (PIQA 79.82, Waleffe
+    # et al. 2024, Table 3) and the hybrid on its own published number (PIQA
+    # 79.65, Table 7) via scripts/megatron_validate.py before its sweep,
+    # matching how the Phase 2 and Phase 5 conversions were validated.
+    "mamba2-8b": ModelSpec(
+        key="mamba2-8b",
+        repo="nvidia/mamba2-8b-3t-4k",
+        revision="b915550c63ba9359f88f44d1f6a600d85af27302",
+        family="mamba2",
+        format="megatron",
+        arch_pair="mamba2-8b-arch",
+    ),
+    "mamba2-hybrid-8b": ModelSpec(
+        key="mamba2-hybrid-8b",
+        repo="nvidia/mamba2-hybrid-8b-3t-4k",
+        revision="35e8852e2240b350ac2fe2a3b8aa341b5930018e",
+        family="mamba2-hybrid",
+        format="megatron",
+        arch_pair="mamba2-8b-arch",
+    ),
     # Phase 8 descriptive system comparison. Three complete 7-8B production
     # systems that differ from each other on many axes at once - architecture,
     # pretraining corpus, token count, tokenizer, alignment status, depth,
@@ -182,6 +217,12 @@ SCALE_PAIRS: tuple[str, ...] = ("130m-160m", "370m-410m", "790m-1b", "1.4b-1.4b"
 # 2.8B Mamba architecture. Ordered (Pile, SlimPajama) so contrasts read as the
 # Pile-minus-SlimPajama corpus effect.
 DATA_PAIR: tuple[str, str] = ("mamba-2.8b", "mamba-2.8b-slimpj")
+
+# Phase 3 architecture-control pair: the hybrid and pure Mamba-2 8B models
+# that share training data, scale, tokenizer, and positional encoding and
+# differ only in whether attention layers are present. Ordered (hybrid, pure)
+# so contrasts read as the effect of adding attention.
+ARCH_PAIR: tuple[str, str] = ("mamba2-hybrid-8b", "mamba2-8b")
 
 # Phase 8 descriptive system comparison group. Ordered so figures read
 # consistently across summary and plots.

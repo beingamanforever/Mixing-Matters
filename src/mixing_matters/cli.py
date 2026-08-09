@@ -9,6 +9,7 @@ from .download import NAME, download
 from .figures import (
     write_figures,
     write_phase2_figures,
+    write_phase3_figures,
     write_phase4_figures,
     write_phase5_figures,
     write_phase6_figures,
@@ -152,6 +153,16 @@ def main() -> None:
     phase2_report = commands.add_parser("phase2-report")
     phase2_report.add_argument("--results", type=Path, nargs="+", required=True)
     phase2_report.add_argument("--output", type=Path, required=True)
+
+    phase3_report = commands.add_parser("phase3-report")
+    phase3_report.add_argument(
+        "--results",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="Sweep files for the pure and hybrid NVIDIA 8B Mamba-2 models",
+    )
+    phase3_report.add_argument("--output", type=Path, required=True)
 
     phase4_report = commands.add_parser("phase4-report")
     phase4_report.add_argument("--results", type=Path, nargs="+", required=True)
@@ -320,6 +331,12 @@ def main() -> None:
             _normalize_sweep_record(record) for path in args.results for record in read_jsonl(path)
         ]
         paths = write_phase2_figures(records, args.output)
+        print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
+    elif args.command == "phase3-report":
+        records = [
+            _normalize_sweep_record(record) for path in args.results for record in read_jsonl(path)
+        ]
+        paths = write_phase3_figures(records, args.output)
         print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
     elif args.command == "phase4-report":
         records = [

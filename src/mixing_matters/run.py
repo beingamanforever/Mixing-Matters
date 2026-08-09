@@ -492,6 +492,7 @@ def run_sweep(
     revision: str,
     questions: int = 800,
     max_prompt_token_span: int = MAX_PROMPT_TOKEN_SPAN,
+    generator=None,
 ) -> None:
     """Run the closed_book/oracle/gold(0-9) sweep for one model.
 
@@ -505,6 +506,14 @@ def run_sweep(
     Phases 2 through 6; Phase 8 raises it because Llama, Qwen, and
     Nemotron-H tokenizers each have their own merge behavior at document
     boundaries.
+
+    ``generator`` lets a caller inject an alternative backend that honors the
+    ``Generator`` interface (callable(prompt) -> (text, prompt_tokens,
+    generated_tokens) and a ``metadata`` dict with the same keys). This is how
+    the Megatron backend runs the Phase 3 NVIDIA checkpoints, whose format is
+    never loaded by transformers, through the exact same orchestration,
+    scoring, anchoring, and length-invariance checks as every other model.
+    When None, the transformers ``Generator`` is constructed as usual.
     """
     model_spec = models.spec(model_key)
 
@@ -517,7 +526,8 @@ def run_sweep(
     if digest != SHA256:
         raise ValueError(f"dataset checksum mismatch: {digest}")
     rows = read_rows(data_path)
-    generator = Generator(model_spec, revision)
+    if generator is None:
+        generator = Generator(model_spec, revision)
 
     run_id = str(uuid.uuid4())
     software_versions = {
@@ -798,12 +808,18 @@ def run_ruler_sweep(
     write_jsonl(output, records())
 
 
-def run_kv_control(model_spec: models.ModelSpec, output: Path, revision: str) -> None:
+def run_kv_control(
+    model_spec: models.ModelSpec, output: Path, revision: str, generator=None
+) -> None:
     """Run the key-value positive control against an arbitrary model spec.
 
     Generalizes positive_control.run_control, which is hardwired to the
     Pythia Generator, so every model in the registry can be probed for
     key-value retrieval ahead of its position sweep.
+
+    ``generator`` lets a caller inject an alternative backend honoring the
+    ``Generator`` interface, the same seam ``run_sweep`` uses for the Megatron
+    backend. When None, the transformers ``Generator`` is constructed as usual.
     """
     from lost_in_the_middle.prompting import get_kv_retrieval_prompt
 
@@ -811,7 +827,8 @@ def run_kv_control(model_spec: models.ModelSpec, output: Path, revision: str) ->
 
     if output.exists():
         raise FileExistsError(output)
-    generator = Generator(model_spec, revision)
+    if generator is None:
+        generator = Generator(model_spec, revision)
 
     def records():
         for example in control_examples():
