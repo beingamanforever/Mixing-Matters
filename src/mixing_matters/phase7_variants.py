@@ -24,13 +24,19 @@ VARIANTS = ("baseline", "question_first", "bookend", "gold_padded")
 
 
 def _variant_of(record: dict) -> str:
-    """Return the prompt variant recorded on ``record``.
+    """Return the composite variant label recorded on ``record``.
 
     Older Phase 2/5 sweeps do not have a ``prompt_variant`` field; treat
     those as ``baseline`` so a caller can combine old Phase 2 sweeps with
-    new Phase 7-4a variant sweeps in a single call.
+    new Phase 7-4a variant sweeps in a single call. When a record carries
+    ``sink_block=True`` the label is suffixed with ``+sink_block`` so a
+    sink-blocked sweep and its baseline run under the same prompt variant
+    can share a call without colliding on (model_key, prompt_variant).
     """
-    return record.get("prompt_variant") or "baseline"
+    label = record.get("prompt_variant") or "baseline"
+    if record.get("sink_block"):
+        label = f"{label}+sink_block"
+    return label
 
 
 def _tag_records(records: Iterable[dict]) -> list[dict]:
