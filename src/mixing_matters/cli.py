@@ -209,6 +209,22 @@ def main() -> None:
     )
     phase6_report.add_argument("--output", type=Path, required=True)
 
+    sink_scan_cmd = commands.add_parser("sink-scan")
+    sink_scan_cmd.add_argument("--model", choices=sorted(MODELS), required=True)
+    sink_scan_cmd.add_argument("--data", type=Path, default=Path("data") / NAME)
+    sink_scan_cmd.add_argument("--output", type=Path, required=True)
+    sink_scan_cmd.add_argument(
+        "--revision",
+        help="Model tag or commit to resolve; defaults to the pinned registry revision",
+    )
+    sink_scan_cmd.add_argument("--questions", type=int, default=200)
+    sink_scan_cmd.add_argument(
+        "--prompt-variant",
+        choices=("baseline", "question_first", "bookend", "gold_padded"),
+        default="baseline",
+    )
+    sink_scan_cmd.add_argument("--gold-padded-tokens", type=int, default=0)
+
     phase7_report = commands.add_parser("phase7-report")
     phase7_report.add_argument(
         "--results",
@@ -374,6 +390,19 @@ def main() -> None:
             ]
         paths = write_phase5_figures(records, args.output, architecture_records)
         print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
+    elif args.command == "sink-scan":
+        from .sink_scan import run_sink_scan
+
+        revision = args.revision or MODELS[args.model].revision
+        run_sink_scan(
+            args.data,
+            args.output,
+            args.model,
+            revision,
+            questions=args.questions,
+            prompt_variant=args.prompt_variant,
+            gold_padded_tokens=args.gold_padded_tokens,
+        )
     elif args.command == "phase7-report":
         records = [
             _normalize_sweep_record(record) for path in args.results for record in read_jsonl(path)
