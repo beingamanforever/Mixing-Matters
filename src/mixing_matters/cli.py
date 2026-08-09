@@ -224,6 +224,18 @@ def main() -> None:
     )
     phase7_variant_report.add_argument("--output", type=Path, required=True)
 
+    probe_scan_cmd = commands.add_parser("probe-scan")
+    probe_scan_cmd.add_argument("--model", choices=sorted(MODELS), required=True)
+    probe_scan_cmd.add_argument("--data", type=Path, default=Path("data") / NAME)
+    probe_scan_cmd.add_argument("--output", type=Path, required=True)
+    probe_scan_cmd.add_argument("--revision")
+    probe_scan_cmd.add_argument("--layer", type=int, required=True, help="Hidden-state layer index to capture; fix before viewing QA results.")
+    probe_scan_cmd.add_argument("--questions", type=int, default=200)
+
+    probe_fit_cmd = commands.add_parser("probe-fit")
+    probe_fit_cmd.add_argument("--results", type=Path, nargs="+", required=True)
+    probe_fit_cmd.add_argument("--output", type=Path, required=True)
+
     sink_scan_cmd = commands.add_parser("sink-scan")
     sink_scan_cmd.add_argument("--model", choices=sorted(MODELS), required=True)
     sink_scan_cmd.add_argument("--data", type=Path, default=Path("data") / NAME)
@@ -420,6 +432,23 @@ def main() -> None:
             raise FileExistsError(summary_path)
         summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
         print(json.dumps({"paths": [str(summary_path)]}, indent=2))
+    elif args.command == "probe-scan":
+        from .probe_scan import run_probe_scan
+
+        revision = args.revision or MODELS[args.model].revision
+        run_probe_scan(
+            args.data, args.output, args.model, revision, args.layer, questions=args.questions
+        )
+    elif args.command == "probe-fit":
+        from .probe import probe_gold_position
+
+        records = [record for path in args.results for record in read_jsonl(path)]
+        result = probe_gold_position(records)
+        if args.output.exists():
+            raise FileExistsError(args.output)
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(result, indent=2, sort_keys=True))
+        print(json.dumps(result, indent=2, sort_keys=True))
     elif args.command == "sink-scan":
         from .sink_scan import run_sink_scan
 
