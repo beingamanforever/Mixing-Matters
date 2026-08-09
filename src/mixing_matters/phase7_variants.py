@@ -36,6 +36,12 @@ def _variant_of(record: dict) -> str:
     label = record.get("prompt_variant") or "baseline"
     if record.get("sink_block"):
         label = f"{label}+sink_block"
+    template = record.get("prompt_template")
+    # A non-default instruction template is its own cell: a 4e template run
+    # keeps prompt_variant=baseline, so without folding the template in it
+    # would collide with the Phase 2 baseline and with the other templates.
+    if template and template != "liu":
+        label = f"{label}+tmpl:{template}"
     return label
 
 
