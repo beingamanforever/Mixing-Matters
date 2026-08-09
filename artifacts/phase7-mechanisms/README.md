@@ -1,8 +1,21 @@
 # Phase 7 mechanism artifacts
 
-Round 1 of Phase 7 is the compute-free set of mechanism lenses that read from the already-collected Phase 2 and Phase 4 sweeps.
-The GPU-bound sub-experiments (query-position ablation, sink-mass measurement, sink-blocking, linear probe, template variation) land in follow-up commits as their sweeps complete.
+Phase 7 tests *why* the primacy and recency arms appear where they do.
 Runbook: `docs/phase7-mechanisms-runbook.md`.
+Cross-phase synthesis using every phase's evidence: **`CUMULATIVE-FINDINGS.md`**.
+
+## Sub-experiments
+
+| Sub-experiment | Directory | Finding |
+|---|---|---|
+| 4b depth trend + 4e scoring/length lenses | `report/` | Depth alone does not make primacy (Pythia 410m < 1b); arm survives scoring and length changes. |
+| 4a query-position ablation | `4a-query-position/` | bookend lifts Mamba primacy from null to +0.103; question_first kills Mamba recency; gold_padded halves Pythia primacy. |
+| 4c attention-sink mass | `4c-sink-scan/`, `4c-sink-scan-variants/` | Late-layer token-0 sink tracks primacy across scale; pythia-2.8b final-layer sink 0.455, pythia-160m (null primacy) ~0. |
+| 4c sink-block ablation | `4c-sink-block/` | Null intervention: Nemotron-H custom attention ignores the token-0 mask; documented follow-up. |
+| 4d linear probe | `4d-probe/` | Mamba encodes gold position better than Pythia (0.65 vs 0.60) yet has null primacy: utilisation, not storage. |
+| 4e instruction-template variation | `4e-template/` | Architecture contrast is template-invariant; transformer primacy magnitude is template-sensitive (instructional collapses Pythia primacy). |
+
+The compute-free lenses (below) read the already-collected Phase 2 and Phase 4 sweeps; the GPU sub-experiments were run across one L40S and two T4s.
 
 ## Inputs
 
