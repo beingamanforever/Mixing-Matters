@@ -12,6 +12,7 @@ from .figures import (
     write_phase4_figures,
     write_phase5_figures,
     write_phase6_figures,
+    write_phase7_figures,
     write_phase8_figures,
 )
 from .io import read_jsonl
@@ -189,6 +190,16 @@ def main() -> None:
     )
     phase6_report.add_argument("--output", type=Path, required=True)
 
+    phase7_report = commands.add_parser("phase7-report")
+    phase7_report.add_argument(
+        "--results",
+        type=Path,
+        nargs="+",
+        required=True,
+        help="Sweep files spanning the Pythia depths, Phase 2, and any other model whose gold-condition records should join the mechanism analyses",
+    )
+    phase7_report.add_argument("--output", type=Path, required=True)
+
     phase8_report = commands.add_parser("phase8-report")
     phase8_report.add_argument(
         "--results",
@@ -339,6 +350,12 @@ def main() -> None:
                 for record in read_jsonl(path)
             ]
         paths = write_phase5_figures(records, args.output, architecture_records)
+        print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
+    elif args.command == "phase7-report":
+        records = [
+            _normalize_sweep_record(record) for path in args.results for record in read_jsonl(path)
+        ]
+        paths = write_phase7_figures(records, args.output)
         print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
     elif args.command == "phase8-report":
         records = [
