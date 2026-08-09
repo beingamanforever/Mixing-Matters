@@ -57,6 +57,7 @@ SWEEP_EXPECTED_KEYS = TRACER_EXPECTED_KEYS | {
     "prompt_variant",
     "gold_padded_tokens",
     "sink_block",
+    "prompt_template",
 }
 
 

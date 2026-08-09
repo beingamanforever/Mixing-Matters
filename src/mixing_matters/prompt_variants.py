@@ -57,6 +57,60 @@ def _format_documents(documents: Iterable[Document]) -> str:
     )
 
 
+# Phase 7 sub-experiment 4e template variation: alternative wordings of the
+# instruction and answer cue, documents-then-question order kept fixed. The
+# measurement-artifact check asks whether the edge magnitudes survive a change
+# of template. ``liu`` is the vendored default; the other two paraphrase the
+# instruction and rename the answer cue without changing the task.
+TEMPLATES: dict[str, str] = {
+    "liu": (
+        "Write a high-quality answer for the given question using only the provided "
+        "search results (some of which might be irrelevant).\n"
+        "\n"
+        "{search_results}\n"
+        "\n"
+        "Question: {question}\n"
+        "Answer:"
+    ),
+    "concise": (
+        "Answer the question below from the documents provided. Some documents may "
+        "not be relevant.\n"
+        "\n"
+        "{search_results}\n"
+        "\n"
+        "Question: {question}\n"
+        "Response:"
+    ),
+    "instructional": (
+        "You are given a set of documents and a question. Use only the documents to "
+        "answer. If several documents are irrelevant, ignore them.\n"
+        "\n"
+        "Documents:\n"
+        "{search_results}\n"
+        "\n"
+        "Question: {question}\n"
+        "Answer:"
+    ),
+}
+
+
+def build_template_prompt(question: str, documents: Iterable[Document], template: str) -> str:
+    """Assemble a QA prompt under one of the 4e instruction templates.
+
+    All templates keep the documents-then-question order; only the
+    instruction wording and the answer cue change. ``template`` must be a
+    key of ``TEMPLATES``.
+    """
+    if template not in TEMPLATES:
+        raise ValueError(f"unknown template: {template!r}; valid: {sorted(TEMPLATES)}")
+    document_list = list(documents)
+    if not document_list:
+        raise ValueError("documents must be a non-empty iterable")
+    return TEMPLATES[template].format(
+        question=question, search_results=_format_documents(document_list)
+    )
+
+
 def build_variant_prompt(
     question: str,
     documents: Iterable[Document],

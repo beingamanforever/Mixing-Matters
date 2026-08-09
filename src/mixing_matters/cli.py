@@ -142,6 +142,12 @@ def main() -> None:
         action="store_true",
         help="Install the Phase 7 attention-sink-block hooks (mask token 0 in every dense-attention module) for the sweep.",
     )
+    sweep_cmd.add_argument(
+        "--prompt-template",
+        choices=("liu", "concise", "instructional"),
+        default="liu",
+        help="Phase 7 4e instruction-template variation. 'liu' is the vendored default; the others paraphrase the instruction and answer cue with the documents-then-question order kept fixed.",
+    )
     sweep_cmd.add_argument("--positive-control", type=Path)
     sweep_cmd.add_argument("--dry-run", action="store_true")
 
@@ -325,6 +331,8 @@ def main() -> None:
             sweep_kwargs["gold_padded_tokens"] = args.gold_padded_tokens
         if args.sink_block:
             sweep_kwargs["sink_block"] = True
+        if args.prompt_template != "liu":
+            sweep_kwargs["prompt_template"] = args.prompt_template
         run_sweep(args.data, args.output, args.model, revision, **sweep_kwargs)
     elif args.command == "ruler-sweep" and args.dry_run:
         lengths = tuple(args.lengths)

@@ -1,7 +1,12 @@
 import pytest
 from lost_in_the_middle.prompting import Document
 
-from mixing_matters.prompt_variants import VARIANTS, build_variant_prompt
+from mixing_matters.prompt_variants import (
+    TEMPLATES,
+    VARIANTS,
+    build_template_prompt,
+    build_variant_prompt,
+)
 
 
 def _documents(n: int = 3) -> list[Document]:
@@ -63,3 +68,22 @@ def test_gold_padded_zero_matches_baseline():
 def test_gold_padded_rejects_negative_tokens():
     with pytest.raises(ValueError):
         build_variant_prompt("Q?", _documents(3), variant="gold_padded", gold_padded_tokens=-1)
+
+
+def test_templates_defined():
+    assert set(TEMPLATES) == {"liu", "concise", "instructional"}
+
+
+def test_template_prompts_contain_question_and_documents():
+    docs = _documents(3)
+    for template in TEMPLATES:
+        prompt = build_template_prompt("What is X?", docs, template=template)
+        assert "What is X?" in prompt
+        assert "Document [1]" in prompt
+        # Documents come before the question in every template.
+        assert prompt.index("Document [1]") < prompt.rindex("What is X?")
+
+
+def test_template_unknown_raises():
+    with pytest.raises(ValueError):
+        build_template_prompt("Q?", _documents(2), template="nope")

@@ -474,16 +474,26 @@ def run_tracer(data_path: Path, output: Path, revision: str, control_path: Path)
 
 
 def _gold_prompt(
-    row: dict, position: int, prompt_variant: str = "baseline", gold_padded_tokens: int = 0
+    row: dict,
+    position: int,
+    prompt_variant: str = "baseline",
+    gold_padded_tokens: int = 0,
+    prompt_template: str = "liu",
 ) -> str:
     from lost_in_the_middle.prompting import Document
 
-    from .prompt_variants import build_variant_prompt
+    from .prompt_variants import build_template_prompt, build_variant_prompt
 
     documents = place_gold(row, position)["ctxs"]
+    docs = [Document.from_dict(document) for document in documents]
+    # A non-default template overrides the order-variant path; the two are
+    # never combined, so a template run always uses the documents-then-question
+    # order with the alternative wording.
+    if prompt_template != "liu":
+        return build_template_prompt(row["question"], docs, template=prompt_template)
     return build_variant_prompt(
         row["question"],
-        [Document.from_dict(document) for document in documents],
+        docs,
         variant=prompt_variant,
         gold_padded_tokens=gold_padded_tokens,
     )
@@ -499,6 +509,7 @@ def run_sweep(
     prompt_variant: str = "baseline",
     gold_padded_tokens: int = 0,
     sink_block: bool = False,
+    prompt_template: str = "liu",
 ) -> None:
     """Run the closed_book/oracle/gold(0-9) sweep for one model.
 
@@ -549,7 +560,11 @@ def run_sweep(
     ) -> tuple[dict, float | None, int]:
         if condition == "gold":
             prompt = _gold_prompt(
-                row, position, prompt_variant=prompt_variant, gold_padded_tokens=gold_padded_tokens
+                row,
+                position,
+                prompt_variant=prompt_variant,
+                gold_padded_tokens=gold_padded_tokens,
+                prompt_template=prompt_template,
             )
             gold_position = position
         else:
@@ -584,6 +599,7 @@ def run_sweep(
             "prompt_variant": prompt_variant,
             "gold_padded_tokens": gold_padded_tokens,
             "sink_block": sink_block,
+            "prompt_template": prompt_template,
             "model_response": generation,
             "correct_answer": row["answers"][0] if row["answers"] else "",
             "answers": row["answers"],
