@@ -130,6 +130,30 @@ def _require_mamba2_kernels(mamba2_module) -> None:
         )
 
 
+def _require_nemotron_h_kernels() -> None:
+    """Require the mamba-ssm and causal-conv1d packages Nemotron-H dispatches to.
+
+    Nemotron-H is a hybrid model whose SSM blocks call into mamba-ssm and
+    causal-conv1d when they are importable and fall back to a pure-pytorch
+    reference implementation otherwise. Failing loudly on missing kernels
+    keeps every Phase 8 nemotron-h run on the same execution path.
+    """
+    missing = []
+    try:
+        import causal_conv1d  # noqa: F401
+    except ImportError:
+        missing.append("causal_conv1d")
+    try:
+        import mamba_ssm  # noqa: F401
+    except ImportError:
+        missing.append("mamba_ssm")
+    if missing:
+        raise RuntimeError(
+            "nemotron-h CUDA kernel path unavailable, missing: "
+            f"{', '.join(missing)}; refusing to fall back to the pytorch reference path"
+        )
+
+
 def _resolve_execution_path(family: str) -> str:
     if family == "pythia":
         return "pytorch_reference"
@@ -142,6 +166,14 @@ def _resolve_execution_path(family: str) -> str:
         from transformers.models.mamba2 import modeling_mamba2
 
         _require_mamba2_kernels(modeling_mamba2)
+        return "cuda_kernels"
+    if family in ("llama", "qwen2"):
+        # Dense attention transformers. The eager attention implementation
+        # keeps them on the same deterministic pytorch reference path Pythia
+        # runs on.
+        return "pytorch_reference"
+    if family == "nemotron-h":
+        _require_nemotron_h_kernels()
         return "cuda_kernels"
     raise ValueError(f"unknown model family: {family!r}")
 
@@ -234,13 +266,37 @@ class Generator:
 
         self.torch = torch
         self.spec = model_spec
-        self.tokenizer = AutoTokenizer.from_pretrained(load_source, **revision_kwargs)
+        tokenizer_kwargs = dict(revision_kwargs)
+        # Nemotron-H ships an auto_map for tokenizer and model that requires
+        # transformers to execute repository code. Trust is scoped by
+        # repository namespace: only the NVIDIA Nemotron-H family gets it, so
+        # other models continue to load through the standard classes.
+        trust_remote_code = model_spec.family == "nemotron-h" and model_spec.repo.startswith(
+            "nvidia/"
+        )
+        if trust_remote_code:
+            tokenizer_kwargs["trust_remote_code"] = True
+        self.tokenizer = AutoTokenizer.from_pretrained(load_source, **tokenizer_kwargs)
         _assert_no_active_truncation(self.tokenizer)
 
         model_kwargs = {"dtype": torch.bfloat16, **revision_kwargs}
+        if trust_remote_code:
+            model_kwargs["trust_remote_code"] = True
         attention_implementation = None
-        if model_spec.family == "pythia":
+        # Attention implementation, resolved per family. Pythia and Nemotron-H
+        # pin ``eager`` to match the earlier phases' deterministic pytorch
+        # reference path (Nemotron-H's SSM blocks separately dispatch through
+        # mamba-ssm and causal-conv1d). The Phase 8 dense transformers,
+        # Llama-3.1 and Qwen2.5, use ``sdpa`` for throughput: descriptive
+        # comparison across full systems is not a matched control and their
+        # 8B-scale eager attention runs prohibitively slow on a single GPU.
+        # SDPA still runs entirely under torch; only the attention kernel
+        # differs from the earlier eager runs.
+        if model_spec.family in ("pythia", "nemotron-h"):
             attention_implementation = "eager"
+        elif model_spec.family in ("llama", "qwen2"):
+            attention_implementation = "sdpa"
+        if attention_implementation is not None:
             model_kwargs["attn_implementation"] = attention_implementation
         self.model = AutoModelForCausalLM.from_pretrained(load_source, **model_kwargs).to("cuda")
         self.model.eval()
@@ -430,13 +486,25 @@ def _gold_prompt(row: dict, position: int) -> str:
 
 
 def run_sweep(
-    data_path: Path, output: Path, model_key: str, revision: str, questions: int = 800
+    data_path: Path,
+    output: Path,
+    model_key: str,
+    revision: str,
+    questions: int = 800,
+    max_prompt_token_span: int = MAX_PROMPT_TOKEN_SPAN,
 ) -> None:
     """Run the closed_book/oracle/gold(0-9) sweep for one model.
 
     Unlike run_tracer, this never validates or gates on the key-value
     positive control: a model failing that control is a finding about the
     model, not a reason to abort the position sweep.
+
+    ``max_prompt_token_span`` gates the byte-pair-merge noise across the
+    ten gold positions of a question. The default ``MAX_PROMPT_TOKEN_SPAN``
+    (``2``) is tight enough for the GPTNeoX and Mamba tokenizers used in
+    Phases 2 through 6; Phase 8 raises it because Llama, Qwen, and
+    Nemotron-H tokenizers each have their own merge behavior at document
+    boundaries.
     """
     model_spec = models.spec(model_key)
 
@@ -546,10 +614,10 @@ def run_sweep(
                 gold_token_counts.append(prompt_tokens)
 
             span = max(gold_token_counts) - min(gold_token_counts)
-            if span > MAX_PROMPT_TOKEN_SPAN:
+            if span > max_prompt_token_span:
                 raise ValueError(
                     f"gold prompt length span too large for source index {index}: "
-                    f"{span} tokens across positions 0-9"
+                    f"{span} tokens across positions 0-9 (limit {max_prompt_token_span})"
                 )
             for gold_record in gold_records:
                 gold_record["prompt_token_span"] = span

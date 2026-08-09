@@ -25,6 +25,12 @@ class ModelSpec:
     # for models outside the data-control sweep.
     training_corpus: str | None = None
     data_pair: str | None = None
+    # Phase 8 groups a set of complete production 7-8B systems into a
+    # descriptive comparison. ``phase8_system`` labels a model as part of that
+    # sweep so callers can iterate the group without hardcoding keys.
+    # Multiple variables move together inside this group by design, so it is
+    # not a matched control, unlike ``data_pair``/``scale_pair``.
+    phase8_system: str | None = None
     # ``format`` is "hf" for checkpoints transformers can load directly and
     # "mamba_ssm" for original state-spaces checkpoints whose config carries no
     # model_type. A "mamba_ssm" checkpoint must be converted to an HF-format
@@ -137,6 +143,36 @@ MODELS: dict[str, ModelSpec] = {
         revision="ef542707386fa9ec86bbf8a35ed2952af84bf566",
         family="mamba2",
     ),
+    # Phase 8 descriptive system comparison. Three complete 7-8B production
+    # systems that differ from each other on many axes at once - architecture,
+    # pretraining corpus, token count, tokenizer, alignment status, depth,
+    # and positional encoding - so the sweep is not a matched control: it is
+    # a description of how full-system curves look side by side. Nemotron-H
+    # is a hybrid Mamba-2 + attention model; Llama-3.1 and Qwen2.5 are dense
+    # attention transformers with RoPE. All three run through the standard
+    # transformers backend; their execution paths are resolved by family in
+    # ``run.py``.
+    "nemotron-h-8b": ModelSpec(
+        key="nemotron-h-8b",
+        repo="nvidia/Nemotron-H-8B-Base-8K",
+        revision="94ea861e008c2dfced3e8e1302094024077aa04e",
+        family="nemotron-h",
+        phase8_system="phase8-systems",
+    ),
+    "llama-3.1-8b": ModelSpec(
+        key="llama-3.1-8b",
+        repo="meta-llama/Llama-3.1-8B",
+        revision="d04e592bb4f6aa9cfee91e2e20afa771667e1d4b",
+        family="llama",
+        phase8_system="phase8-systems",
+    ),
+    "qwen2.5-7b": ModelSpec(
+        key="qwen2.5-7b",
+        repo="Qwen/Qwen2.5-7B",
+        revision="d149729398750b98c0af14eb82c78cfe92750796",
+        family="qwen2",
+        phase8_system="phase8-systems",
+    ),
 }
 
 
@@ -146,6 +182,10 @@ SCALE_PAIRS: tuple[str, ...] = ("130m-160m", "370m-410m", "790m-1b", "1.4b-1.4b"
 # 2.8B Mamba architecture. Ordered (Pile, SlimPajama) so contrasts read as the
 # Pile-minus-SlimPajama corpus effect.
 DATA_PAIR: tuple[str, str] = ("mamba-2.8b", "mamba-2.8b-slimpj")
+
+# Phase 8 descriptive system comparison group. Ordered so figures read
+# consistently across summary and plots.
+PHASE8_SYSTEMS: tuple[str, ...] = ("nemotron-h-8b", "llama-3.1-8b", "qwen2.5-7b")
 
 
 def spec(key: str) -> ModelSpec:
