@@ -17,6 +17,7 @@ from .phase5 import compare_to_architecture, data_control
 from .phase6 import phase6_summary
 from .phase7 import phase7_summary
 from .phase8 import phase8_summary
+from .sink_scan import sink_mass_summary
 
 BOOTSTRAP_SEED = 240521
 N_RESAMPLES = 10000
@@ -1219,3 +1220,46 @@ def write_phase7_figures(
 
     outputs = [depth_path, scoring_path, length_path, summary_path]
     return [path for path in outputs if path.exists()]
+
+
+def write_sink_mass_figures(records: list[dict], directory: Path) -> list[Path]:
+    """Write the Phase 7 4c sink-mass-by-layer figure and summary.
+
+    Draws mean token-0 attention share against layer index, one line per
+    model, averaged over questions and gold positions. Also writes the
+    machine-readable ``sink-mass-summary.json``. Refuses to overwrite
+    existing output.
+    """
+    summary = sink_mass_summary(records)
+    figure_path = directory / "sink-mass-by-layer.png"
+    summary_path = directory / "sink-mass-summary.json"
+    for path in (figure_path, summary_path):
+        if path.exists():
+            raise FileExistsError(path)
+    directory.mkdir(parents=True, exist_ok=True)
+
+    fig, ax = plt.subplots()
+    color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    for model, color in zip(summary["models"], itertools.cycle(color_cycle)):
+        entry = summary["by_model"][model]
+        layers = entry["layers"]
+        # Average the per-position curves into one mean sink-mass curve per layer.
+        positions = entry["positions"]
+        per_layer_mean = []
+        for layer_index in range(len(layers)):
+            values = [
+                positions[position]["mean_sink_mass_per_layer"][layer_index]
+                for position in positions
+            ]
+            per_layer_mean.append(sum(values) / len(values) if values else 0.0)
+        ax.plot(layers, per_layer_mean, "o-", color=color, markersize=3, label=model)
+    ax.set_title("Attention-sink mass by layer (token-0 share, mean over positions)")
+    ax.set_xlabel("Layer index")
+    ax.set_ylabel("Mean token-0 attention share")
+    ax.legend(fontsize="small")
+    fig.tight_layout()
+    fig.savefig(figure_path, dpi=140)
+    plt.close(fig)
+
+    summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True))
+    return [figure_path, summary_path]

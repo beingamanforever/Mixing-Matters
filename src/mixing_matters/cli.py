@@ -14,6 +14,7 @@ from .figures import (
     write_phase6_figures,
     write_phase7_figures,
     write_phase8_figures,
+    write_sink_mass_figures,
 )
 from .io import read_jsonl
 from .models import MODELS
@@ -242,6 +243,10 @@ def main() -> None:
     probe_fit_cmd.add_argument("--results", type=Path, nargs="+", required=True)
     probe_fit_cmd.add_argument("--output", type=Path, required=True)
 
+    sink_report_cmd = commands.add_parser("sink-report")
+    sink_report_cmd.add_argument("--results", type=Path, nargs="+", required=True)
+    sink_report_cmd.add_argument("--output", type=Path, required=True)
+
     sink_scan_cmd = commands.add_parser("sink-scan")
     sink_scan_cmd.add_argument("--model", choices=sorted(MODELS), required=True)
     sink_scan_cmd.add_argument("--data", type=Path, default=Path("data") / NAME)
@@ -457,6 +462,10 @@ def main() -> None:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(result, indent=2, sort_keys=True))
         print(json.dumps(result, indent=2, sort_keys=True))
+    elif args.command == "sink-report":
+        records = [record for path in args.results for record in read_jsonl(path)]
+        paths = write_sink_mass_figures(records, args.output)
+        print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
     elif args.command == "sink-scan":
         from .sink_scan import run_sink_scan
 
