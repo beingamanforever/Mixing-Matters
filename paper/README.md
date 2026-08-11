@@ -37,7 +37,7 @@ Every number in the paper traces to a `*-summary.json` under `artifacts/`; see `
 
 ## Content map (phases to sections)
 
-- Section 2 (measurement/stats/controls) - the harness, the paired bootstrap, Phase 1 anchors and the three controls.
-- Section 3 (architecture contrast) - Phase 2 (matched 2.8B) and Phase 3 (matched 8B attention isolation).
-- Section 4 (robustness) - Phase 4 scale, Phase 5 corpus, Phase 6 task, Phase 8 production systems.
-- Section 5 (mechanism) - Phase 7: depth (4b), artifacts (4e), sinks (4c), probe (4d), query-position/training-free intervention (4a).
+- Section 3 (measurement and statistics) - the ten-position harness, paired bootstrap, anchors, and executed versus pending controls.
+- Section 4 (architecture comparisons) - the exploratory 2.8B interaction and the statistically uncertain matched 8B interaction.
+- Section 5 (scope checks) - scale, corpus, RULER, and descriptive system comparisons.
+- Sections 6 and 7 (mechanistic evidence and limitations) - sinks, probes, prompt interventions, and the remaining confirmatory gates.

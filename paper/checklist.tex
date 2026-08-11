@@ -5,7 +5,7 @@
 \item {\bf Claims}
     \item[] Question: Do the main claims made in the abstract and introduction accurately reflect the paper's contributions and scope?
     \item[] Answer: \answerYes{}
-    \item[] Justification: The abstract and Section~\ref{sec:intro} state the architecture contrast, its isolation at 8B, the robustness checks, and the mechanism, each matched by a numbered result in Sections~\ref{sec:contrast}--\ref{sec:mechanism}.
+    \item[] Justification: The abstract and Section~\ref{sec:intro} identify the exploratory architecture interaction, the uncertain matched 8B contrast, and the correlational status of the mechanism evidence.
     \item[] Guidelines:
     \begin{itemize}
         \item The answer \answerNA{} means that the abstract and introduction do not include the claims made in the paper.
@@ -17,7 +17,7 @@
 \item {\bf Limitations}
     \item[] Question: Does the paper discuss the limitations of the work performed by the authors?
     \item[] Answer: \answerYes{}
-    \item[] Justification: Section~\ref{sec:discussion} states the exploratory-split-only scope, the residual depth and positional-encoding confound in the 2.8B and scale contrasts, the null sink-blocking ablation on the hybrid, and the modest probe accuracies.
+    \item[] Justification: Section~\ref{sec:discussion} states the exploratory-only scope, the residual confounds, the uncertain paired 8B result, the dirty producing tree, the missing control outputs and audit labels, and the invalid sink intervention.
     \item[] Guidelines:
     \begin{itemize}
         \item The answer \answerNA{} means that the paper has no limitation while the answer \answerNo{} means that the paper has limitations, but those are not discussed in the paper.
@@ -46,8 +46,8 @@
 
     \item {\bf Experimental result reproducibility}
     \item[] Question: Does the paper fully disclose all the information needed to reproduce the main experimental results of the paper to the extent that it affects the main claims and/or conclusions of the paper (regardless of whether the code and data are provided or not)?
-    \item[] Answer: \answerYes{}
-    \item[] Justification: Section~\ref{sec:method} pins the dataset, split, decoding settings, seed, library and model revisions, execution path, scorer, and controls; every model is a public released checkpoint at a pinned revision.
+    \item[] Answer: \answerNo{}
+    \item[] Justification: Section~\ref{sec:method} discloses the dataset, split, inference settings, scorer, and analysis, but the matched 8B run manifest records uncommitted producing-code changes, so exact reconstruction of that result is not yet guaranteed.
     \item[] Guidelines:
     \begin{itemize}
         \item The answer \answerNA{} means that the paper does not include experiments.
@@ -66,8 +66,8 @@
 
 \item {\bf Open access to data and code}
     \item[] Question: Does the paper provide open access to the data and code, with sufficient instructions to faithfully reproduce the main experimental results, as described in supplemental material?
-    \item[] Answer: \answerYes{}
-    \item[] Justification: The evaluation dataset and all checkpoints are public; the harness, sweep scripts, and raw per-generation outputs are released in an anonymized repository with per-phase runbooks.
+    \item[] Answer: \answerNo{}
+    \item[] Justification: The dataset and checkpoints are public and the repository contains the harness, runbooks, and raw outputs, but a fully anonymized submission archive has not yet been prepared.
     \item[] Guidelines:
     \begin{itemize}
         \item The answer \answerNA{} means that paper does not include experiments requiring code.
@@ -111,8 +111,8 @@
 
 \item {\bf Experiments compute resources}
     \item[] Question: For each experiment, does the paper provide sufficient information on the computer resources (type of compute workers, memory, time of execution) needed to reproduce the experiments?
-    \item[] Answer: \answerYes{}
-    \item[] Justification: Runs used single GPUs (L40S 46GB and T4 16GB) with pinned CUDA-kernel paths; each 8B sweep is inference-only over 800 questions at 10 positions, and the per-run configuration is recorded in every output record.
+    \item[] Answer: \answerNo{}
+    \item[] Justification: The artifacts identify single-GPU hardware including L40S and T4 runs and preserve per-run configurations, but the paper does not yet report elapsed time and total project compute for every experiment.
     \item[] Guidelines:
     \begin{itemize}
         \item The answer \answerNA{} means that the paper does not include experiments.
