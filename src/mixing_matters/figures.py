@@ -10,7 +10,7 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 
-from .models import ARCH_PAIR, DATA_PAIR, MODELS, PHASE8_SYSTEMS
+from .models import ARCH_PAIR, DATA_PAIR, MODELS
 from .phase2 import DEFAULT_RESAMPLES, GOLD_POSITIONS, edges, interaction, position_curve
 from .phase3 import attention_control
 from .phase4 import scale_trend, trend_summary
@@ -598,8 +598,7 @@ def write_phase3_figures(
     fig.savefig(edges_path)
     plt.close(fig)
 
-    # The attention edge effect (hybrid minus pure): a positive bar means adding
-    # attention widened that edge.
+    # The paired hybrid-minus-pure edge difference.
     effect_groups = [("Primacy", "primacy_diff"), ("Recency", "recency_diff")]
     effect_values = [control[field]["estimate"] for _, field in effect_groups]
     effect_low = [control[field]["ci_low"] for _, field in effect_groups]
@@ -615,10 +614,10 @@ def write_phase3_figures(
         0.5,
         yerr=[effect_lower, effect_upper],
         capsize=4,
-        label="Attention effect (hybrid - pure)",
+        label="Hybrid minus pure",
     )
     ax.axhline(0.0, color="black", linewidth=0.8)
-    ax.set_title("Edge difference from adding attention layers")
+    ax.set_title("Hybrid minus pure 8B edge difference")
     ax.set_ylabel("Edge difference, 95 percent bootstrap interval")
     ax.set_xticks(list(ex))
     ax.set_xticklabels([name for name, _ in effect_groups])
