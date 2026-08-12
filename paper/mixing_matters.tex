@@ -16,6 +16,7 @@
 \usepackage{graphicx}
 \usepackage{float}
 \hypersetup{hidelinks,hypertexnames=false}
+\newcommand{\runin}[1]{\par\medskip\noindent\textbf{#1}\ }
 
 \title{Mixing Matters: Evidence Position Bias Across Attention and
 State-Space Language Models}
@@ -29,14 +30,15 @@ State-Space Language Models}
 \maketitle
 
 \begin{abstract}
-Language models often answer multi-document questions less accurately when the relevant document appears in the middle of the context.
-We ask whether the sequence mixer changes this accuracy-versus-position curve under approximately matched pretraining data, scale, and context.
-Our deterministic evaluation moves one gold document through ten positions while holding the question and nine distractors fixed.
-We summarize start and end advantages with primacy and recency edges and use a question-level paired bootstrap with 10{,}000 resamples and Holm correction.
-On 800 exploratory questions, Pythia-2.8B has a positive primacy edge ($+0.052$, 95\% CI $[0.032,0.072]$), while two Pile-trained Mamba variants do not ($-0.001$ and $-0.018$); both paired architecture interactions exclude zero.
-A more tightly matched 8B Mamba-2 pair is directionally consistent: the hybrid containing 7\% attention layers has a larger primacy edge than the pure model, but the paired difference is uncertain ($+0.019$, 95\% CI $[-0.006,0.044]$, Holm $p=0.144$).
-Scale, corpus, synthetic retrieval, prompt, attention-sink, and linear-probe analyses further bound the result.
-Together they establish an exploratory architecture-position interaction and motivate, but do not yet prove, an attention-based mechanism.
+Language models often answer multi-document questions less accurately when the relevant document is placed in the middle rather than near the beginning or end.
+We test whether this pattern differs between models that use attention and models from the Mamba family, which process context through a running state.
+For each question, we move the answer-bearing document through ten positions while keeping the question and nine distracting documents fixed.
+Our main comparisons use 800 exploratory questions; smaller task and prompt checks use 50 or 200 examples, and the larger held-out set has not been examined.
+Pythia-2.8B was about five percentage points more accurate when the answer appeared near the beginning than in the middle, whereas two similarly sized, Pile-trained Mamba models showed no such beginning advantage.
+A more closely matched 8B comparison pointed in the same direction: a hybrid Mamba-2 model with a small number of attention layers showed a larger beginning advantage than the pure Mamba-2 model, but the difference between them remains too uncertain for a firm conclusion.
+The contrast appears in larger but not the smallest model pairs, is not explained by the tested change of training corpus, and reappears for Pythia on a synthetic retrieval task.
+Prompt changes can strongly alter the pattern, and exploratory internal-state analyses show that Mamba retains position information even without the beginning advantage.
+These findings suggest that model design affects how available evidence is used across a context, but they do not show that attention itself is the cause.
 \end{abstract}
 
 \section{Introduction}
@@ -44,7 +46,8 @@ Together they establish an exploratory architecture-position interaction and mot
 
 Transformers often read multi-document contexts unevenly: accuracy peaks when the answer-bearing document is near an edge and falls in the middle \citep{liu2024lost}.
 This behavior matters because retrieval systems cannot assume that all evidence positions are equally usable.
-Prior work links lost-in-the-middle behavior to U-shaped attention patterns \citep{hsieh2024found}, but model-family comparisons still confound sequence mixing with data, tokenizer, scale, depth, and positional encoding.
+Long-context benchmarks expose related failures across question answering, summarization, and retrieval \citep{bai2024longbench,shaham2023zeroscrolls,li2024loogle}.
+Prior work links lost-in-the-middle behavior to U-shaped attention patterns \citep{hsieh2024found}, but model-family comparisons still confound sequence mixing with data, tokenizer, scale, depth, and positional encoding \citep{su2024roformer,press2022alibi}.
 State-space models such as Mamba \citep{gu2023mamba,dao2024mamba2} provide a useful contrast because they compress the prefix into a recurrent state instead of using dense causal attention.
 
 We make three contributions.
@@ -56,41 +59,46 @@ All reported results use an exploratory split; the held-out confirmatory split r
 \section{Related work}
 \label{sec:related}
 
-\paragraph{Position bias in long contexts.}
+\runin{Position bias in long contexts}
 \citet{liu2024lost} established the lost-in-the-middle curve in retrieval and multi-document QA.
-Subsequent work measures effective context length \citep{hsieh2024ruler}, associates the curve with attention allocation \citep{hsieh2024found}, and proposes context-use interventions \citep{an2024make,peysakhovich2023attention}.
+This task derives its questions from Natural Questions \citep{kwiatkowski2019nq}, while LongBench, ZeroSCROLLS, and LooGLE broaden long-context evaluation across tasks, languages, and reasoning demands \citep{bai2024longbench,shaham2023zeroscrolls,li2024loogle}.
+Subsequent work measures effective context length \citep{hsieh2024ruler}, associates the curve with attention allocation \citep{hsieh2024found}, and proposes reordering, compression, retrieval, and context-use interventions \citep{an2024make,peysakhovich2023attention,jiang2024longllmlingua,xu2024recomp,agrawal2024rr}.
+Irrelevant context can itself distract a model, motivating our use of the same distractors at every tested position \citep{shi2023distracted}.
 We focus on whether the curve changes across sequence mixers.
 
-\paragraph{Sequence mixers.}
-Dense self-attention \citep{vaswani2017attention} mixes token pairs under a causal mask, while Mamba and Mamba-2 carry information through selective state-space recurrences \citep{gu2023mamba,dao2024mamba2}.
-Hybrid models interleave the two mixers \citep{lieber2024jamba,nvidia2025nemotronh}.
+\runin{Sequence mixers}
+Dense self-attention \citep{vaswani2017attention} mixes token pairs under a causal mask and commonly encodes order with rotary embeddings or linear attention biases \citep{su2024roformer,press2022alibi}.
+Alternative long-sequence mixers include structured state spaces, recurrent weighted key-value models, and long convolutions \citep{gu2022s4,peng2023rwkv,poli2023hyena}.
+Mamba and Mamba-2 carry information through selective state-space recurrences \citep{gu2023mamba,dao2024mamba2}.
+Hybrid models such as Griffin, Jamba, and Nemotron-H combine recurrent or state-space blocks with attention \citep{de2024griffin,lieber2024jamba,nvidia2025nemotronh}.
 \citet{waleffe2024empirical} release the pure and hybrid 8B Mamba-2 checkpoints used in our tightest controlled comparison.
 
-\paragraph{Attention sinks.}
-\citet{xiao2024efficient} showed that causal transformers can concentrate attention on initial tokens.
+\runin{Attention sinks and probes}
+\citet{xiao2024efficient} showed that causal transformers can concentrate attention on initial tokens, and \citet{sun2024massive} connected unusually large internal activations to a small set of tokens.
 We test whether this attention-sink statistic covaries with primacy, treating the result as correlational because a valid sink-blocking ablation is absent.
+Our position probe follows the principle that a diagnostic classifier needs a control task before its accuracy can be interpreted as evidence about a representation \citep{hewitt2019probes}.
 
 \section{Measurement and statistics}
 \label{sec:method}
 
-\paragraph{Task and anchors.}
-We use the 2{,}655 released questions from the Lost-in-the-Middle 10-document QA setting \citep{liu2024lost}.
+\runin{Task and anchors}
+We use the 2{,}655 released questions from the Lost-in-the-Middle 10-document QA setting \citep{liu2024lost}, which is built from Natural Questions \citep{kwiatkowski2019nq}.
 Each question has one gold document and nine distractors.
 We build ten prompts per question, moving only the gold document through positions $0$ to $9$ while retaining the same distractors and token budget.
 A no-gold floor measures guessing or memorized knowledge, and a gold-only ceiling measures answerability under perfect retrieval.
 
-\paragraph{Edges and statistics.}
+\runin{Edges and statistics}
 Let $a_S$, $a_M$, and $a_E$ be mean accuracy at start positions $\{0,1\}$, middle positions $\{4,5\}$, and end positions $\{8,9\}$.
 We define primacy as $a_S-a_M$ and recency as $a_E-a_M$.
 The question is the unit of analysis.
-Each of 10{,}000 bootstrap samples draws complete ten-position question bundles with replacement, and model comparisons reuse the same sampled questions.
-We report percentile 95\% confidence intervals and Holm-correct the primacy and recency tests within each comparison family.
+Each of 10{,}000 bootstrap samples draws complete ten-position question bundles with replacement, following the bootstrap principle of resampling the independent unit \citep{efron1979bootstrap}, and model comparisons reuse the same sampled questions.
+We report percentile 95\% confidence intervals and apply Holm's sequential correction to the primacy and recency tests within each comparison family \citep{holm1979multiple}.
 The fixed split contains 800 exploratory and 1{,}855 confirmatory questions.
 Only the exploratory split is reported.
 
-\paragraph{Reproducibility and controls.}
+\runin{Reproducibility and controls}
 The harness vendors the official prompt builder and \texttt{best\_subspan\_em} scorer at a pinned commit.
-It also records normalized exact match and first-line extraction.
+It also records normalized exact match, following the normalization convention popularized by SQuAD \citep{rajpurkar2016squad}, and first-line extraction.
 Generation is greedy with temperature $0$, at most 32 new tokens, fixed seeds, BF16 where supported, pinned model revisions, and one Mamba execution path.
 Each unique run preserves prompts, raw generations, failures, token counts, software versions, and decoding settings.
 The released key-value task provides an executed positive control: the pipeline detects a $+0.38$ Pythia start-versus-middle effect.
@@ -99,10 +107,10 @@ Negative and distractor-order controls are implemented but have no committed run
 \section{Architecture comparisons}
 \label{sec:contrast}
 
-\paragraph{Primary 2.8B comparison.}
+\runin{Primary 2.8B comparison}
 We compare \texttt{pythia-2.8b} \citep{biderman2023pythia} with \texttt{mamba-2.8b} and \texttt{mamba2-2.7b}.
 All are base models pretrained on the Pile \citep{gao2020pile}, have similar parameter counts, and use related tokenizers.
-Table~\ref{tab:phase2} and Figure~\ref{fig:phase2} show a positive primacy edge for Pythia and no positive primacy edge for either Mamba model.
+Table~\ref{tab:phase2} and Figure~\ref{fig:primary-curves} show a positive primacy edge for Pythia and no positive primacy edge for either Mamba model.
 The paired Mamba-minus-Pythia primacy interactions are $-0.053$ and $-0.070$ (both Holm $p<10^{-4}$), while Mamba-1 versus Mamba-2 is uncertain ($+0.017$, 95\% CI $[-0.005,0.038]$).
 All three models have positive recency edges.
 These comparisons match corpus and approximate scale, but not depth, positional encoding, state size, or checkpoint family.
@@ -126,14 +134,23 @@ Model & Primacy (95\% CI) & Recency (95\% CI) & Floor / Ceiling \\
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.52\linewidth]{figures/phase2-curves.png}
-\caption{Accuracy versus gold position in the 2.8B comparison.
-Pythia rises at the start; all models rise at the end.
-Dotted lines are each model's floor and ceiling.}
-\label{fig:phase2}
+\begin{minipage}[t]{0.49\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figures/phase2-curves.png}
+\textbf{(a) Pile-trained models near 2.8B parameters}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.49\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figures/phase3-curves.png}
+\textbf{(b) Matched pure and hybrid Mamba-2 models at 8B}
+\end{minipage}
+\caption{Accuracy as the answer-bearing document moves through the context on 800 exploratory questions.
+Pythia rises at the beginning, while both smaller Mamba variants do not; the matched 8B hybrid also rises more than the pure model, but their paired difference remains uncertain.
+Dotted lines show each model's no-gold floor and gold-only ceiling.}
+\label{fig:primary-curves}
 \end{figure}
 
-\paragraph{Matched 8B attention comparison.}
+\runin{Matched 8B attention comparison}
 Our strongest control uses NVIDIA's pure and hybrid 8B Mamba-2 checkpoints \citep{waleffe2024empirical}, which share training data, tokenizer, scale, depth, and positional setup.
 The hybrid contains 7\% attention layers.
 Within models, the pure model's primacy edge is uncertain ($+0.008$, $p=0.36$) and the hybrid's is positive ($+0.027$, $p=0.007$).
@@ -158,72 +175,48 @@ hybrid minus pure & $+0.019$ & $[-0.006,0.044]$ & $0.144$ \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.44\linewidth]{figures/phase3-attention-effect.png}
-\caption{Hybrid-minus-pure 8B edge effects.
-The primacy interval crosses zero; recency decreases, but its Holm-corrected $p$-value is $0.089$.}
-\label{fig:phase3}
-\end{figure}
-
 \section{Scope checks}
 \label{sec:robust}
 
-\paragraph{Scale.}
-Across five approximate size pairs, the Pythia-minus-Mamba primacy gap is near zero at the two smallest scales and is $+0.062$, $+0.069$, and $+0.053$ in the three larger pairs (Figure~\ref{fig:phase4}).
+\runin{Scale}
+Across five approximate size pairs, the Pythia-minus-Mamba primacy gap is near zero at the two smallest scales and is $+0.062$, $+0.069$, and $+0.053$ in the three larger pairs (Figure~\ref{fig:artifact-scale-corpus}).
 The smallest Pythia ceiling is only $0.009$, so this is a descriptive capability-and-family trend, not evidence for a depth threshold.
 
-\paragraph{Training corpus.}
-Holding the Mamba-2.8B architecture fixed, the SlimPajama-minus-Pile primacy effect is $-0.007$ (95\% CI $[-0.030,0.016]$, $p=0.568$) and the recency effect is $-0.016$ (95\% CI $[-0.044,0.012]$, Holm $p=0.502$) \citep{soboleva2023slimpajama}.
-The floor differs substantially ($0.270$ versus $0.114$), so this comparison finds no edge-shape change but does not rule out training-data effects.
+\runin{Training corpus}
+Holding the Mamba-2.8B architecture fixed, the Pile-minus-SlimPajama primacy effect is $-0.007$ (95\% CI $[-0.030,0.016]$, $p=0.568$) and the recency effect is $-0.016$ (95\% CI $[-0.044,0.012]$, Holm $p=0.502$) \citep{soboleva2023slimpajama}.
+The floor differs substantially ($0.270$ versus $0.114$), so this comparison finds no edge-shape change but does not rule out training-data effects (Figure~\ref{fig:artifact-scale-corpus}).
 
-\paragraph{Synthetic retrieval.}
+\runin{Synthetic retrieval}
 On 50 RULER \texttt{niah\_single\_1} examples at 2K tokens \citep{hsieh2024ruler}, Pythia again has a primacy edge ($+0.12$, 95\% CI $[0.05,0.20]$).
-Both Mamba models score $1.0$ at every depth, so this check reproduces the transformer pattern but cannot compare mixer curves on the synthetic task.
+Both Mamba models score $1.0$ at every depth, so this check reproduces the transformer pattern but cannot compare mixer curves on the synthetic task (Figure~\ref{fig:artifact-task-sink}).
 
-\paragraph{Descriptive system comparison.}
+\runin{Descriptive system comparison}
 We also run \texttt{Llama-3.1-8B} \citep{dubey2024llama}, \texttt{Qwen2.5-7B} \citep{yang2024qwen2}, and \texttt{Nemotron-H-8B} \citep{nvidia2025nemotronh}.
 All three show positive primacy edges ($+0.076$, $+0.041$, $+0.067$).
 Only Llama versus Qwen has a significant paired primacy interaction ($+0.036$, Holm $p=0.016$).
-Because the systems differ on architecture, data, tokenizer, token count, depth, and positional encoding, these results establish prevalence, not an architectural explanation.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.46\linewidth]{figures/phase4-scale-gap.png}
-\caption{Pythia-minus-Mamba edge differences across approximate size pairs.
-The larger-model primacy gaps are descriptive because capability and several architectural factors vary together.}
-\label{fig:phase4}
-\end{figure}
+Because the systems differ on architecture, data, tokenizer, token count, depth, and positional encoding, these results establish prevalence, not an architectural explanation (Figure~\ref{fig:artifact-production}).
 
 \section{Mechanistic evidence and intervention}
 \label{sec:mechanism}
 
-\paragraph{Attention sinks track primacy.}
+\runin{Attention sinks track primacy}
 Across the Pythia family, the 160M model has almost no token-0 attention sink (final-layer share $0.003$), while the 2.8B model reaches $0.455$ \citep{xiao2024efficient}.
 Pythia-410M has a small final-layer sink ($0.034$) and no significant primacy edge.
-Figure~\ref{fig:sink} is consistent with a sink mechanism, but the measurements share model scale as a confound and no valid sink ablation was completed.
+Figure~\ref{fig:artifact-task-sink} is consistent with a sink mechanism, but the measurements share model scale as a confound and no valid sink ablation was completed.
 
-\paragraph{Utilization, not storage, is a hypothesis.}
+\runin{Utilization, not storage, is a hypothesis}
 A balanced linear probe on frozen mid-depth states predicts edge versus middle position above its shuffled-label control for Pythia ($0.603$ versus $0.484$) and Mamba ($0.648$ versus $0.508$).
 Thus position information remains linearly decodable even when Mamba has no positive primacy edge.
 This supports a utilization hypothesis, but probe decodability does not prove that the model stores or uses the answer-bearing content.
 
-\paragraph{Training-free prompt intervention.}
+\runin{Training-free prompt intervention}
 On 200 exploratory questions, repeating the question both before and after the documents increases Mamba primacy from $0.000$ to $+0.103$ ($p<10^{-4}$).
 Placing the question only before the documents does not create primacy ($+0.020$, $p=0.366$), but reduces recency from $+0.070$ to $+0.010$.
 The intervention is training-free and practically useful, but it changes query repetition and token placement together, so it is not a clean test of fixed-state compression.
 
-\paragraph{Prompt sensitivity.}
+\runin{Prompt sensitivity}
 Changing the prompt template reduces Pythia primacy from $+0.070$ to $+0.005$ in the 200-question mechanism subset.
 This result warns against treating the measured magnitude as a template-invariant architectural constant.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.45\linewidth]{figures/phase7-sink.png}
-\caption{Mean token-0 attention share by Pythia layer and scale.
-Late-layer sink mass covaries with primacy but is not causally identified.}
-\label{fig:sink}
-\end{figure}
 
 \section{Discussion and limitations}
 \label{sec:discussion}
@@ -245,17 +238,79 @@ The next decisive study should freeze exclusions and contrasts, complete these c
 
 On 800 exploratory Lost-in-the-Middle questions, Pythia-2.8B and two Pile-trained Mamba models have different primacy profiles under a paired ten-position evaluation.
 A matched 8B comparison is directionally consistent but statistically uncertain, so the present evidence supports an architecture-position interaction without establishing that attention causes it.
-The held-out split and completed control suite now provide a clear path from this exploratory workshop result to a confirmatory claim.
+The held-out split and the remaining control work provide a clear path from this exploratory workshop result to a confirmatory study.
+
+\appendix
+\section{Experiment artifacts}
+\label{sec:artifacts}
+
+The repository preserves raw generations, environment records, machine-readable summaries, and plots for every reported phase.
+The panels below reproduce the exact committed artifact images without redrawing or smoothing them.
+They summarize scope and mechanism checks that support interpretation but do not upgrade the exploratory results to confirmatory or causal evidence.
+
+\begin{figure}[H]
+\centering
+\begin{minipage}[t]{0.49\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figures/phase4-scale-gap.png}
+\textbf{(a) Phase 4 scale sweep}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.49\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figures/phase5-corpus-effect.png}
+\textbf{(b) Phase 5 corpus comparison}
+\end{minipage}
+\caption{Exploratory scope checks.
+The scale sweep is descriptive because model capability and family differences vary together.
+The corpus comparison holds the Mamba architecture fixed and finds no clear change in curve shape, despite a substantial change in overall accuracy.}
+\label{fig:artifact-scale-corpus}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{minipage}[t]{0.49\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figures/phase6-task-comparison-2048.png}
+\textbf{(a) Phase 6 synthetic retrieval at 2K}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.49\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figures/phase7-attention-sink.png}
+\textbf{(b) Phase 7 attention-sink scan}
+\end{minipage}
+\caption{Exploratory task and mechanism artifacts.
+Pythia has a middle dip on the 2K synthetic task, while both Mamba models saturate and therefore cannot reveal a comparable curve.
+Late-layer token-0 attention grows with Pythia scale and covaries with the beginning advantage, but scale is a shared confound and no valid causal ablation was completed.}
+\label{fig:artifact-task-sink}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.72\linewidth]{figures/phase8-production-curves.png}
+\caption{Phase 8 descriptive production-system comparison.
+All three systems show a beginning advantage, but differences in architecture, data, tokenizer, training, and capability prevent attribution to a single design choice.}
+\label{fig:artifact-production}
+\end{figure}
 
 \newpage
 {
 \small
 \begin{thebibliography}{99}
 
+\bibitem[Agrawal et al.(2024)]{agrawal2024rr}
+D.~Agrawal, S.~Gao, and M.~Gajek.
+\newblock Can't remember details in long documents? You need some R\&R.
+\newblock In \emph{Findings of the Association for Computational Linguistics: EMNLP}, pages 12692-12704, 2024.
+
 \bibitem[An et al.(2024)]{an2024make}
 C.~An, S.~Huang, J.~Zhang, et al.
 \newblock Make your LLM fully utilize the context.
-\newblock \emph{arXiv:2404.16811}, 2024.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2024.
+
+\bibitem[Bai et al.(2024)]{bai2024longbench}
+Y.~Bai, X.~Lv, J.~Zhang, et al.
+\newblock LongBench: A bilingual, multitask benchmark for long context understanding.
+\newblock In \emph{Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics}, pages 3119-3137, 2024.
 
 \bibitem[Biderman et al.(2023)]{biderman2023pythia}
 S.~Biderman, H.~Schoelkopf, Q.~Anthony, et al.
@@ -267,6 +322,11 @@ T.~Dao and A.~Gu.
 \newblock Transformers are SSMs: Generalized models and efficient algorithms through structured state space duality.
 \newblock In \emph{International Conference on Machine Learning}, 2024.
 
+\bibitem[De et al.(2024)]{de2024griffin}
+S.~De, S.~L. Smith, A.~Fernando, et al.
+\newblock Griffin: Mixing gated linear recurrences with local attention for efficient language models.
+\newblock \emph{arXiv:2402.19427}, 2024.
+
 \bibitem[Dubey et al.(2024)]{dubey2024llama}
 A.~Dubey, A.~Jauhri, A.~Pandey, et al.
 \newblock The Llama 3 herd of models.
@@ -277,10 +337,30 @@ L.~Gao, S.~Biderman, S.~Black, et al.
 \newblock The Pile: An 800GB dataset of diverse text for language modeling.
 \newblock \emph{arXiv:2101.00027}, 2020.
 
-\bibitem[Gu and Dao(2023)]{gu2023mamba}
+\bibitem[Efron(1979)]{efron1979bootstrap}
+B.~Efron.
+\newblock Bootstrap methods: Another look at the jackknife.
+\newblock \emph{The Annals of Statistics}, 7(1):1-26, 1979.
+
+\bibitem[Gu and Dao(2024)]{gu2023mamba}
 A.~Gu and T.~Dao.
 \newblock Mamba: Linear-time sequence modeling with selective state spaces.
-\newblock \emph{arXiv:2312.00752}, 2023.
+\newblock In \emph{Conference on Language Modeling}, 2024.
+
+\bibitem[Gu et al.(2022)]{gu2022s4}
+A.~Gu, K.~Goel, and C.~R\'e.
+\newblock Efficiently modeling long sequences with structured state spaces.
+\newblock In \emph{International Conference on Learning Representations}, 2022.
+
+\bibitem[Hewitt and Liang(2019)]{hewitt2019probes}
+J.~Hewitt and P.~Liang.
+\newblock Designing and interpreting probes with control tasks.
+\newblock In \emph{Proceedings of EMNLP-IJCNLP}, pages 2733-2743, 2019.
+
+\bibitem[Holm(1979)]{holm1979multiple}
+S.~Holm.
+\newblock A simple sequentially rejective multiple test procedure.
+\newblock \emph{Scandinavian Journal of Statistics}, 6(2):65-70, 1979.
 
 \bibitem[Hsieh et al.(2024a)]{hsieh2024found}
 C.-P. Hsieh, S.~Sun, S.~Kriman, S.~Acharya, D.~Rekesh, F.~Jia, and B.~Ginsburg.
@@ -290,12 +370,27 @@ C.-P. Hsieh, S.~Sun, S.~Kriman, S.~Acharya, D.~Rekesh, F.~Jia, and B.~Ginsburg.
 \bibitem[Hsieh et al.(2024b)]{hsieh2024ruler}
 C.-P. Hsieh, S.~Sun, S.~Kriman, et al.
 \newblock RULER: What's the real context size of your long-context language models?
-\newblock \emph{arXiv:2404.06654}, 2024.
+\newblock In \emph{Conference on Language Modeling}, 2024.
+
+\bibitem[Jiang et al.(2024)]{jiang2024longllmlingua}
+H.~Jiang, Q.~Wu, X.~Luo, et al.
+\newblock LongLLMLingua: Accelerating and enhancing LLMs in long context scenarios via prompt compression.
+\newblock In \emph{Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics}, pages 1658-1677, 2024.
+
+\bibitem[Kwiatkowski et al.(2019)]{kwiatkowski2019nq}
+T.~Kwiatkowski, J.~Palomaki, O.~Redfield, et al.
+\newblock Natural Questions: A benchmark for question answering research.
+\newblock \emph{Transactions of the Association for Computational Linguistics}, 7:452-466, 2019.
 
 \bibitem[Lieber et al.(2024)]{lieber2024jamba}
 O.~Lieber, B.~Lenz, H.~Bata, et al.
 \newblock Jamba: A hybrid Transformer-Mamba language model.
 \newblock \emph{arXiv:2403.19887}, 2024.
+
+\bibitem[Li et al.(2024)]{li2024loogle}
+J.~Li, M.~Wang, Z.~Zheng, and M.~Zhang.
+\newblock LooGLE: Can long-context language models understand long contexts?
+\newblock In \emph{Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics}, pages 16304-16333, 2024.
 
 \bibitem[Liu et al.(2024)]{liu2024lost}
 N.~F. Liu, K.~Lin, J.~Hewitt, A.~Paranjape, M.~Bevilacqua, F.~Petroni, and P.~Liang.
@@ -312,10 +407,50 @@ A.~Peysakhovich and A.~Lerer.
 \newblock Attention sorting combats recency bias in long context language models.
 \newblock \emph{arXiv:2310.01427}, 2023.
 
+\bibitem[Peng et al.(2023)]{peng2023rwkv}
+B.~Peng, E.~Alcaide, Q.~Anthony, et al.
+\newblock RWKV: Reinventing RNNs for the Transformer era.
+\newblock In \emph{Findings of the Association for Computational Linguistics: EMNLP}, pages 14048-14077, 2023.
+
+\bibitem[Poli et al.(2023)]{poli2023hyena}
+M.~Poli, S.~Massaroli, E.~Nguyen, et al.
+\newblock Hyena hierarchy: Towards larger convolutional language models.
+\newblock In \emph{International Conference on Machine Learning}, volume 202 of PMLR, pages 28043-28078, 2023.
+
+\bibitem[Press et al.(2022)]{press2022alibi}
+O.~Press, N.~A. Smith, and M.~Lewis.
+\newblock Train short, test long: Attention with linear biases enables input length extrapolation.
+\newblock In \emph{International Conference on Learning Representations}, 2022.
+
+\bibitem[Rajpurkar et al.(2016)]{rajpurkar2016squad}
+P.~Rajpurkar, J.~Zhang, K.~Lopyrev, and P.~Liang.
+\newblock SQuAD: 100,000+ questions for machine comprehension of text.
+\newblock In \emph{Proceedings of EMNLP}, pages 2383-2392, 2016.
+
+\bibitem[Shaham et al.(2023)]{shaham2023zeroscrolls}
+U.~Shaham, M.~Ivgi, A.~Efrat, J.~Berant, and O.~Levy.
+\newblock ZeroSCROLLS: A zero-shot benchmark for long text understanding.
+\newblock In \emph{Findings of the Association for Computational Linguistics: EMNLP}, pages 7977-7989, 2023.
+
+\bibitem[Shi et al.(2023)]{shi2023distracted}
+F.~Shi, X.~Chen, K.~Misra, N.~Scales, D.~Dohan, E.~H. Chi, N.~Sch\"arli, and D.~Zhou.
+\newblock Large language models can be easily distracted by irrelevant context.
+\newblock In \emph{International Conference on Machine Learning}, volume 202 of PMLR, pages 31210-31227, 2023.
+
 \bibitem[Soboleva et al.(2023)]{soboleva2023slimpajama}
 D.~Soboleva, F.~Al-Khateeb, R.~Myers, et al.
 \newblock SlimPajama: A 627B token cleaned and deduplicated version of RedPajama.
 \newblock Cerebras technical report, 2023.
+
+\bibitem[Su et al.(2024)]{su2024roformer}
+J.~Su, Y.~Lu, S.~Pan, A.~Murtadha, B.~Wen, and Y.~Liu.
+\newblock RoFormer: Enhanced transformer with rotary position embedding.
+\newblock \emph{Neurocomputing}, 568:127063, 2024.
+
+\bibitem[Sun et al.(2024)]{sun2024massive}
+M.~Sun, X.~Chen, J.~Kolter, and Z.~Liu.
+\newblock Massive activations in large language models.
+\newblock \emph{arXiv:2402.17762}, 2024.
 
 \bibitem[Vaswani et al.(2017)]{vaswani2017attention}
 A.~Vaswani, N.~Shazeer, N.~Parmar, et al.
@@ -336,6 +471,11 @@ G.~Xiao, Y.~Tian, B.~Chen, S.~Han, and M.~Lewis.
 A.~Yang, B.~Yang, B.~Zhang, et al.
 \newblock Qwen2.5 technical report.
 \newblock \emph{arXiv:2412.15115}, 2024.
+
+\bibitem[Xu et al.(2024)]{xu2024recomp}
+F.~Xu, W.~Shi, and E.~Choi.
+\newblock RECOMP: Improving retrieval-augmented LMs with compression and selective augmentation.
+\newblock In \emph{International Conference on Learning Representations}, 2024.
 
 \end{thebibliography}
 }
