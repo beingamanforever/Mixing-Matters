@@ -1,6 +1,6 @@
 # Reference research and citation audit
 
-This note records the primary-source checks used to expand and correct the paper bibliography on 2026-08-12.
+This note records the primary-source checks used to expand and correct the paper bibliography through 2026-08-14.
 The additions were selected only when they support a claim that appears in the paper.
 
 ## Added primary references and insertion rationale
@@ -24,19 +24,28 @@ The additions were selected only when they support a claim that appears in the p
 - `shi2023distracted` cites the [PMLR paper](https://proceedings.mlr.press/v202/shi23a.html) to motivate holding irrelevant documents fixed across positions.
 - `hewitt2019probes` cites the [ACL Anthology record](https://aclanthology.org/D19-1275/) to justify shuffled-label controls for diagnostic probes.
 - `sun2024massive` cites the [primary preprint](https://arxiv.org/abs/2402.17762) to place attention-sink measurements beside related activation phenomena.
+- `huang2025well` cites the [ACL Anthology record](https://aclanthology.org/2025.coling-main.3/) for cross-architecture long-context failures in recurrent, hybrid, and Transformer models.
+- `airlangga2025primacy` cites the [primary preprint](https://arxiv.org/abs/2506.15156) for a contrasting U-shaped Mamba recall result that motivates the paper's task-and-prompt boundary.
+- `ali2025hidden` cites the [ACL Anthology record](https://aclanthology.org/2025.acl-long.77/) for the implicit-attention formulation used to motivate future Mamba mechanism tests.
 
 ## Corrected venue metadata
 
 - `an2024make` is recorded as a NeurIPS 2024 paper rather than only as an arXiv preprint.
+- `an2024make` now has the complete author list from the proceedings record.
 - `gu2023mamba` is recorded as a COLM 2024 paper rather than only as an arXiv preprint.
 - `hsieh2024ruler` is recorded as a COLM 2024 paper rather than only as an arXiv preprint.
+- `hsieh2024found` now has the complete author list from the ACL Anthology record.
+- `dao2024mamba2` now includes the ICML PMLR volume and page range.
+- `su2024roformer` now has the complete author list and the journal article number.
+- `sun2024massive` is recorded as a COLM 2024 paper rather than only as an arXiv preprint.
+- `soboleva2023slimpajama` is identified as a dataset card and release rather than a technical report.
 - `waleffe2024empirical` remains an arXiv report because the audited source did not establish a proceedings venue.
 - `nvidia2025nemotronh` remains a technical report because the audited source did not establish a proceedings venue.
 
-## Thirty-six-reference audit
+## Thirty-nine-reference audit
 
-The bibliography defines exactly 36 unique keys after adding 19 references to the original 17.
-The defined keys are `agrawal2024rr`, `an2024make`, `bai2024longbench`, `biderman2023pythia`, `dao2024mamba2`, `de2024griffin`, `dubey2024llama`, `efron1979bootstrap`, `gao2020pile`, `gu2022s4`, `gu2023mamba`, `hewitt2019probes`, `holm1979multiple`, `hsieh2024found`, `hsieh2024ruler`, `jiang2024longllmlingua`, `kwiatkowski2019nq`, `li2024loogle`, `lieber2024jamba`, `liu2024lost`, `nvidia2025nemotronh`, `peng2023rwkv`, `peysakhovich2023attention`, `poli2023hyena`, `press2022alibi`, `rajpurkar2016squad`, `shaham2023zeroscrolls`, `shi2023distracted`, `soboleva2023slimpajama`, `su2024roformer`, `sun2024massive`, `vaswani2017attention`, `waleffe2024empirical`, `xiao2024efficient`, `xu2024recomp`, and `yang2024qwen2`.
+The bibliography defines exactly 39 unique keys.
+The newly added cross-architecture keys are `huang2025well`, `airlangga2025primacy`, and `ali2025hidden`; the remaining 36 keys are retained from the prior audit.
 Every defined key appears in a `\citep` or `\citet` command outside the bibliography.
 No citation key used in the prose is undefined.
 The citations support dataset lineage, evaluation practice, sequence mixers, positional mechanisms, long-context benchmarks, context interventions, distractor controls, probes, or the exact model families studied.
