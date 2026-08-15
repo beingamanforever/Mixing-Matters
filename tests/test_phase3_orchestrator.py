@@ -33,6 +33,8 @@ def test_setup_uses_venv_startup_shim_without_modifying_megatron() -> None:
 
     assert "mixing_torch_compat.pth" in script
     assert "import mixing_torch_compat" in script
+    assert 'cat > "$SITE_PACKAGES/amp_C.py"' in script
+    assert "from megatron.inference import text_generation" in script
     assert 'cat > "$MEGATRON/megatron/core/jit.py"' not in script
 
 

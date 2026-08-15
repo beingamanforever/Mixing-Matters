@@ -81,6 +81,19 @@ class _MultiTensorApplier:
 
 multi_tensor_applier = _MultiTensorApplier()
 PY
+cat > "$SITE_PACKAGES/amp_C.py" <<'PY'
+"""Inference-only placeholder for Apex's optimizer CUDA extension."""
+
+
+def multi_tensor_l2norm(*args: object, **kwargs: object) -> None:
+    """Reject an unexpected training-only norm call."""
+    raise RuntimeError("amp_C stub is unavailable during inference")
+
+
+def multi_tensor_scale(*args: object, **kwargs: object) -> None:
+    """Reject an unexpected training-only scale call."""
+    raise RuntimeError("amp_C stub is unavailable during inference")
+PY
 cat > "$APEX_DIR/normalization/__init__.py" <<'PY'
 from .fused_layer_norm import (  # noqa
     FusedLayerNorm,
@@ -161,8 +174,10 @@ import transformer_engine.pytorch as te
 print('transformer_engine OK')
 "
 PYTHONPATH="$MEGATRON" NVTE_TORCH_COMPILE=0 NVTE_FLASH_ATTN=0 "$PY" -c "
+from megatron.inference import text_generation
 from megatron.core.transformer.spec_utils import import_module
 spec = import_module(('megatron.core.models.mamba.mamba_layer_specs', 'mamba_stack_spec'))
+print('MEGATRON_INFERENCE_OK', bool(text_generation))
 print('MAMBA_STACK_SPEC_OK', spec is not None)
 "
 echo "== bare-metal setup complete"
