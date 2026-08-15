@@ -7,7 +7,8 @@
 # prebuilt wheels instead of the container, then adds a compiled
 # transformer-engine (the mamba layer spec hard-requires it for its norm and
 # attention-layer modules) and two small compatibility shims Python 3.12
-# needs that the container's Python 3.10 does not.
+# needs that the container's Python 3.10 does not. Both shims live in the
+# venv, so the pinned Megatron checkout remains unchanged.
 set -euo pipefail
 
 VENV=${VENV:-/root/mm-venv}
@@ -31,6 +32,7 @@ echo "== causal-conv1d 1.2.2.post1 + mamba-ssm 2.0.3 (prebuilt cp312/torch2.2 wh
 echo "== support libraries"
 "$PIP" install -q "numpy<2" transformers==4.37.2 "sentencepiece>=0.2.0" flask-restful regex \
   "pydantic<3" six einops packaging "setuptools<81"
+SITE_PACKAGES=$("$PY" -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
 
 echo "== flash-attn (prebuilt cp312/torch2.2 wheel; only needed to satisfy TE's import, not used directly)"
 "$PIP" install -q --no-deps "https://github.com/Dao-AILab/flash-attention/releases/download/v2.5.9.post1/flash_attn-2.5.9.post1+cu122torch2.2cxx11abiFALSE-cp312-cp312-linux_x86_64.whl"
@@ -52,7 +54,7 @@ echo "   fused-norm training kernels, none of which run during greedy inference"
 echo "   (inference uses Transformer Engine norms and never builds an optimizer)."
 echo "   Real apex needs a heavy source build; these stubs only satisfy the imports"
 echo "   and raise if anything actually tries to call the training-only paths."
-APEX_DIR="$VENV/lib/python3.12/site-packages/apex"
+APEX_DIR="$SITE_PACKAGES/apex"
 mkdir -p "$APEX_DIR"/{contrib/layer_norm,multi_tensor_apply,normalization,optimizers,transformer}
 cat > "$APEX_DIR/__init__.py" <<'PY'
 # Minimal apex stub for Megatron-LM INFERENCE on a bare-metal venv. Real NVIDIA
@@ -123,36 +125,30 @@ def fused_apply_rotary_pos_emb_thd(*a, **k):
     raise RuntimeError("apex stub not available")
 PY
 
-echo "== patch Megatron's jit fuser for Python 3.12"
+echo "== install Python 3.12 torch.compile compatibility shim"
 echo "   megatron/core/jit.py sets jit_fuser = torch.compile for torch >= 2.2, but"
 echo "   TorchDynamo does not support Python 3.12 in torch 2.2. The fuser is only an"
 echo "   elementwise-fusion optimization the SSM math never depends on (that runs in"
-echo "   the mamba-ssm CUDA kernels either way), so it is safe to no-op on 3.12."
-cat > "$MEGATRON/megatron/core/jit.py" <<'PY'
-# Copyright (c) 2024, NVIDIA CORPORATION. All rights reserved.
+echo "   the mamba-ssm CUDA kernels either way), so the venv runs it eagerly."
+cat > "$SITE_PACKAGES/sitecustomize.py" <<'PY'
+"""Keep torch 2.2 eager on Python 3.12 without changing Megatron-LM."""
 
+from collections.abc import Callable
 import sys
+from typing import Any, TypeVar
 
 import torch
 
-TORCH_MAJOR = int(torch.__version__.split(".")[0])
-TORCH_MINOR = int(torch.__version__.split(".")[1])
+Function = TypeVar("Function", bound=Callable[..., Any])
 
 
-def _noop_fuser(fn):
-    return fn
+def _eager_compile(function: Function, *args: object, **kwargs: object) -> Function:
+    """Return a function unchanged when TorchDynamo cannot run."""
+    return function
 
 
-# torch.compile (TorchDynamo) is unsupported on Python 3.12 in torch 2.2, and
-# torch.jit.script cannot script some of the fused helpers there. The fuser is
-# only an elementwise-fusion perf optimization (the SSM math runs in mamba-ssm
-# CUDA kernels regardless), so fall back to eager on 3.12.
-if sys.version_info >= (3, 12):
-    jit_fuser = _noop_fuser
-elif (TORCH_MAJOR > 2) or (TORCH_MAJOR == 2 and TORCH_MINOR >= 2):
-    jit_fuser = torch.compile
-else:
-    jit_fuser = torch.jit.script
+if sys.version_info >= (3, 12) and torch.__version__.startswith("2.2."):
+    torch.compile = _eager_compile
 PY
 
 echo "== verify the full stack"
