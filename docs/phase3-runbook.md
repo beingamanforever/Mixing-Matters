@@ -55,7 +55,7 @@ git clone https://github.com/NVIDIA/Megatron-LM.git && git -C Megatron-LM checko
 VENV=/root/mm-venv MEGATRON=/root/Megatron-LM bash scripts/setup_baremetal_megatron.sh
 ```
 
-This provisions the venv, installs the pinned prebuilt wheels, compiles the Transformer Engine torch bindings, writes the apex stub and Python 3.12 compatibility shim, and verifies the full import chain, including that the mamba stack spec resolves.
+This provisions the venv, installs the pinned prebuilt wheels and Pybind11 build dependency, compiles the Transformer Engine torch bindings and Megatron dataset helper, writes the inference-only Apex stubs and Python 3.12 compatibility shim, and verifies the full import chain, including that the inference API and Mamba stack spec resolve.
 
 Download the two checkpoints (both are ungated) into per-model directories:
 
