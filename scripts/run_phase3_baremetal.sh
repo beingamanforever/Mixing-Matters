@@ -41,6 +41,7 @@ PIQA_FILE="${MIXING}/data/piqa_valid.jsonl"
 mkdir -p "${OUT_DIR}"
 
 export PYTHONPATH="${MEGATRON}:${MIXING}/src:${MIXING}:${PYTHONPATH:-}"
+export PATH="$(dirname "${VENV}"):${PATH}"
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export TRITON_CACHE_DIR="${OUT_DIR}/triton-cache/"
 # Transformer Engine's own jit fuser and flash-attn backend hit the same

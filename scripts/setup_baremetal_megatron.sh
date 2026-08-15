@@ -31,8 +31,10 @@ echo "== causal-conv1d 1.2.2.post1 + mamba-ssm 2.0.3 (prebuilt cp312/torch2.2 wh
 
 echo "== support libraries"
 "$PIP" install -q "numpy<2" transformers==4.37.2 "sentencepiece>=0.2.0" flask-restful regex \
-  "pydantic<3" six einops packaging "setuptools<81"
+  "pydantic<3" six einops packaging pybind11==2.12.0 "setuptools<81"
 SITE_PACKAGES=$("$PY" -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
+PYTHON_CONFIG=$(command -v python3.12-config)
+ln -sfn "$PYTHON_CONFIG" "$VENV/bin/python3-config"
 
 echo "== flash-attn (prebuilt cp312/torch2.2 wheel; only needed to satisfy TE's import, not used directly)"
 "$PIP" install -q --no-deps "https://github.com/Dao-AILab/flash-attention/releases/download/v2.5.9.post1/flash_attn-2.5.9.post1+cu122torch2.2cxx11abiFALSE-cp312-cp312-linux_x86_64.whl"
@@ -166,6 +168,7 @@ PY
 echo "import mixing_torch_compat" > "$SITE_PACKAGES/mixing_torch_compat.pth"
 
 echo "== verify the full stack"
+PATH="$VENV/bin:$PATH" make -C "$MEGATRON/megatron/core/datasets"
 NVTE_TORCH_COMPILE=0 NVTE_FLASH_ATTN=0 "$PY" -c "
 import torch, mamba_ssm, causal_conv1d, transformers
 from mamba_ssm.ops.triton.ssd_combined import mamba_chunk_scan_combined

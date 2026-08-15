@@ -35,7 +35,15 @@ def test_setup_uses_venv_startup_shim_without_modifying_megatron() -> None:
     assert "import mixing_torch_compat" in script
     assert 'cat > "$SITE_PACKAGES/amp_C.py"' in script
     assert "from megatron.inference import text_generation" in script
+    assert 'PATH="$VENV/bin:$PATH" make -C "$MEGATRON/megatron/core/datasets"' in script
     assert 'cat > "$MEGATRON/megatron/core/jit.py"' not in script
+
+
+def test_launcher_uses_venv_build_tools() -> None:
+    """Megatron's runtime dataset build must use the pinned venv dependencies."""
+    launcher = (REPOSITORY_ROOT / "scripts" / "run_phase3_baremetal.sh").read_text()
+
+    assert 'export PATH="$(dirname "${VENV}"):${PATH}"' in launcher
 
 
 @pytest.mark.parametrize(
