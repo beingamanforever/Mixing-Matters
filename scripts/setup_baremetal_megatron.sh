@@ -130,7 +130,7 @@ echo "   megatron/core/jit.py sets jit_fuser = torch.compile for torch >= 2.2, b
 echo "   TorchDynamo does not support Python 3.12 in torch 2.2. The fuser is only an"
 echo "   elementwise-fusion optimization the SSM math never depends on (that runs in"
 echo "   the mamba-ssm CUDA kernels either way), so the venv runs it eagerly."
-cat > "$SITE_PACKAGES/sitecustomize.py" <<'PY'
+cat > "$SITE_PACKAGES/mixing_torch_compat.py" <<'PY'
 """Keep torch 2.2 eager on Python 3.12 without changing Megatron-LM."""
 
 from collections.abc import Callable
@@ -150,6 +150,7 @@ def _eager_compile(function: Function, *args: object, **kwargs: object) -> Funct
 if sys.version_info >= (3, 12) and torch.__version__.startswith("2.2."):
     torch.compile = _eager_compile
 PY
+echo "import mixing_torch_compat" > "$SITE_PACKAGES/mixing_torch_compat.pth"
 
 echo "== verify the full stack"
 NVTE_TORCH_COMPILE=0 NVTE_FLASH_ATTN=0 "$PY" -c "
