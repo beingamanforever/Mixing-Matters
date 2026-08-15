@@ -27,11 +27,12 @@ LATEST_SHA256 = "3933e3274b63dc01fd286d6d939a626867c83a4603fc4347e0f8b8856f1b98f
 LAUNCHER_SHA256 = "1" * 64
 
 
-def test_setup_uses_sitecustomize_without_modifying_megatron() -> None:
+def test_setup_uses_venv_startup_shim_without_modifying_megatron() -> None:
     """The Python 3.12 workaround must live in the venv, not Megatron."""
     script = SETUP_SCRIPT.read_text()
 
-    assert "sitecustomize.py" in script
+    assert "mixing_torch_compat.pth" in script
+    assert "import mixing_torch_compat" in script
     assert 'cat > "$MEGATRON/megatron/core/jit.py"' not in script
 
 
