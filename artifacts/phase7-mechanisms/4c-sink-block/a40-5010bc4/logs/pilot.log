@@ -1,0 +1,5 @@
+Fetching 4 files:   0%|          | 0/4 [00:00<?, ?it/s]Fetching 4 files:  25%|██▌       | 1/4 [00:19<00:59, 19.70s/it]Fetching 4 files:  50%|█████     | 2/4 [00:40<00:40, 20.12s/it]Fetching 4 files:  75%|███████▌  | 3/4 [00:41<00:13, 13.79s/it]Fetching 4 files: 100%|██████████| 4/4 [00:46<00:00, 11.53s/it]Fetching 4 files: 100%|██████████| 4/4 [00:46<00:00, 11.53s/it]
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00, 92.82it/s]
+NemotronH requires an initialized `NemotronHHybridDynamicCache` to return a cache. None was provided, so no cache will be returned.
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 4/4 [00:00<00:00, 134.55it/s]
+NemotronH requires an initialized `NemotronHHybridDynamicCache` to return a cache. None was provided, so no cache will be returned.
