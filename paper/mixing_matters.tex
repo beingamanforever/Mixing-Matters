@@ -102,7 +102,9 @@ It also records normalized exact match, following the normalization convention p
 Generation is greedy with temperature $0$, at most 32 new tokens, fixed seeds, BF16 where supported, pinned model revisions, and one Mamba execution path.
 Each unique run preserves prompts, raw generations, failures, token counts, software versions, and decoding settings.
 The released key-value task provides an executed positive control: the pipeline detects a $+0.38$ Pythia start-versus-middle effect.
-Negative and distractor-order controls are implemented but have no committed run artifacts, so we do not count them as passed controls.
+On 200 exploratory Pythia questions, sham-gold accuracy was $0.1235$, within $0.0285$ of the $0.0950$ closed-book floor; primacy was $+0.0050$ (95\% CI $[-0.0325,0.0425]$) and recency was $-0.0175$ (95\% CI $[-0.0500,0.0125]$).
+The distractor-order control's permutation accuracies were $0.2850$, $0.3000$, and $0.2767$, a maximum spread of $0.0233$.
+Both controls passed their prespecified gates on Pythia; they do not test the 8B Megatron checkpoints.
 
 \section{Architecture comparisons}
 \label{sec:contrast}
@@ -228,10 +230,10 @@ Several limitations set the confirmatory boundary.
 All analyses use the exploratory split, so the planned 1{,}855-question test must be run under a frozen analysis before confirmatory language is warranted.
 The 2.8B and scale comparisons retain depth, positional-encoding, state-size, and capability confounds.
 The matched 8B paired contrast crosses zero after Holm correction, and its run manifest records a dirty source tree, weakening exact reproducibility.
-The negative and distractor-order controls lack committed outputs.
+These certification controls passed on Pythia, but they do not test the 8B Megatron checkpoints.
 A 50-generation blinded audit sample exists, but human labels were not completed.
 Finally, the attempted hybrid sink block did not alter the model because its custom attention path did not honor the hook; it is not an ablation result.
-The next decisive study should freeze exclusions and contrasts, complete these controls, repair the hybrid intervention, and evaluate the held-out split once.
+The next decisive study should freeze exclusions and contrasts, repair the hybrid intervention, and evaluate the held-out split once.
 
 \section{Conclusion}
 \label{sec:conclusion}
