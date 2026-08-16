@@ -111,13 +111,13 @@ Waleffe et al. 2024 (arXiv:2406.07887) report PIQA 79.82 for the pure 8B Mamba-2
 A garbled checkpoint load, a wrong layer pattern, or a wrong tokenizer shows up as nonsense completions and a PIQA far from the target.
 The orchestrator stops unless both PIQA gates report `PASS` before starting either key-value control or QA sweep.
 
-This run measured PIQA 79.27 for the pure model (delta -0.55, pass) and PIQA 79.65 for the hybrid (delta +0.00, pass).
+This run measured PIQA 79.27 for the pure model (delta -0.55, pass) and PIQA 79.76 for the hybrid (delta +0.11, pass).
 
 Each model runs its own key-value control, which never gates the sweep, and then the ten-position sweep plus the closed-book floor and oracle ceiling: 800 questions times twelve conditions.
 
 Records are written as they are produced, so progress is the record count in `/root/outputs/phase3-clean/<model>-sweep.jsonl`.
 Every record carries the pinned model revision and `execution_path="megatron_cuda_kernels"`.
-The launcher fixes the model-specific attention and MLP ratios, prints the resolved layer pattern to the stage log, and the environment manifest records the pinned checkpoint files and launcher.
+The pinned launcher fixes the model-specific attention and MLP ratios, and the environment manifest records the pinned checkpoint files and launcher hash.
 Both sweeps in this run completed with zero excluded questions and zero scoring failures.
 
 ## Bring the artifacts back and build the report
