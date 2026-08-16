@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "created_at_utc": "2026-08-15T17:31:59.215999+00:00",
+  "method": "bare-metal Megatron-LM",
+  "python": "3.12.3",
+  "platform": "Linux-6.8.0-78-generic-x86_64-with-glibc2.39",
+  "repositories": {
+    "mixing_matters": {
+      "path": "/root/mixing",
+      "sha": "33d6bb5211d02d5ef5040086b18298fdacf31778",
+      "status": []
+    },
+    "megatron": {
+      "path": "/root/Megatron-LM",
+      "sha": "df61e60bf5670b1196fcae2264311401d3bb82db",
+      "status": []
+    }
+  },
+  "dataset": {
+    "path": "/root/mixing/data/nq-open-10_total_documents_gold_at_0.jsonl.gz",
+    "sha256": "192a05b27af2b09eec33ca0c94bb5cf82bcaf70d78b3bdff1258df34bf37aab9"
+  },
+  "piqa": {
+    "path": "/root/mixing/data/piqa_valid.jsonl",
+    "sha256": "61533005e22f175534909b1ec8eacb6da03c233933558d1bafb15787453b1f55"
+  },
+  "packages": [
+    "aniso8601==10.0.1",
+    "annotated-types==0.8.0",
+    "blinker==1.9.0",
+    "causal-conv1d @ https://github.com/Dao-AILab/causal-conv1d/releases/download/v1.2.2.post1/causal_conv1d-1.2.2.post1+cu122torch2.2cxx11abiFALSE-cp312-cp312-linux_x86_64.whl#sha256=57695e076bb9ab3b6a878839f26d633f25c6dd16fdc02d552b728d0f2479fdfe",
+    "certifi==2026.7.22",
+    "charset-normalizer==3.5.0",
+    "click==8.4.2",
+    "einops==0.8.2",
+    "filelock==3.32.3",
+    "flash-attn @ https://github.com/Dao-AILab/flash-attention/releases/download/v2.5.9.post1/flash_attn-2.5.9.post1+cu122torch2.2cxx11abiFALSE-cp312-cp312-linux_x86_64.whl#sha256=58cd3d04fe1d2803b5adad83fca27eadf28f6b54a352fed52db50e5fb18b7b2b",
+    "Flask==3.1.3",
+    "Flask-RESTful==0.3.10",
+    "fsspec==2026.7.0",
+    "hf-xet==1.6.0",
+    "huggingface_hub==0.36.2",
+    "idna==3.18",
+    "importlib_metadata==9.0.0",
+    "itsdangerous==2.2.0",
+    "Jinja2==3.1.6",
+    "mamba-ssm @ https://github.com/state-spaces/mamba/releases/download/v2.0.3/mamba_ssm-2.0.3+cu122torch2.2cxx11abiFALSE-cp312-cp312-linux_x86_64.whl#sha256=7b2a7c70c3d71522e1c174a283ddc91e3d03214ce62d8b2f6e7e6e04f0f22f3a",
+    "MarkupSafe==3.0.3",
+    "mpmath==1.3.0",
+    "networkx==3.6.1",
+    "ninja==1.13.0",
+    "numpy==1.26.4",
+    "nvidia-cublas-cu12==12.1.3.1",
+    "nvidia-cuda-cupti-cu12==12.1.105",
+    "nvidia-cuda-nvrtc-cu12==12.1.105",
+    "nvidia-cuda-runtime-cu12==12.1.105",
+    "nvidia-cudnn-cu12==8.9.2.26",
+    "nvidia-cufft-cu12==11.0.2.54",
+    "nvidia-curand-cu12==10.3.2.106",
+    "nvidia-cusolver-cu12==11.4.5.107",
+    "nvidia-cusparse-cu12==12.1.0.106",
+    "nvidia-nccl-cu12==2.19.3",
+    "nvidia-nvjitlink-cu12==12.9.86",
+    "nvidia-nvtx-cu12==12.1.105",
+    "packaging==26.3",
+    "pybind11==2.12.0",
+    "pydantic==2.13.4",
+    "pydantic_core==2.46.4",
+    "pytz==2026.3.post1",
+    "PyYAML==6.0.3",
+    "regex==2026.7.19",
+    "requests==2.34.2",
+    "safetensors==0.8.0",
+    "sentencepiece==0.2.2",
+    "setuptools==80.10.2",
+    "six==1.17.0",
+    "sympy==1.14.0",
+    "tokenizers==0.15.2",
+    "torch==2.2.2+cu121",
+    "tqdm==4.70.0",
+    "transformer_engine==1.11.0",
+    "transformer_engine_cu12==1.11.0",
+    "transformer_engine_torch==1.11.0",
+    "transformers==4.37.2",
+    "triton==2.2.0",
+    "typing-inspection==0.4.4",
+    "typing_extensions==4.16.0",
+    "urllib3==2.7.0",
+    "Werkzeug==3.1.8",
+    "wheel==0.48.0",
+    "zipp==4.1.0"
+  ],
+  "nvidia_smi": "Sat Aug 15 23:02:02 2026       \n+-----------------------------------------------------------------------------------------+\n| NVIDIA-SMI 570.133.20             Driver Version: 570.133.20     CUDA Version: 12.8     |\n|-----------------------------------------+------------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n|                                         |                        |               MIG M. |\n|=========================================+========================+======================|\n|   0  NVIDIA A40                     Off |   00000000:01:01.0 Off |                    0 |\n|  0%   31C    P0             82W /  300W |       0MiB /  46068MiB |      5%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n                                                                                         \n+-----------------------------------------------------------------------------------------+\n| Processes:                                                                              |\n|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |\n|        ID   ID                                                               Usage      |\n|=========================================================================================|\n|  No running processes found                                                             |\n+-----------------------------------------------------------------------------------------+",
+  "checkpoint_revisions": {
+    "mamba2-8b": "b915550c63ba9359f88f44d1f6a600d85af27302",
+    "mamba2-hybrid-8b": "35e8852e2240b350ac2fe2a3b8aa341b5930018e"
+  },
+  "checkpoint_files": {
+    "mamba2-8b": {
+      "latest_checkpointed_iteration.txt": "3933e3274b63dc01fd286d6d939a626867c83a4603fc4347e0f8b8856f1b98fd",
+      "model_optim_rng.pt": "47c2766f6aad89d73beafbeaecb334aab902d7370906d081764a90bb7a8bbbcb",
+      "tokenizer.model": "5862e2f71caf762bc9845662be5fec2867deb58d874568235a02a36c5111cd09"
+    },
+    "mamba2-hybrid-8b": {
+      "latest_checkpointed_iteration.txt": "3933e3274b63dc01fd286d6d939a626867c83a4603fc4347e0f8b8856f1b98fd",
+      "model_optim_rng.pt": "480964a9dca70e3dcbf348bbf812ed2388476c2b2968cb903cca666d08547399",
+      "tokenizer.model": "5862e2f71caf762bc9845662be5fec2867deb58d874568235a02a36c5111cd09"
+    }
+  },
+  "configuration": {
+    "checkpoint_root": "/root/checkpoints",
+    "launcher": "/root/mixing/scripts/run_phase3_baremetal.sh",
+    "launcher_sha256": "d307b8913deaa5fdba0720c7ce19146bddccd8890eadfd34d01e78554c6f700f",
+    "output_directory": "/root/outputs/phase3-clean-33d6bb5",
+    "piqa_file": "/root/mixing/data/piqa_valid.jsonl",
+    "piqa_samples": 1838,
+    "questions": 800,
+    "venv_python": "/root/mm-venv/bin/python"
+  },
+  "command_stages": [
+    {
+      "model": "mamba2-8b",
+      "stage": "validate",
+      "command": [
+        "bash",
+        "/root/mixing/scripts/run_phase3_baremetal.sh",
+        "mamba2-8b",
+        "validate"
+      ]
+    },
+    {
+      "model": "mamba2-hybrid-8b",
+      "stage": "validate",
+      "command": [
+        "bash",
+        "/root/mixing/scripts/run_phase3_baremetal.sh",
+        "mamba2-hybrid-8b",
+        "validate"
+      ]
+    },
+    {
+      "model": "mamba2-8b",
+      "stage": "kv",
+      "command": [
+        "bash",
+        "/root/mixing/scripts/run_phase3_baremetal.sh",
+        "mamba2-8b",
+        "kv"
+      ]
+    },
+    {
+      "model": "mamba2-8b",
+      "stage": "sweep",
+      "command": [
+        "bash",
+        "/root/mixing/scripts/run_phase3_baremetal.sh",
+        "mamba2-8b",
+        "sweep"
+      ]
+    },
+    {
+      "model": "mamba2-hybrid-8b",
+      "stage": "kv",
+      "command": [
+        "bash",
+        "/root/mixing/scripts/run_phase3_baremetal.sh",
+        "mamba2-hybrid-8b",
+        "kv"
+      ]
+    },
+    {
+      "model": "mamba2-hybrid-8b",
+      "stage": "sweep",
+      "command": [
+        "bash",
+        "/root/mixing/scripts/run_phase3_baremetal.sh",
+        "mamba2-hybrid-8b",
+        "sweep"
+      ]
+    }
+  ]
+}
