@@ -285,6 +285,20 @@ def test_verifier_rejects_incomplete_environment(
         _verify_bundle(verifier, exact_bundle)
 
 
+def test_verifier_accepts_artifacts_copied_from_another_host(
+    verifier: ModuleType,
+    exact_bundle: ControlBundle,
+) -> None:
+    """A pinned dataset hash remains portable when its recorded host path differs."""
+    manifest = json.loads(exact_bundle.environment.read_text())
+    manifest["dataset"]["path"] = "/root/mixing/data/pinned.jsonl.gz"
+    exact_bundle.environment.write_text(json.dumps(manifest) + "\n")
+
+    summary = _verify_bundle(verifier, exact_bundle)
+
+    assert summary["status"] == "passed"
+
+
 def test_verifier_rejects_missing_null_setting(
     verifier: ModuleType,
     exact_bundle: ControlBundle,

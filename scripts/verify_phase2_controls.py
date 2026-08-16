@@ -242,8 +242,9 @@ def _verify_environment(
         raise ValueError("environment manifest has invalid dataset")
     if dataset.get("sha256") != EXPECTED_DATA_SHA256:
         raise ValueError("environment manifest has wrong dataset SHA-256")
-    if Path(str(dataset.get("path"))).resolve() != data_path.resolve():
-        raise ValueError("environment manifest has wrong dataset path")
+    dataset_path = dataset.get("path")
+    if not isinstance(dataset_path, str) or not dataset_path:
+        raise ValueError("environment manifest has invalid dataset path")
     protocol = manifest.get("protocol")
     expected_protocol = {
         "model": "pythia-2.8b",

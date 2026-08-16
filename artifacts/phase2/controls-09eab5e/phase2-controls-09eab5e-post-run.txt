@@ -1,0 +1,23 @@
+checked_at_utc=2026-08-16T08:08:39Z
+phase2_processes=none
+gpu_processes=none
+NVIDIA A40, 0 MiB, 46068 MiB
+failure_sidecars=0
+    2000 /root/outputs/phase2-controls-09eab5e/negative.jsonl
+    1800 /root/outputs/phase2-controls-09eab5e/order.jsonl
+     500 /root/outputs/phase2-controls-09eab5e/positive-control.jsonl
+    4300 total
+complete_marker=present
+failed_marker=absent
+repository_commit=09eab5e62136a0a9b828853866690acae84c5ea6
+repository_status_count=0
+34eb8e316582effa52f5661fe5009becdfc7b160a8f0f7c4d415f5eab7ac9556  /root/outputs/phase2-controls-09eab5e/environment.json
+630495308970a5425f0581ccb32197a7e989c28fd502fa0ef48e65a367c3aa9e  /root/outputs/phase2-controls-09eab5e/positive-control.jsonl
+b5889b3794da6d7209c1bbcf1a80d689e600834a8707f1b9c88ca08b39a2528d  /root/outputs/phase2-controls-09eab5e/negative.jsonl
+242f294ad00e7615a9494d47005a8e8a5e1fa215a379a30f47826ca63123ac60  /root/outputs/phase2-controls-09eab5e/order.jsonl
+f88de9469939a4920aadce9f49b3590bc2a0aa524b617f7cf1795bd32020b7e7  /root/outputs/phase2-controls-09eab5e/summary.json
+311c4f4b0d1c7f704c582ddff509e41ebf2dc44d2e4518223ff4935f37745487  /root/outputs/phase2-controls-09eab5e/positive-control.log
+d9cbaf55c8eae90cc56a9c1ed0d1cca5635c354cf4f45bd27606427e07179c60  /root/outputs/phase2-controls-09eab5e/negative.log
+01b907044870d1a9a2db273fc83157034b998028d41ba2d2d3823eebf3ef483f  /root/outputs/phase2-controls-09eab5e/order.log
+f88de9469939a4920aadce9f49b3590bc2a0aa524b617f7cf1795bd32020b7e7  /root/outputs/phase2-controls-09eab5e/verification.log
+fcc3378f1dd9d97d4fed85612c0c372b7e49711a3a0f04be15ce7804f3b1e08c  /root/phase2-controls-09eab5e.log

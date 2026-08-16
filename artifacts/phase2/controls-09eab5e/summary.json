@@ -1,0 +1,100 @@
+{
+  "artifacts": {
+    "dataset": {
+      "path": "/root/mixing/data/nq-open-10_total_documents_gold_at_0.jsonl.gz",
+      "sha256": "192a05b27af2b09eec33ca0c94bb5cf82bcaf70d78b3bdff1258df34bf37aab9"
+    },
+    "environment": {
+      "path": "/root/outputs/phase2-controls-09eab5e/environment.json",
+      "sha256": "34eb8e316582effa52f5661fe5009becdfc7b160a8f0f7c4d415f5eab7ac9556"
+    },
+    "negative": {
+      "jsonl_sha256": "b5889b3794da6d7209c1bbcf1a80d689e600834a8707f1b9c88ca08b39a2528d",
+      "path": "/root/outputs/phase2-controls-09eab5e/negative.jsonl",
+      "records": 2000,
+      "sha256": "b5889b3794da6d7209c1bbcf1a80d689e600834a8707f1b9c88ca08b39a2528d"
+    },
+    "order": {
+      "jsonl_sha256": "242f294ad00e7615a9494d47005a8e8a5e1fa215a379a30f47826ca63123ac60",
+      "path": "/root/outputs/phase2-controls-09eab5e/order.jsonl",
+      "records": 1800,
+      "sha256": "242f294ad00e7615a9494d47005a8e8a5e1fa215a379a30f47826ca63123ac60"
+    },
+    "positive_control": {
+      "jsonl_sha256": "630495308970a5425f0581ccb32197a7e989c28fd502fa0ef48e65a367c3aa9e",
+      "path": "/root/outputs/phase2-controls-09eab5e/positive-control.jsonl",
+      "records": 500,
+      "sha256": "630495308970a5425f0581ccb32197a7e989c28fd502fa0ef48e65a367c3aa9e"
+    }
+  },
+  "environment": {
+    "dataset_sha256": "192a05b27af2b09eec33ca0c94bb5cf82bcaf70d78b3bdff1258df34bf37aab9",
+    "model_revision": "2a259cdd96a4beb1cdf467512e3904197345f6a9",
+    "repository_commit": "09eab5e62136a0a9b828853866690acae84c5ea6"
+  },
+  "negative": {
+    "accuracy": 0.1235,
+    "floor_accuracy": 0.095,
+    "position_accuracy": {
+      "0": 0.13,
+      "1": 0.13,
+      "2": 0.115,
+      "3": 0.12,
+      "4": 0.13,
+      "5": 0.12,
+      "6": 0.14,
+      "7": 0.135,
+      "8": 0.11,
+      "9": 0.105
+    },
+    "primacy": 0.0050000000000000044,
+    "question_count": 200,
+    "recency": -0.0175,
+    "record_count": 2000
+  },
+  "order": {
+    "accuracy": 0.2872222222222222,
+    "accuracy_spread": 0.023333333333333317,
+    "permutation_accuracy": {
+      "0": 0.285,
+      "1": 0.3,
+      "2": 0.27666666666666667
+    },
+    "position_accuracy": {
+      "0": 0.32166666666666666,
+      "4": 0.235,
+      "9": 0.305
+    },
+    "question_count": 200,
+    "record_count": 1800
+  },
+  "protocol": {
+    "data_revision": "29b8a6d042ce29abccee3db1a73171a107d7e6af",
+    "data_sha256": "192a05b27af2b09eec33ca0c94bb5cf82bcaf70d78b3bdff1258df34bf37aab9",
+    "model_name": "EleutherAI/pythia-2.8b",
+    "model_revision": "2a259cdd96a4beb1cdf467512e3904197345f6a9",
+    "positive_control_sha256": "630495308970a5425f0581ccb32197a7e989c28fd502fa0ef48e65a367c3aa9e",
+    "repository_commit": "09eab5e62136a0a9b828853866690acae84c5ea6",
+    "settings": {
+      "manual_seed": 240521,
+      "max_new_tokens": 32,
+      "random_seed": 240521,
+      "temperature": 0,
+      "top_k": null,
+      "top_p": 1
+    }
+  },
+  "run_ids": {
+    "negative": "b6672ebe-a5e2-4439-be4c-aacb9a5163af",
+    "order": "49712489-f653-4405-97d8-88dc2300b0ec"
+  },
+  "schema_version": 1,
+  "software_versions": {
+    "attention_implementation": "eager",
+    "cuda": "12.6",
+    "python": "3.12.3",
+    "torch": "2.7.1+cu126",
+    "transformers": "4.57.1"
+  },
+  "status": "passed"
+}
