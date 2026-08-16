@@ -1,0 +1,20 @@
+checked_at_utc=2026-08-16T05:35:04Z
+phase3_pid_91450=not_running
+gpu_processes=none
+NVIDIA A40, 0 MiB, 46068 MiB
+failure_sidecars=0
+500 /root/outputs/phase3-clean-33d6bb5/mamba2-8b-positive-control.jsonl
+9600 /root/outputs/phase3-clean-33d6bb5/mamba2-8b-sweep.jsonl
+500 /root/outputs/phase3-clean-33d6bb5/mamba2-hybrid-8b-positive-control.jsonl
+9600 /root/outputs/phase3-clean-33d6bb5/mamba2-hybrid-8b-sweep.jsonl
+20200 total
+mixing_sha=33d6bb5211d02d5ef5040086b18298fdacf31778
+mixing_status_count=0
+megatron_sha=df61e60bf5670b1196fcae2264311401d3bb82db
+megatron_status_count=0
+14e2df5a4494c08409c66815a0c3c8e512aa0164d0c4af5dec461eb64e0a4858  /root/outputs/phase3-clean-33d6bb5/environment.json
+bc8a6299f0d54752f418e70990b7d97e4da4d9303abfb8b72ad339ea7227a75c  /root/outputs/phase3-clean-33d6bb5/mamba2-8b-positive-control.jsonl
+9661c5b00bff553e8d0cf2b5b089c0acf58c99ffeef0d7cdf2e80f461d7ca648  /root/outputs/phase3-clean-33d6bb5/mamba2-8b-sweep.jsonl
+8561a1d1ae06381b1580614e2730565cb453c843304034fd7d47f7a00a08a4c8  /root/outputs/phase3-clean-33d6bb5/mamba2-hybrid-8b-positive-control.jsonl
+007f11be4cf00c2a1794cfb0c61e19b066120a9f304977f5200a1cd9cb17ee4f  /root/outputs/phase3-clean-33d6bb5/mamba2-hybrid-8b-sweep.jsonl
+092987365111cc960320dc7295220db4d6ac152b43d68238b68fd115df0f4b93  /root/phase3-clean-33d6bb5.log
