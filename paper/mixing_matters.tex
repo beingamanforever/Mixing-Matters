@@ -38,7 +38,7 @@ Pythia-2.8B was about five percentage points more accurate when the answer appea
 A more closely matched 8B comparison pointed in the same direction: a hybrid Mamba-2 model with a small number of attention layers showed a larger beginning advantage than the pure Mamba-2 model, but the difference between them remains too uncertain for a firm conclusion.
 The contrast appears in larger but not the smallest model pairs, is not explained by the tested change of training corpus, and reappears for Pythia on a synthetic retrieval task.
 Prompt changes can strongly alter the pattern, and exploratory internal-state analyses show that Mamba retains position information even without the beginning advantage.
-These findings suggest that model design affects how available evidence is used across a context, but they do not show that attention itself is the cause.
+These model-family differences are not causal evidence about sequence mixing: at the 2.8B scale, depth, RoPE usage, and recurrent-state design and size remain confounded.
 \end{abstract}
 
 \section{Introduction}
@@ -47,12 +47,12 @@ These findings suggest that model design affects how available evidence is used 
 Transformers often read multi-document contexts unevenly: accuracy peaks when the answer-bearing document is near an edge and falls in the middle \citep{liu2024lost}.
 This behavior matters because retrieval systems cannot assume that all evidence positions are equally usable.
 Long-context benchmarks expose related failures across question answering, summarization, and retrieval \citep{bai2024longbench,shaham2023zeroscrolls,li2024loogle}.
-Prior work links lost-in-the-middle behavior to U-shaped attention patterns \citep{hsieh2024found}, but model-family comparisons still confound sequence mixing with data, tokenizer, scale, depth, and positional encoding \citep{su2024roformer,press2022alibi}.
+Prior work links lost-in-the-middle behavior to U-shaped attention patterns \citep{hsieh2024found}, but our near-2.8B model-family comparison still confounds sequence mixing with depth, RoPE usage, recurrent-state design and size, and checkpoint family \citep{su2024roformer,press2022alibi}.
 State-space models such as Mamba \citep{gu2023mamba,dao2024mamba2} provide a useful contrast because they compress the prefix into a recurrent state instead of using dense causal attention.
 
 We make three contributions.
 First, we build an auditable ten-position evaluation with floor and ceiling anchors, preserved generations, and inference settings recorded per example.
-Second, we find a paired architecture-position interaction in a Pile-trained 2.8B comparison and test it with a more tightly matched 8B pure/hybrid pair.
+Second, we find a paired difference in primacy profiles among Pile-trained models near 2.8B, subject to those confounds, and examine its direction with a more tightly matched 8B pure/hybrid pair.
 Third, we organize scale, corpus, task, prompt, sink, and probe results into mechanistic evidence with explicit uncertainty.
 All reported results use an exploratory split; the held-out confirmatory split remains unspent.
 
