@@ -8,18 +8,41 @@
 \usepackage{hyperref}
 \usepackage{url}
 \usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{threeparttable}
 \usepackage{amsfonts}
 \usepackage{amsmath}
 \usepackage{nicefrac}
-\usepackage{microtype}
+\usepackage[expansion=false]{microtype}
 \usepackage{xcolor}
 \usepackage{graphicx}
 \usepackage{float}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc,fit,positioning}
 \hypersetup{hidelinks,hypertexnames=false}
 \newcommand{\runin}[1]{\par\medskip\noindent\textbf{#1}\ }
 
-\title{Mixing Matters: Evidence Position Bias Across Attention and
-State-Space Language Models}
+% Shared diagram language: blue denotes attention, orange denotes state-space
+% computation, and gray denotes inputs, outputs, or evaluation bookkeeping.
+\definecolor{attentionblue}{HTML}{2C7FB8}
+\definecolor{ssmorange}{HTML}{E67E22}
+\definecolor{diagramgray}{HTML}{5B6573}
+\definecolor{lightblue}{HTML}{EAF3F8}
+\definecolor{lightorange}{HTML}{FDF0E5}
+\tikzset{
+  diagram node/.style={draw=diagramgray!75, rounded corners=1.5pt,
+    fill=white, minimum height=0.42cm, inner xsep=3pt, inner ysep=2pt,
+    font=\scriptsize\sffamily},
+  attention node/.style={diagram node, draw=attentionblue, fill=lightblue},
+  ssm node/.style={diagram node, draw=ssmorange, fill=lightorange},
+  diagram arrow/.style={-{Latex[length=1.4mm]}, line width=0.45pt,
+    draw=diagramgray!85},
+  attention arrow/.style={diagram arrow, draw=attentionblue},
+  ssm arrow/.style={diagram arrow, draw=ssmorange}
+}
+
+\title{Mixing Matters: Evidence Position Bias Across Sequence Mixers in
+Long-Context Question Answering}
 
 \workshoptitle{New in ML}
 
@@ -30,31 +53,42 @@ State-Space Language Models}
 \maketitle
 
 \begin{abstract}
-Language models often answer multi-document questions less accurately when the relevant document is placed in the middle rather than near the beginning or end.
-We test whether this pattern differs between models that use attention and models from the Mamba family, which process context through a running state.
-For each question, we move the answer-bearing document through ten positions while keeping the question and nine distracting documents fixed.
-Our main comparisons use 800 exploratory questions; smaller task and prompt checks use 50 or 200 examples, and the larger held-out set has not been examined.
-Pythia-2.8B was about five percentage points more accurate when the answer appeared near the beginning than in the middle, whereas two similarly sized, Pile-trained Mamba models showed no such beginning advantage.
-A more closely matched 8B comparison pointed in the same direction: a hybrid Mamba-2 model with a small number of attention layers showed a larger beginning advantage than the pure Mamba-2 model, but the difference between them remains too uncertain for a firm conclusion.
-The contrast appears in larger but not the smallest model pairs, is not explained by the tested change of training corpus, and reappears for Pythia on a synthetic retrieval task.
-Prompt changes can strongly alter the pattern, and exploratory internal-state analyses show that Mamba retains position information even without the beginning advantage.
-These model-family differences are not causal evidence about sequence mixing: at the 2.8B scale, depth, RoPE usage, and recurrent-state design and size remain confounded.
+Language models often use relevant evidence less effectively when it appears in the middle of a long context.
+We ask whether this position bias changes with the mechanism used to mix information across tokens.
+For each multi-document question, we move the answer-bearing document through ten positions while holding the question and distractors fixed.
+In a shared-corpus comparison near 2.8B parameters, Pythia shows a clear beginning advantage that two Mamba variants lack, while all three models show an end advantage.
+This near-2.8B family comparison confounds sequence mixing with depth, RoPE or other positional encoding, recurrent-state size, and checkpoint family.
+A tighter comparison between pure and hybrid Mamba-2 models points in the same direction, but its paired effect remains statistically uncertain.
+Across additional exploratory studies, the family gap appears only once the compared models can answer the task, a corpus swap changes overall accuracy without a detectable change in curve shape, and Pythia reproduces the beginning advantage on synthetic retrieval.
+Prompt placement can materially reshape both edges.
+Attention-sink measurements and position probes motivate hypotheses about evidence use, but do not establish a causal mechanism.
+All ten-document QA results use an exploratory split, and the held-out confirmatory split remains unexamined.
 \end{abstract}
 
 \section{Introduction}
 \label{sec:intro}
 
-Transformers often read multi-document contexts unevenly: accuracy peaks when the answer-bearing document is near an edge and falls in the middle \citep{liu2024lost}.
-This behavior matters because retrieval systems cannot assume that all evidence positions are equally usable.
-Long-context benchmarks expose related failures across question answering, summarization, and retrieval \citep{bai2024longbench,shaham2023zeroscrolls,li2024loogle}.
-Prior work links lost-in-the-middle behavior to U-shaped attention patterns \citep{hsieh2024found}, but our near-2.8B model-family comparison still confounds sequence mixing with depth, RoPE usage, recurrent-state design and size, and checkpoint family \citep{su2024roformer,press2022alibi}.
-State-space models such as Mamba \citep{gu2023mamba,dao2024mamba2} provide a useful contrast because they compress the prefix into a recurrent state instead of using dense causal attention.
+Retrieval-augmented systems often present a model with several documents and expect it to use whichever one contains the answer.
+Yet evidence is not equally usable everywhere in the prompt: accuracy commonly falls when the relevant document moves from an edge toward the middle \citep{liu2024lost}.
+This failure is important even when retrieval itself succeeds, because a downstream model can still neglect the retrieved evidence.
+Long-context benchmarks expose related weaknesses across question answering, summarization, and retrieval \citep{bai2024longbench,shaham2023zeroscrolls,li2024loogle}.
 
-We make three contributions.
-First, we build an auditable ten-position evaluation with floor and ceiling anchors, preserved generations, and inference settings recorded per example.
-Second, we find a paired difference in primacy profiles among Pile-trained models near 2.8B, subject to those confounds, and examine its direction with a more tightly matched 8B pure/hybrid pair.
-Third, we organize scale, corpus, task, prompt, sink, and probe results into mechanistic evidence with explicit uncertainty.
-All reported results use an exploratory split; the held-out confirmatory split remains unspent.
+The usual lost-in-the-middle curve has mostly been studied in Transformers.
+Dense attention can revisit any earlier token directly, whereas state-space models such as Mamba compress the prefix into a recurrent state \citep{gu2023mamba,dao2024mamba2}.
+This architectural difference could change how evidence position affects an answer.
+It is difficult to test cleanly, however, because model families also differ in training data, tokenizer, depth, scale, positional encoding, and capability.
+
+We study the question with a paired intervention on evidence position.
+For every question, the same answer document and distractors form one bundle, and only the answer document's position changes.
+The main comparison finds a beginning advantage for Pythia that is absent in two similarly sized Mamba models trained on the same corpus, while the end advantage is shared.
+This near-2.8B family comparison confounds sequence mixing with depth, RoPE or other positional encoding, recurrent-state size, and checkpoint family.
+A more tightly matched pure-versus-hybrid Mamba-2 comparison is directionally compatible but does not detect a reliable paired attention effect.
+Scale, corpus, task, production-model, prompt, sink, and probe studies then define where the observation does and does not generalize.
+
+The paper makes three contributions.
+First, it provides an auditable position-intervention harness with anchors, preserved outputs, paired inference, and an untouched confirmatory split.
+Second, it presents an exploratory family-by-position comparison together with a tighter but statistically uncertain attention comparison.
+Third, it turns the remaining phases into bounded evidence: corpus and task checks test scope, while prompt interventions and internal measurements generate mechanistic hypotheses without being presented as causal proof.
 
 \section{Related work}
 \label{sec:related}
@@ -73,8 +107,81 @@ Mamba and Mamba-2 carry information through selective state-space recurrences \c
 Hybrid models such as Griffin, Jamba, and Nemotron-H combine recurrent or state-space blocks with attention \citep{de2024griffin,lieber2024jamba,nvidia2025nemotronh}.
 \citet{waleffe2024empirical} release the pure and hybrid 8B Mamba-2 checkpoints used in our tightest controlled comparison.
 
+% preamble: \usetikzlibrary{positioning, fit, arrows.meta, calc}
+
+\begin{figure*}[t]
+\centering
+\begin{tikzpicture}[
+  node distance=3mm and 3mm,
+  every node/.style={font=\small\sffamily},
+]
+
+% ================= Panel 1: Dense attention =================
+\node[diagram node] (a1) {$x_1$};
+\node[diagram node, right=of a1] (a2) {$x_2$};
+\node[diagram node, right=of a2] (a3) {$\cdots$};
+\node[diagram node, right=of a3] (a4) {$x_T$};
+\node[attention node] (ao) at ($(a2)!0.5!(a3)+(0,-11mm)$) {$h_t$};
+\foreach \n in {a1,a2,a3,a4} {\draw[attention arrow] (\n) -- (ao);}
+
+\node[fit=(a1)(a4), inner sep=0pt] (Prow1) {};
+\node[font=\scriptsize\sffamily, text=attentionblue, text width=3.9cm,
+      align=center, above=1.2mm of Prow1] (Pann1) {direct token-to-state mixing};
+\node[font=\small\bfseries, above=0.8mm of Pann1] {Dense attention};
+
+% ================= Panel 2: State-space recurrence =================
+\node[diagram node, right=17mm of a4] (s1) {$x_1$};
+\node[diagram node, right=of s1] (s2) {$x_2$};
+\node[diagram node, right=of s2] (s3) {$\cdots$};
+\node[diagram node, right=of s3] (s4) {$x_T$};
+
+\node[ssm node, below=9mm of s1] (z1) {$z_1$};
+\node[ssm node, below=9mm of s2] (z2) {$z_2$};
+\node[ssm node, below=9mm of s3] (z3) {$z_{t-1}$};
+\node[ssm node, below=9mm of s4] (z4) {$z_t$};
+\foreach \x/\z in {s1/z1,s2/z2,s3/z3,s4/z4} {\draw[ssm arrow] (\x) -- (\z);}
+\foreach \u/\v in {z1/z2,z2/z3,z3/z4} {\draw[ssm arrow] (\u) -- (\v);}
+
+\node[fit=(s1)(s4), inner sep=0pt] (Prow2) {};
+\node[font=\scriptsize\sffamily, text=ssmorange, text width=4.3cm,
+      align=center, above=1.2mm of Prow2] (Pann2) {recurrent state carries the prefix};
+\node[font=\small\bfseries, above=0.8mm of Pann2] {State-space recurrence};
+
+% ================= Panel 3: Hybrid mixer =================
+\node[diagram node, right=17mm of s4] (h1) {$x_1$};
+\node[diagram node, right=of h1] (h2) {$x_2$};
+\node[diagram node, right=of h2] (h3) {$\cdots$};
+\node[diagram node, right=of h3] (h4) {$x_T$};
+
+\node[ssm node, below=9mm of h1] (r1) {$z_1$};
+\node[ssm node, below=9mm of h2] (r2) {$z_2$};
+\node[attention node, below=9mm of h3, minimum width=1.05cm] (ha) {attn.};
+\node[ssm node, below=9mm of h4] (r4) {$z_t$};
+
+\foreach \x/\z in {h1/r1,h2/r2,h4/r4} {\draw[ssm arrow] (\x) -- (\z);}
+\draw[ssm arrow] (r1) -- (r2);
+\draw[ssm arrow] (r2) -- (ha);
+\draw[attention arrow] (h3) -- (ha);
+\draw[attention arrow] (ha) -- (r4);
+
+\node[fit=(h1)(h4), inner sep=0pt] (Prow3) {};
+\node[font=\scriptsize\sffamily, text=attentionblue, text width=4.3cm,
+      align=center, above=1.2mm of Prow3] (Pann3) {recurrent path with attention blocks};
+\node[font=\small\bfseries, above=0.8mm of Pann3] {Hybrid mixer};
+
+\end{tikzpicture}
+\caption{Schematic abstractions of the sequence-mixing mechanisms discussed in this paper. Dense attention permits direct token-to-state interactions, state-space models carry prefix information through a recurrent state, and hybrid models combine recurrent blocks with a minority of attention blocks. The drawing is conceptual rather than a layer-by-layer specification.}
+\label{fig:mixer-schematic}
+\end{figure*}
+
+\runin{Cross-architecture long-context evidence}
+Architecture comparisons do not imply that recurrent models are uniformly position-robust.
+\citet{huang2025well} find practical long-context failures across recurrent, hybrid, and Transformer designs, and a concurrent preprint reports a U-shaped Mamba recall curve on structured memory tasks \citep{airlangga2025primacy}.
+These results differ from our Mamba QA curve and reinforce a central boundary of this study: position profiles depend on the task and prompt, not only the mixer.
+Work that reformulates Mamba recurrence as implicit attention offers a complementary route for future mechanism tests \citep{ali2025hidden}.
+
 \runin{Attention sinks and probes}
-\citet{xiao2024efficient} showed that causal transformers can concentrate attention on initial tokens, and \citet{sun2024massive} connected unusually large internal activations to a small set of tokens.
+\citet{xiao2024efficient} showed that causal transformers can concentrate attention on initial tokens, and \citet{sun2024massive} connected unusually large internal activations to concentrated attention.
 We test whether this attention-sink statistic covaries with primacy, treating the result as correlational because a valid sink-blocking ablation is absent.
 Our position probe follows the principle that a diagnostic classifier needs a control task before its accuracy can be interpreted as evidence about a representation \citep{hewitt2019probes}.
 
@@ -86,6 +193,43 @@ We use the 2{,}655 released questions from the Lost-in-the-Middle 10-document QA
 Each question has one gold document and nine distractors.
 We build ten prompts per question, moving only the gold document through positions $0$ to $9$ while retaining the same distractors and token budget.
 A no-gold floor measures guessing or memorized knowledge, and a gold-only ceiling measures answerability under perfect retrieval.
+The fixed split uses seed 240521 and contains 800 exploratory and 1{,}855 confirmatory questions.
+Every reported ten-document QA result uses the exploratory allocation or a subset of it.
+The confirmatory allocation remains unopened.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  node distance=10mm and 12mm,
+  diagram node/.append style={font=\small\sffamily, inner sep=5pt, minimum height=6mm},
+  ssm node/.append style={font=\small\sffamily, inner sep=5pt, minimum height=6mm},
+]
+  \node[diagram node]             (q) {question};
+  \node[diagram node, right=of q] (d) {9 distractors};
+  \node[ssm node,     right=of d] (g) {gold doc.};
+  \node[diagram node, right=of g] (p) {prompt};
+
+  \draw[diagram arrow] (q) -- (d);
+  \draw[diagram arrow] (d) -- (g);
+  \draw[diagram arrow] (g) -- (p);
+
+  \node[draw=diagramgray, dashed, rounded corners,
+        inner xsep=7pt, inner ysep=6pt, fit=(q)(d)(g),
+        label={[font=\scriptsize\sffamily, text=diagramgray]above:same bundle}] {};
+
+  \node[font=\scriptsize\sffamily, align=center, below=14mm of d]
+    {repeat for gold position $0,\dots,9$\\[1pt]
+     question, distractors, and budget fixed};
+
+  \node[diagram node, below left=18mm and 6mm of p]  (floor) {no-gold floor};
+  \node[diagram node, below right=18mm and 6mm of p] (ceil)  {gold-only ceiling};
+
+  \draw[diagram arrow] (floor) -- (p.south);
+  \draw[diagram arrow] (ceil)  -- (p.south);
+\end{tikzpicture}
+\caption{Paired position intervention. Each question contributes one fixed bundle and ten prompts; only the gold document's position changes. The no-gold and gold-only anchors bound guessing and answerability.}
+\label{fig:position-harness}
+\end{figure}
 
 \runin{Edges and statistics}
 Let $a_S$, $a_M$, and $a_E$ be mean accuracy at start positions $\{0,1\}$, middle positions $\{4,5\}$, and end positions $\{8,9\}$.
@@ -93,62 +237,82 @@ We define primacy as $a_S-a_M$ and recency as $a_E-a_M$.
 The question is the unit of analysis.
 Each of 10{,}000 bootstrap samples draws complete ten-position question bundles with replacement, following the bootstrap principle of resampling the independent unit \citep{efron1979bootstrap}, and model comparisons reuse the same sampled questions.
 We report percentile 95\% confidence intervals and apply Holm's sequential correction to the primacy and recency tests within each comparison family \citep{holm1979multiple}.
-The fixed split contains 800 exploratory and 1{,}855 confirmatory questions.
-Only the exploratory split is reported.
+The intervals quantify variation across questions under the fixed checkpoints, prompts, and decoding configuration, not variation across training seeds or model checkpoints.
 
 \runin{Reproducibility and controls}
-The harness vendors the official prompt builder and \texttt{best\_subspan\_em} scorer at a pinned commit.
+The harness vendors the official prompt builder and \texttt{best\_subspan\_em} scorer at a pinned upstream commit.
 It also records normalized exact match, following the normalization convention popularized by SQuAD \citep{rajpurkar2016squad}, and first-line extraction.
-Generation is greedy with temperature $0$, at most 32 new tokens, fixed seeds, BF16 where supported, pinned model revisions, and one Mamba execution path.
-Each unique run preserves prompts, raw generations, failures, token counts, software versions, and decoding settings.
-The released key-value task provides an executed positive control: the pipeline detects a $+0.38$ Pythia start-versus-middle effect.
-On 200 exploratory Pythia questions, sham-gold accuracy was $0.1235$, within $0.0285$ of the $0.0950$ closed-book floor; primacy was $+0.0050$ (95\% CI $[-0.0325,0.0425]$) and recency was $-0.0175$ (95\% CI $[-0.0500,0.0125]$).
-The distractor-order control's permutation accuracies were $0.2850$, $0.3000$, and $0.2767$, a maximum spread of $0.0233$.
-Both controls passed their prespecified gates on Pythia; they do not test the 8B Megatron checkpoints.
+Generation is greedy with temperature $0$, at most 32 new tokens, fixed seeds, BF16 where supported, pinned model revisions, and a fixed Mamba execution path within each controlled contrast.
+Each phase fixes one execution path within its controlled comparison, although the Transformers and Megatron backends differ across phases.
+Committed standard QA sweeps preserve prompts, raw generations, failures, token counts, software versions, and decoding settings.
+The synthetic retrieval check is represented by summaries and plots only; raw generations and an environment manifest are not available in the repository snapshot.
+The released key-value task provides an executed positive control: the pipeline detects a $+0.38$ Pythia edge-versus-middle effect.
+For the sham-gold control, accuracy was $0.1235$ versus a $0.0950$ floor, a difference of $0.0285$; primacy was $+0.0050$ with 95\% CI $[-0.0325, 0.0425]$, and recency was $-0.0175$ with 95\% CI $[-0.0500, 0.0125]$.
+Distractor-order permutation accuracies were $0.2850$, $0.3000$, and $0.2767$, with a maximum spread of $0.0233$.
+Both certification controls passed their gates on the 200-question exploratory Pythia sample only, and they do not test the 8B Megatron checkpoints.
 
 \section{Architecture comparisons}
 \label{sec:contrast}
 
 \runin{Primary 2.8B comparison}
-We compare \texttt{pythia-2.8b} \citep{biderman2023pythia} with \texttt{mamba-2.8b} and \texttt{mamba2-2.7b}.
+We compare \texttt{pythia-2.8b} \citep{biderman2023pythia} with \texttt{mamba-2.8b} \citep{gu2023mamba} and \texttt{mamba2-2.7b} \citep{dao2024mamba2}.
 All are base models pretrained on the Pile \citep{gao2020pile}, have similar parameter counts, and use related tokenizers.
 Table~\ref{tab:phase2} and Figure~\ref{fig:primary-curves} show a positive primacy edge for Pythia and no positive primacy edge for either Mamba model.
 The paired Mamba-minus-Pythia primacy interactions are $-0.053$ and $-0.070$ (both Holm $p<10^{-4}$), while Mamba-1 versus Mamba-2 is uncertain ($+0.017$, 95\% CI $[-0.005,0.038]$).
 All three models have positive recency edges.
 These comparisons match corpus and approximate scale, but not depth, positional encoding, state size, or checkpoint family.
 
-\begin{table}[H]
-\caption{Pile-trained models on 800 exploratory questions.
-Intervals use a question-level paired bootstrap; $p$ is Holm-corrected.}
-\label{tab:phase2}
+\begin{table*}[t]
 \centering
+\caption{Pile-trained models on 800 exploratory questions. Paired-bootstrap 95\% CIs and
+Holm-corrected $p$-values across six tests; bold $p$ indicates $\alpha=0.05$ significance.}
+\label{tab:phase2}
 \scriptsize
-\begin{tabular}{@{}lccc@{}}
+\begin{threeparttable}
+\setlength{\tabcolsep}{2.5pt}
+\renewcommand{\arraystretch}{1.0}
+\begin{tabular}{@{}l
+                S[table-format=+1.3]
+                c
+                c
+                S[table-format=+1.3]
+                c
+                c
+                S[table-format=1.3]
+                S[table-format=1.3]
+                @{}}
 \toprule
-Model & Primacy (95\% CI) & Recency (95\% CI) & Floor / Ceiling \\
+& \multicolumn{3}{c}{Primacy} & \multicolumn{3}{c}{Recency} & \multicolumn{2}{c}{Anchors} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7} \cmidrule(lr){8-9}
+Model & {$\Delta$} & {95\% CI} & {$p$} & {$\Delta$} & {95\% CI} & {$p$} & {Floor} & {Ceiling} \\
 \midrule
-\texttt{pythia-2.8b} & $+0.052$ $[0.032,0.072]$, $p{<}10^{-4}$ & $+0.075$ $[0.054,0.097]$, $p{<}10^{-4}$ & $0.091 / 0.640$ \\
-\texttt{mamba-2.8b} & $-0.001$ $[-0.016,0.014]$, $p{=}0.91$ & $+0.077$ $[0.058,0.097]$, $p{<}10^{-4}$ & $0.115 / 0.615$ \\
-\texttt{mamba2-2.7b} & $-0.018$ $[-0.034,-0.003]$, $p{=}0.02$ & $+0.105$ $[0.086,0.124]$, $p{<}10^{-4}$ & $0.128 / 0.619$ \\
+\texttt{pythia-2.8b}  & 0.052  & $[0.032, 0.072]$   & {\bfseries\boldmath${<}10^{-4}$} & 0.075 & $[0.054, 0.097]$ & {\bfseries\boldmath${<}10^{-4}$} & 0.091 & 0.640 \\
+\texttt{mamba-2.8b}   & -0.001 & $[-0.016, 0.014]$  & $0.91$                           & 0.077 & $[0.058, 0.097]$ & {\bfseries\boldmath${<}10^{-4}$} & 0.115 & 0.615 \\
+\texttt{mamba2-2.7b}  & -0.018 & $[-0.034, -0.003]$ & {\bfseries\boldmath$0.02$}        & 0.105 & $[0.086, 0.124]$ & {\bfseries\boldmath${<}10^{-4}$} & 0.128 & 0.619 \\
 \bottomrule
 \end{tabular}
-\end{table}
+\begin{tablenotes}
+\footnotesize
+\item[] $\Delta$ is anchor-minus-middle accuracy; Floor/Ceiling are the no-gold/gold-only anchors from Fig.~\ref{fig:position-harness}.
+\end{tablenotes}
+\end{threeparttable}
+\end{table*}
 
-\begin{figure}[H]
+\begin{figure}[t]
 \centering
 \begin{minipage}[t]{0.49\linewidth}
 \centering
-\includegraphics[width=\linewidth]{figures/phase2-curves.png}
+\includegraphics[width=\linewidth]{figures/paper-phase2-position.pdf}
 \textbf{(a) Pile-trained models near 2.8B parameters}
 \end{minipage}\hfill
 \begin{minipage}[t]{0.49\linewidth}
 \centering
-\includegraphics[width=\linewidth]{figures/phase3-curves.png}
+\includegraphics[width=\linewidth]{figures/paper-phase3-position.pdf}
 \textbf{(b) Matched pure and hybrid Mamba-2 models at 8B}
 \end{minipage}
 \caption{Accuracy as the answer-bearing document moves through the context on 800 exploratory questions.
 Pythia rises at the beginning, while both smaller Mamba variants do not; the matched 8B hybrid also rises more than the pure model, but their paired difference remains uncertain.
-Dotted lines show each model's no-gold floor and gold-only ceiling.}
+Shaded bands show 95\% question-bootstrap confidence intervals.}
 \label{fig:primary-curves}
 \end{figure}
 
@@ -156,11 +320,11 @@ Dotted lines show each model's no-gold floor and gold-only ceiling.}
 Our strongest control uses NVIDIA's pure and hybrid 8B Mamba-2 checkpoints \citep{waleffe2024empirical}, which share training data, tokenizer, scale, depth, and positional setup.
 The hybrid contains 7\% attention layers.
 Within models, the pure model's primacy edge is uncertain ($+0.008$, $p=0.36$) and the hybrid's is positive ($+0.027$, $p=0.007$).
-That difference of significance is not itself a significant difference.
+One estimate being significant and the other not does not establish that the models differ.
 The paired hybrid-minus-pure primacy effect is $+0.019$ (95\% CI $[-0.006,0.044]$, Holm $p=0.144$), while the recency effect is $-0.028$ (95\% CI $[-0.055,-0.001]$, Holm $p=0.089$).
 This direction supports the 2.8B observation but does not isolate a causal attention effect.
 
-\begin{table}[H]
+\begin{table}[t]
 \caption{Matched 8B primacy comparison on 800 exploratory questions.
 The paired interaction is the relevant architecture test.}
 \label{tab:phase3}
@@ -182,7 +346,7 @@ hybrid minus pure & $+0.019$ & $[-0.006,0.044]$ & $0.144$ \\
 
 \runin{Scale}
 Across five approximate size pairs, the Pythia-minus-Mamba primacy gap is near zero at the two smallest scales and is $+0.062$, $+0.069$, and $+0.053$ in the three larger pairs (Figure~\ref{fig:artifact-scale-corpus}).
-The smallest Pythia ceiling is only $0.009$, so this is a descriptive capability-and-family trend, not evidence for a depth threshold.
+The smallest Pythia ceiling is only $0.009$, so this is a descriptive capability-and-family trend, not evidence for a depth threshold or a causal scale transition.
 
 \runin{Training corpus}
 Holding the Mamba-2.8B architecture fixed, the Pile-minus-SlimPajama primacy effect is $-0.007$ (95\% CI $[-0.030,0.016]$, $p=0.568$) and the recency effect is $-0.016$ (95\% CI $[-0.044,0.012]$, Holm $p=0.502$) \citep{soboleva2023slimpajama}.
@@ -190,7 +354,7 @@ The floor differs substantially ($0.270$ versus $0.114$), so this comparison fin
 
 \runin{Synthetic retrieval}
 On 50 RULER \texttt{niah\_single\_1} examples at 2K tokens \citep{hsieh2024ruler}, Pythia again has a primacy edge ($+0.12$, 95\% CI $[0.05,0.20]$).
-Both Mamba models score $1.0$ at every depth, so this check reproduces the transformer pattern but cannot compare mixer curves on the synthetic task (Figure~\ref{fig:artifact-task-sink}).
+Both Mamba models score $1.0$ at every depth, so this check reproduces the transformer pattern but cannot compare mixer curves on the synthetic task (Figure~\ref{fig:artifact-task}).
 
 \runin{Descriptive system comparison}
 We also run \texttt{Llama-3.1-8B} \citep{dubey2024llama}, \texttt{Qwen2.5-7B} \citep{yang2024qwen2}, and \texttt{Nemotron-H-8B} \citep{nvidia2025nemotronh}.
@@ -202,9 +366,9 @@ Because the systems differ on architecture, data, tokenizer, token count, depth,
 \label{sec:mechanism}
 
 \runin{Attention sinks track primacy}
-Across the Pythia family, the 160M model has almost no token-0 attention sink (final-layer share $0.003$), while the 2.8B model reaches $0.455$ \citep{xiao2024efficient}.
+Using the initial-token attention-share statistic of \citet{xiao2024efficient}, we measure almost no final-layer token-0 sink in Pythia-160M ($0.003$), while Pythia-2.8B reaches $0.455$.
 Pythia-410M has a small final-layer sink ($0.034$) and no significant primacy edge.
-Figure~\ref{fig:artifact-task-sink} is consistent with a sink mechanism, but the measurements share model scale as a confound and no valid sink ablation was completed.
+Figure~\ref{fig:artifact-mechanisms} shows a scale-linked association, but the measurements share model scale as a confound and no valid sink ablation was completed.
 
 \runin{Utilization, not storage, is a hypothesis}
 A balanced linear probe on frozen mid-depth states predicts edge versus middle position above its shuffled-label control for Pythia ($0.603$ versus $0.484$) and Mamba ($0.648$ versus $0.508$).
@@ -212,9 +376,10 @@ Thus position information remains linearly decodable even when Mamba has no posi
 This supports a utilization hypothesis, but probe decodability does not prove that the model stores or uses the answer-bearing content.
 
 \runin{Training-free prompt intervention}
-On 200 exploratory questions, repeating the question both before and after the documents increases Mamba primacy from $0.000$ to $+0.103$ ($p<10^{-4}$).
+On 200 exploratory questions, repeating the question both before and after the documents changes Mamba primacy from $0.000$ to $+0.103$ ($p<10^{-4}$).
 Placing the question only before the documents does not create primacy ($+0.020$, $p=0.366$), but reduces recency from $+0.070$ to $+0.010$.
-The intervention is training-free and practically useful, but it changes query repetition and token placement together, so it is not a clean test of fixed-state compression.
+The bookend result is not a mitigation result: much of the larger edge comes from lower middle-position accuracy.
+It also changes query repetition and token placement together, so it is not a clean test of fixed-state compression.
 
 \runin{Prompt sensitivity}
 Changing the prompt template reduces Pythia primacy from $+0.070$ to $+0.005$ in the 200-question mechanism subset.
@@ -223,8 +388,8 @@ This result warns against treating the measured magnitude as a template-invarian
 \section{Discussion and limitations}
 \label{sec:discussion}
 
-The most secure result is the 2.8B exploratory architecture-position interaction.
-The matched 8B direction, sink correlation, and probe results jointly make attention-mediated utilization a plausible hypothesis, while prompt sensitivity shows that architecture is not the only determinant.
+The most secure result is the 2.8B exploratory family-by-position interaction.
+The matched 8B direction, sink association, and probe results motivate a mixer-dependent evidence-use hypothesis, while prompt sensitivity shows that architecture is not the only determinant.
 
 Several limitations set the confirmatory boundary.
 All analyses use the exploratory split, so the planned 1{,}855-question test must be run under a frozen analysis before confirmatory language is warranted.
@@ -235,66 +400,19 @@ A 50-generation blinded audit sample exists, but human labels were not completed
 Finally, the attempted hybrid sink block did not alter the model because its custom attention path did not honor the hook; it is not an ablation result.
 The next decisive study should freeze exclusions and contrasts, repair the hybrid intervention, and evaluate the held-out split once.
 
+\runin{Broader impact}
+Position-sensitive evidence use can make retrieval-augmented systems unreliable even when retrieval succeeds.
+An evaluation that exposes this failure can support better ordering strategies and more honest model selection.
+The same phenomenon can also cause systems to privilege facts because of placement rather than relevance, so reported long-context accuracy should not be treated as uniform evidence access.
+This work releases diagnostics and outputs, not a new generative model.
+
 \section{Conclusion}
 \label{sec:conclusion}
 
-On 800 exploratory Lost-in-the-Middle questions, Pythia-2.8B and two Pile-trained Mamba models have different primacy profiles under a paired ten-position evaluation.
-A matched 8B comparison is directionally consistent but statistically uncertain, so the present evidence supports an architecture-position interaction without establishing that attention causes it.
-The held-out split and the remaining control work provide a clear path from this exploratory workshop result to a confirmatory study.
+On the exploratory Lost-in-the-Middle split, Pythia-2.8B and two Pile-trained Mamba models have different primacy profiles under a paired ten-position evaluation.
+A matched 8B comparison is directionally consistent but statistically uncertain, so the present evidence supports a family-by-position interaction without establishing that attention causes it.
+The held-out split and extension of the certification controls beyond Pythia provide a clear path from this exploratory workshop result to a confirmatory study.
 
-\appendix
-\section{Experiment artifacts}
-\label{sec:artifacts}
-
-The repository preserves raw generations, environment records, machine-readable summaries, and plots for every reported phase.
-The panels below reproduce the exact committed artifact images without redrawing or smoothing them.
-They summarize scope and mechanism checks that support interpretation but do not upgrade the exploratory results to confirmatory or causal evidence.
-
-\begin{figure}[H]
-\centering
-\begin{minipage}[t]{0.49\linewidth}
-\centering
-\includegraphics[width=\linewidth]{figures/phase4-scale-gap.png}
-\textbf{(a) Phase 4 scale sweep}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.49\linewidth}
-\centering
-\includegraphics[width=\linewidth]{figures/phase5-corpus-effect.png}
-\textbf{(b) Phase 5 corpus comparison}
-\end{minipage}
-\caption{Exploratory scope checks.
-The scale sweep is descriptive because model capability and family differences vary together.
-The corpus comparison holds the Mamba architecture fixed and finds no clear change in curve shape, despite a substantial change in overall accuracy.}
-\label{fig:artifact-scale-corpus}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\begin{minipage}[t]{0.49\linewidth}
-\centering
-\includegraphics[width=\linewidth]{figures/phase6-task-comparison-2048.png}
-\textbf{(a) Phase 6 synthetic retrieval at 2K}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.49\linewidth}
-\centering
-\includegraphics[width=\linewidth]{figures/phase7-attention-sink.png}
-\textbf{(b) Phase 7 attention-sink scan}
-\end{minipage}
-\caption{Exploratory task and mechanism artifacts.
-Pythia has a middle dip on the 2K synthetic task, while both Mamba models saturate and therefore cannot reveal a comparable curve.
-Late-layer token-0 attention grows with Pythia scale and covaries with the beginning advantage, but scale is a shared confound and no valid causal ablation was completed.}
-\label{fig:artifact-task-sink}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.72\linewidth]{figures/phase8-production-curves.png}
-\caption{Phase 8 descriptive production-system comparison.
-All three systems show a beginning advantage, but differences in architecture, data, tokenizer, training, and capability prevent attribution to a single design choice.}
-\label{fig:artifact-production}
-\end{figure}
-
-\newpage
 {
 \small
 \begin{thebibliography}{99}
@@ -304,10 +422,20 @@ D.~Agrawal, S.~Gao, and M.~Gajek.
 \newblock Can't remember details in long documents? You need some R\&R.
 \newblock In \emph{Findings of the Association for Computational Linguistics: EMNLP}, pages 12692-12704, 2024.
 
+\bibitem[Airlangga et al.(2025)]{airlangga2025primacy}
+M.~C. Airlangga, H.~AlQuabeh, M.~S. Nwadike, and K.~Inui.
+\newblock Emergence of primacy and recency effect in Mamba: A mechanistic point of view.
+\newblock \emph{arXiv:2506.15156}, 2025.
+
+\bibitem[Ali et al.(2025)]{ali2025hidden}
+A.~A. Ali, I.~Zimerman, and L.~Wolf.
+\newblock The hidden attention of Mamba models.
+\newblock In \emph{Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics}, pages 1516-1534, 2025.
+
 \bibitem[An et al.(2024)]{an2024make}
-C.~An, S.~Huang, J.~Zhang, et al.
+S.~An, Z.~Ma, Z.~Lin, N.~Zheng, J.-G. Lou, and W.~Chen.
 \newblock Make your LLM fully utilize the context.
-\newblock In \emph{Advances in Neural Information Processing Systems}, 2024.
+\newblock In \emph{Advances in Neural Information Processing Systems}, volume 37, 2024.
 
 \bibitem[Bai et al.(2024)]{bai2024longbench}
 Y.~Bai, X.~Lv, J.~Zhang, et al.
@@ -317,12 +445,12 @@ Y.~Bai, X.~Lv, J.~Zhang, et al.
 \bibitem[Biderman et al.(2023)]{biderman2023pythia}
 S.~Biderman, H.~Schoelkopf, Q.~Anthony, et al.
 \newblock Pythia: A suite for analyzing large language models across training and scaling.
-\newblock In \emph{International Conference on Machine Learning}, pages 2397-2430, 2023.
+\newblock In \emph{International Conference on Machine Learning}, volume 202 of PMLR, pages 2397-2430, 2023.
 
 \bibitem[Dao and Gu(2024)]{dao2024mamba2}
 T.~Dao and A.~Gu.
 \newblock Transformers are SSMs: Generalized models and efficient algorithms through structured state space duality.
-\newblock In \emph{International Conference on Machine Learning}, 2024.
+\newblock In \emph{International Conference on Machine Learning}, volume 235 of PMLR, pages 10041-10071, 2024.
 
 \bibitem[De et al.(2024)]{de2024griffin}
 S.~De, S.~L. Smith, A.~Fernando, et al.
@@ -334,15 +462,15 @@ A.~Dubey, A.~Jauhri, A.~Pandey, et al.
 \newblock The Llama 3 herd of models.
 \newblock \emph{arXiv:2407.21783}, 2024.
 
-\bibitem[Gao et al.(2020)]{gao2020pile}
-L.~Gao, S.~Biderman, S.~Black, et al.
-\newblock The Pile: An 800GB dataset of diverse text for language modeling.
-\newblock \emph{arXiv:2101.00027}, 2020.
-
 \bibitem[Efron(1979)]{efron1979bootstrap}
 B.~Efron.
 \newblock Bootstrap methods: Another look at the jackknife.
 \newblock \emph{The Annals of Statistics}, 7(1):1-26, 1979.
+
+\bibitem[Gao et al.(2020)]{gao2020pile}
+L.~Gao, S.~Biderman, S.~Black, et al.
+\newblock The Pile: An 800GB dataset of diverse text for language modeling.
+\newblock \emph{arXiv:2101.00027}, 2020.
 
 \bibitem[Gu and Dao(2024)]{gu2023mamba}
 A.~Gu and T.~Dao.
@@ -364,8 +492,13 @@ S.~Holm.
 \newblock A simple sequentially rejective multiple test procedure.
 \newblock \emph{Scandinavian Journal of Statistics}, 6(2):65-70, 1979.
 
+\bibitem[Huang(2025)]{huang2025well}
+J.~Huang.
+\newblock How well can a long sequence model model long sequences? Comparing architectural inductive biases on long-context abilities.
+\newblock In \emph{Proceedings of the 31st International Conference on Computational Linguistics}, pages 29-39, 2025.
+
 \bibitem[Hsieh et al.(2024a)]{hsieh2024found}
-C.-P. Hsieh, S.~Sun, S.~Kriman, S.~Acharya, D.~Rekesh, F.~Jia, and B.~Ginsburg.
+C.-Y. Hsieh, Y.-S. Chuang, C.-L. Li, Z.~Wang, L.~Le, A.~Kumar, J.~Glass, A.~Ratner, C.-Y. Lee, R.~Krishna, and T.~Pfister.
 \newblock Found in the middle: Calibrating positional attention bias improves long context utilization.
 \newblock In \emph{Findings of the Association for Computational Linguistics: ACL}, pages 14982-14995, 2024.
 
@@ -440,19 +573,19 @@ F.~Shi, X.~Chen, K.~Misra, N.~Scales, D.~Dohan, E.~H. Chi, N.~Sch\"arli, and D.~
 \newblock In \emph{International Conference on Machine Learning}, volume 202 of PMLR, pages 31210-31227, 2023.
 
 \bibitem[Soboleva et al.(2023)]{soboleva2023slimpajama}
-D.~Soboleva, F.~Al-Khateeb, R.~Myers, et al.
+D.~Soboleva, F.~Al-Khateeb, R.~Myers, J.~R. Steeves, J.~Hestness, and N.~Dey.
 \newblock SlimPajama: A 627B token cleaned and deduplicated version of RedPajama.
-\newblock Cerebras technical report, 2023.
+\newblock Cerebras dataset card and release, 2023.
 
 \bibitem[Su et al.(2024)]{su2024roformer}
-J.~Su, Y.~Lu, S.~Pan, A.~Murtadha, B.~Wen, and Y.~Liu.
+J.~Su, M.~Ahmed, Y.~Lu, S.~Pan, W.~Bo, and Y.~Liu.
 \newblock RoFormer: Enhanced transformer with rotary position embedding.
 \newblock \emph{Neurocomputing}, 568:127063, 2024.
 
 \bibitem[Sun et al.(2024)]{sun2024massive}
 M.~Sun, X.~Chen, J.~Kolter, and Z.~Liu.
 \newblock Massive activations in large language models.
-\newblock \emph{arXiv:2402.17762}, 2024.
+\newblock In \emph{Conference on Language Modeling}, 2024.
 
 \bibitem[Vaswani et al.(2017)]{vaswani2017attention}
 A.~Vaswani, N.~Shazeer, N.~Parmar, et al.
@@ -469,18 +602,204 @@ G.~Xiao, Y.~Tian, B.~Chen, S.~Han, and M.~Lewis.
 \newblock Efficient streaming language models with attention sinks.
 \newblock In \emph{International Conference on Learning Representations}, 2024.
 
-\bibitem[Yang et al.(2024)]{yang2024qwen2}
-A.~Yang, B.~Yang, B.~Zhang, et al.
-\newblock Qwen2.5 technical report.
-\newblock \emph{arXiv:2412.15115}, 2024.
-
 \bibitem[Xu et al.(2024)]{xu2024recomp}
 F.~Xu, W.~Shi, and E.~Choi.
 \newblock RECOMP: Improving retrieval-augmented LMs with compression and selective augmentation.
 \newblock In \emph{International Conference on Learning Representations}, 2024.
 
+\bibitem[Yang et al.(2024)]{yang2024qwen2}
+A.~Yang, B.~Yang, B.~Zhang, et al.
+\newblock Qwen2.5 technical report.
+\newblock \emph{arXiv:2412.15115}, 2024.
+
 \end{thebibliography}
 }
+
+\appendix
+
+\section{Supplementary evidence and artifacts}
+\label{app:artifacts}
+
+This appendix maps every experimental phase to its executed evidence and includes the most informative committed plots that do not fit in the main paper.
+All figures are generated from the cited JSON summaries by one deterministic plotting script.
+The canonical figure files are SVG; the PDF companions embedded here are produced from the same plotting calls because standard \LaTeX{} engines do not include SVG directly.
+
+\subsection{Phase and artifact ledger}
+
+Table~\ref{tab:phase-ledger} separates executed measurements from their allowed interpretation.
+The standard ten-position sweep contains ten prompts per question and uses the same question bundle at every position.
+
+\begin{table}[t]
+\caption{Executed evidence by phase.
+Sample counts are questions unless otherwise stated.}
+\label{tab:phase-ledger}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{5.5pt}
+\begin{tabular}{@{}clll@{}}
+\toprule
+Phase & Executed comparison & Committed source & Interpretation in this paper \\
+\midrule
+1 & 200 QA; 50 key-value & \texttt{artifacts/phase1} & Calibration and positive control \\
+2 & 3 models, $n=800$ each & \texttt{artifacts/phase2} & Primary family interaction \\
+3 & pure and hybrid 8B, $n=800$ & \texttt{artifacts/phase3} & Matched but uncertain contrast \\
+4 & 5 size pairs, $n=800$ each & \texttt{artifacts/phase4} & Descriptive scale trend \\
+5 & 2 corpora, $n=800$ each & \texttt{artifacts/phase5} & Corpus scope check \\
+6 & 3 models, 50 at two lengths & \texttt{artifacts/phase6} & Synthetic task scope check \\
+7 & 100-200 per intervention; 1,200 states & \texttt{artifacts/phase7-mechanisms} & Hypothesis generation only \\
+8 & 3 systems, $n=800$ each & \texttt{artifacts/phase8} & Descriptive prevalence check \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The dataset snapshot contains 2{,}655 rows and has SHA-256 checksum
+\texttt{192a05b27af2b09eec33ca0c94bb5cf82bcaf70d78b3bdff1258df34bf37aab9}.
+The fixed split allocates 800 rows to exploration and 1{,}855 to confirmation.
+The confirmatory rows have not been evaluated.
+
+\subsection{Calibration and the executed positive control}
+
+Phase 1 calibrates the primary Pythia checkpoint before the cross-family comparison.
+The no-gold floor is $0.095$, the gold-only ceiling is $0.650$, and moving the gold document from the middle to the first position changes accuracy by $+0.115$ (95\% CI $[0.055,0.175]$).
+The key-value control produces a $+0.38$ edge-versus-middle effect, demonstrating that the position-intervention pipeline can recover an imposed positional signal.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/paper-phase1-calibration.pdf}
+\caption{Phase 1 calibration.
+The left panel shows key-value retrieval by slot.
+The right panel shows the no-gold floor, middle-document condition, first-document condition, and gold-only ceiling for Pythia-2.8B.}
+\label{fig:artifact-calibration}
+\end{figure}
+
+\subsection{Scale and corpus scope checks}
+
+Figure~\ref{fig:artifact-scale-corpus} reports the complete Phase 4 and Phase 5 summaries.
+The scale trend is inseparable from task capability at the smallest sizes.
+The corpus comparison changes the accuracy level but does not detect an edge-shape difference under the fixed Mamba-2.8B architecture.
+
+\begin{figure}[t]
+\centering
+\begin{minipage}[t]{0.62\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figures/paper-phase4-scale.pdf}
+\textbf{(a) Approximate size pairs}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.36\linewidth}
+\centering
+\includegraphics[width=\linewidth]{figures/paper-phase5-corpus.pdf}
+\textbf{(b) Fixed architecture, different corpora}
+\end{minipage}
+\caption{Additional scope checks.
+Markers and colors retain the paper-wide encoding: attention-based Pythia models are blue stars, while state-space models are orange and use shape to distinguish checkpoint variants.}
+\label{fig:artifact-scale-corpus}
+\end{figure}
+
+\subsection{Synthetic retrieval}
+
+The Phase 6 forest plot in Figure~\ref{fig:artifact-task} separates the QA estimates from 2K-token needle retrieval.
+Open markers denote the synthetic task and filled markers denote QA.
+Mamba and Mamba-2 saturate the needle task, so the absence of an edge effect for those models is a ceiling result rather than evidence of better middle-context behavior.
+Only the summary and plots for this phase are committed; raw generations and an environment manifest are not available in the repository snapshot.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/paper-phase6-task.pdf}
+\caption{Primacy and recency across the main QA task and 2K-token RULER needle retrieval.
+Horizontal intervals are 95\% question-bootstrap confidence intervals.}
+\label{fig:artifact-task}
+\end{figure}
+
+\subsection{Mechanism-oriented measurements and prompt interventions}
+
+Figure~\ref{fig:artifact-mechanisms} combines the valid Phase 7 measurements.
+The sink statistic and probe results are associations, not interventions.
+The attempted hybrid attention-sink block is excluded because the model's custom attention path did not honor the hook, so the intervention did not change the computation.
+The prompt variants jointly alter query position, repetition, and token layout and therefore do not isolate one mechanism.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/paper-phase7-mechanisms.pdf}
+\caption{Phase 7 mechanism-oriented evidence.
+The sink panel compares final-layer initial-token attention share with primacy.
+The probe panel includes shuffled-label controls.
+The prompt panel reports edge effects for the executed query and template variants.}
+\label{fig:artifact-mechanisms}
+\end{figure}
+
+\subsection{Additional 7B-8B systems}
+
+Figure~\ref{fig:artifact-production} shows the full position curves for the descriptive system comparison.
+Marker shape and line style distinguish systems without adding colors.
+These checkpoints differ on several factors beyond the sequence mixer, so the figure is evidence of prevalence rather than a controlled architecture result.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.72\linewidth]{figures/paper-phase8-production.pdf}
+\caption{Position curves for Nemotron-H-8B, Llama-3.1-8B, and Qwen2.5-7B on the 800-question exploratory split.}
+\label{fig:artifact-production}
+\end{figure}
+
+\section{Integrity and provenance notes}
+\label{app:integrity}
+
+The primary standard sweep yields 9{,}600 generations per model: 8{,}000 position prompts, 800 no-gold prompts, and 800 gold-only prompts.
+The paired bootstrap resamples complete question bundles and preserves prompt and distractor identity across positions.
+No generation failure or scored null is reported in the primary summaries.
+Prompt-length checks keep the compared position prompts within one token.
+
+The producing manifest for Phase 3 records uncommitted source changes, so the result is included with an explicit exact-reproduction limitation.
+A 50-generation blinded audit sample exists, but the human labels were not completed.
+The committed negative and distractor-order controls passed on the exploratory Pythia sample only and do not test the 8B Megatron checkpoints.
+
+\begin{table}[t]
+\caption{Execution environments recorded by the phase artifacts.}
+\label{tab:compute}
+\centering
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Phases & Recorded accelerator & Scope \\
+\midrule
+1 and 5 & NVIDIA A10G & Calibration and corpus check \\
+2-4 & NVIDIA A40 & Primary, matched, and scale comparisons \\
+6 & NVIDIA T4 & Synthetic retrieval \\
+7 & NVIDIA L40S and T4 & Prompt, sink, and probe studies \\
+8 & NVIDIA L40S & Additional 7B-8B systems \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Checkpoint provenance}
+
+Table~\ref{tab:checkpoints} records the immutable revisions for the checkpoints that define the primary, matched, corpus, and additional-system comparisons.
+The complete scale-suite registry appears in \texttt{src/mixing\_matters/models.py}.
+
+\begin{table}[t]
+\caption{Selected checkpoint repositories and pinned revisions.}
+\label{tab:checkpoints}
+\centering
+\scriptsize
+\begin{tabular}{@{}p{0.22\linewidth}p{0.46\linewidth}p{0.22\linewidth}@{}}
+\toprule
+Paper key & Repository identifier & Revision \\
+\midrule
+Pythia-2.8B & \texttt{EleutherAI/pythia-2.8b} & \texttt{2a259cdd96a4} \\
+Mamba-2.8B & \texttt{state-spaces/mamba-2.8b-hf} & \texttt{96c48e0292b6} \\
+Mamba-2 2.7B & \texttt{AntonV/mamba2-2.7b-hf} & \texttt{ef542707386f} \\
+Pure Mamba-2 8B & \texttt{nvidia/mamba2-8b-3t-4k} & \texttt{b915550c63ba} \\
+Hybrid Mamba-2 8B & \texttt{nvidia/mamba2-hybrid-8b-3t-4k} & \texttt{35e8852e2240} \\
+SlimPajama Mamba-2.8B & \texttt{state-spaces/mamba-2.8b-slimpj} & \texttt{a7bdd41af90c} \\
+Nemotron-H-8B & \texttt{nvidia/Nemotron-H-8B-Base-8K} & \texttt{94ea861e008c} \\
+Llama-3.1-8B & \texttt{meta-llama/Llama-3.1-8B} & \texttt{d04e592bb4f6} \\
+Qwen2.5-7B & \texttt{Qwen/Qwen2.5-7B} & \texttt{d14972939875} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Elapsed time and aggregate compute were not logged consistently enough to report a defensible total.
+Checkpoint repository identifiers and immutable revisions are recorded in \texttt{src/mixing\_matters/models.py} and the per-run manifests.
+Some evaluated converted checkpoint mirrors do not declare complete license metadata in their model cards, so this snapshot does not claim a complete asset-license audit.
 
 \newpage
 \input{checklist.tex}
