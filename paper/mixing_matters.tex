@@ -8,15 +8,38 @@
 \usepackage{hyperref}
 \usepackage{url}
 \usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{threeparttable}
 \usepackage{amsfonts}
 \usepackage{amsmath}
 \usepackage{nicefrac}
-\usepackage{microtype}
+\usepackage[expansion=false]{microtype}
 \usepackage{xcolor}
 \usepackage{graphicx}
 \usepackage{float}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc,fit,positioning}
 \hypersetup{hidelinks,hypertexnames=false}
 \newcommand{\runin}[1]{\par\medskip\noindent\textbf{#1}\ }
+
+% Shared diagram language: blue denotes attention, orange denotes state-space
+% computation, and gray denotes inputs, outputs, or evaluation bookkeeping.
+\definecolor{attentionblue}{HTML}{2C7FB8}
+\definecolor{ssmorange}{HTML}{E67E22}
+\definecolor{diagramgray}{HTML}{5B6573}
+\definecolor{lightblue}{HTML}{EAF3F8}
+\definecolor{lightorange}{HTML}{FDF0E5}
+\tikzset{
+  diagram node/.style={draw=diagramgray!75, rounded corners=1.5pt,
+    fill=white, minimum height=0.42cm, inner xsep=3pt, inner ysep=2pt,
+    font=\scriptsize\sffamily},
+  attention node/.style={diagram node, draw=attentionblue, fill=lightblue},
+  ssm node/.style={diagram node, draw=ssmorange, fill=lightorange},
+  diagram arrow/.style={-{Latex[length=1.4mm]}, line width=0.45pt,
+    draw=diagramgray!85},
+  attention arrow/.style={diagram arrow, draw=attentionblue},
+  ssm arrow/.style={diagram arrow, draw=ssmorange}
+}
 
 \title{Mixing Matters: Evidence Position Bias Across Sequence Mixers in
 Long-Context Question Answering}
@@ -82,6 +105,73 @@ Mamba and Mamba-2 carry information through selective state-space recurrences \c
 Hybrid models such as Griffin, Jamba, and Nemotron-H combine recurrent or state-space blocks with attention \citep{de2024griffin,lieber2024jamba,nvidia2025nemotronh}.
 \citet{waleffe2024empirical} release the pure and hybrid 8B Mamba-2 checkpoints used in our tightest controlled comparison.
 
+% preamble: \usetikzlibrary{positioning, fit, arrows.meta, calc}
+
+\begin{figure*}[t]
+\centering
+\begin{tikzpicture}[
+  node distance=3mm and 3mm,
+  every node/.style={font=\small\sffamily},
+]
+
+% ================= Panel 1: Dense attention =================
+\node[diagram node] (a1) {$x_1$};
+\node[diagram node, right=of a1] (a2) {$x_2$};
+\node[diagram node, right=of a2] (a3) {$\cdots$};
+\node[diagram node, right=of a3] (a4) {$x_T$};
+\node[attention node] (ao) at ($(a2)!0.5!(a3)+(0,-11mm)$) {$h_t$};
+\foreach \n in {a1,a2,a3,a4} {\draw[attention arrow] (\n) -- (ao);}
+
+\node[fit=(a1)(a4), inner sep=0pt] (Prow1) {};
+\node[font=\scriptsize\sffamily, text=attentionblue, text width=3.9cm,
+      align=center, above=1.2mm of Prow1] (Pann1) {direct token-to-state mixing};
+\node[font=\small\bfseries, above=0.8mm of Pann1] {Dense attention};
+
+% ================= Panel 2: State-space recurrence =================
+\node[diagram node, right=17mm of a4] (s1) {$x_1$};
+\node[diagram node, right=of s1] (s2) {$x_2$};
+\node[diagram node, right=of s2] (s3) {$\cdots$};
+\node[diagram node, right=of s3] (s4) {$x_T$};
+
+\node[ssm node, below=9mm of s1] (z1) {$z_1$};
+\node[ssm node, below=9mm of s2] (z2) {$z_2$};
+\node[ssm node, below=9mm of s3] (z3) {$z_{t-1}$};
+\node[ssm node, below=9mm of s4] (z4) {$z_t$};
+\foreach \x/\z in {s1/z1,s2/z2,s3/z3,s4/z4} {\draw[ssm arrow] (\x) -- (\z);}
+\foreach \u/\v in {z1/z2,z2/z3,z3/z4} {\draw[ssm arrow] (\u) -- (\v);}
+
+\node[fit=(s1)(s4), inner sep=0pt] (Prow2) {};
+\node[font=\scriptsize\sffamily, text=ssmorange, text width=4.3cm,
+      align=center, above=1.2mm of Prow2] (Pann2) {recurrent state carries the prefix};
+\node[font=\small\bfseries, above=0.8mm of Pann2] {State-space recurrence};
+
+% ================= Panel 3: Hybrid mixer =================
+\node[diagram node, right=17mm of s4] (h1) {$x_1$};
+\node[diagram node, right=of h1] (h2) {$x_2$};
+\node[diagram node, right=of h2] (h3) {$\cdots$};
+\node[diagram node, right=of h3] (h4) {$x_T$};
+
+\node[ssm node, below=9mm of h1] (r1) {$z_1$};
+\node[ssm node, below=9mm of h2] (r2) {$z_2$};
+\node[attention node, below=9mm of h3, minimum width=1.05cm] (ha) {attn.};
+\node[ssm node, below=9mm of h4] (r4) {$z_t$};
+
+\foreach \x/\z in {h1/r1,h2/r2,h4/r4} {\draw[ssm arrow] (\x) -- (\z);}
+\draw[ssm arrow] (r1) -- (r2);
+\draw[ssm arrow] (r2) -- (ha);
+\draw[attention arrow] (h3) -- (ha);
+\draw[attention arrow] (ha) -- (r4);
+
+\node[fit=(h1)(h4), inner sep=0pt] (Prow3) {};
+\node[font=\scriptsize\sffamily, text=attentionblue, text width=4.3cm,
+      align=center, above=1.2mm of Prow3] (Pann3) {recurrent path with attention blocks};
+\node[font=\small\bfseries, above=0.8mm of Pann3] {Hybrid mixer};
+
+\end{tikzpicture}
+\caption{Schematic abstractions of the sequence-mixing mechanisms discussed in this paper. Dense attention permits direct token-to-state interactions, state-space models carry prefix information through a recurrent state, and hybrid models combine recurrent blocks with a minority of attention blocks. The drawing is conceptual rather than a layer-by-layer specification.}
+\label{fig:mixer-schematic}
+\end{figure*}
+
 \runin{Cross-architecture long-context evidence}
 Architecture comparisons do not imply that recurrent models are uniformly position-robust.
 \citet{huang2025well} find practical long-context failures across recurrent, hybrid, and Transformer designs, and a concurrent preprint reports a U-shaped Mamba recall curve on structured memory tasks \citep{airlangga2025primacy}.
@@ -105,6 +195,40 @@ The fixed split uses seed 240521 and contains 800 exploratory and 1{,}855 confir
 Every reported ten-document QA result uses the exploratory allocation or a subset of it.
 The confirmatory allocation remains unopened.
 
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  node distance=10mm and 12mm,
+  diagram node/.append style={font=\small\sffamily, inner sep=5pt, minimum height=6mm},
+  ssm node/.append style={font=\small\sffamily, inner sep=5pt, minimum height=6mm},
+]
+  \node[diagram node]             (q) {question};
+  \node[diagram node, right=of q] (d) {9 distractors};
+  \node[ssm node,     right=of d] (g) {gold doc.};
+  \node[diagram node, right=of g] (p) {prompt};
+
+  \draw[diagram arrow] (q) -- (d);
+  \draw[diagram arrow] (d) -- (g);
+  \draw[diagram arrow] (g) -- (p);
+
+  \node[draw=diagramgray, dashed, rounded corners,
+        inner xsep=7pt, inner ysep=6pt, fit=(q)(d)(g),
+        label={[font=\scriptsize\sffamily, text=diagramgray]above:same bundle}] {};
+
+  \node[font=\scriptsize\sffamily, align=center, below=14mm of d]
+    {repeat for gold position $0,\dots,9$\\[1pt]
+     question, distractors, and budget fixed};
+
+  \node[diagram node, below left=18mm and 6mm of p]  (floor) {no-gold floor};
+  \node[diagram node, below right=18mm and 6mm of p] (ceil)  {gold-only ceiling};
+
+  \draw[diagram arrow] (floor) -- (p.south);
+  \draw[diagram arrow] (ceil)  -- (p.south);
+\end{tikzpicture}
+\caption{Paired position intervention. Each question contributes one fixed bundle and ten prompts; only the gold document's position changes. The no-gold and gold-only anchors bound guessing and answerability.}
+\label{fig:position-harness}
+\end{figure}
+
 \runin{Edges and statistics}
 Let $a_S$, $a_M$, and $a_E$ be mean accuracy at start positions $\{0,1\}$, middle positions $\{4,5\}$, and end positions $\{8,9\}$.
 We define primacy as $a_S-a_M$ and recency as $a_E-a_M$.
@@ -118,7 +242,8 @@ The harness vendors the official prompt builder and \texttt{best\_subspan\_em} s
 It also records normalized exact match, following the normalization convention popularized by SQuAD \citep{rajpurkar2016squad}, and first-line extraction.
 Generation is greedy with temperature $0$, at most 32 new tokens, fixed seeds, BF16 where supported, pinned model revisions, and a fixed Mamba execution path within each controlled contrast.
 Each phase fixes one execution path within its controlled comparison, although the Transformers and Megatron backends differ across phases.
-Committed standard QA sweeps preserve prompts, raw generations, failures, token counts, software versions, and decoding settings, except Phase 6, for which only summaries and plots are committed.
+Committed standard QA sweeps preserve prompts, raw generations, failures, token counts, software versions, and decoding settings.
+The synthetic retrieval check is represented by summaries and plots only; raw generations and an environment manifest are not available in the repository snapshot.
 The released key-value task provides an executed positive control: the pipeline detects a $+0.38$ Pythia edge-versus-middle effect.
 Negative and distractor-order controls are implemented but have no committed run artifacts, so we do not count them as passed controls.
 
@@ -133,24 +258,43 @@ The paired Mamba-minus-Pythia primacy interactions are $-0.053$ and $-0.070$ (bo
 All three models have positive recency edges.
 These comparisons match corpus and approximate scale, but not depth, positional encoding, state size, or checkpoint family.
 
-\begin{table}[H]
-\caption{Pile-trained models on 800 exploratory questions.
-Intervals use a question-level paired bootstrap; $p$ is Holm-corrected.}
-\label{tab:phase2}
+\begin{table*}[t]
 \centering
+\caption{Pile-trained models on 800 exploratory questions. Paired-bootstrap 95\% CIs and
+Holm-corrected $p$-values across six tests; bold $p$ indicates $\alpha=0.05$ significance.}
+\label{tab:phase2}
 \scriptsize
-\begin{tabular}{@{}lccc@{}}
+\begin{threeparttable}
+\setlength{\tabcolsep}{2.5pt}
+\renewcommand{\arraystretch}{1.0}
+\begin{tabular}{@{}l
+                S[table-format=+1.3]
+                c
+                c
+                S[table-format=+1.3]
+                c
+                c
+                S[table-format=1.3]
+                S[table-format=1.3]
+                @{}}
 \toprule
-Model & Primacy (95\% CI) & Recency (95\% CI) & Floor / Ceiling \\
+& \multicolumn{3}{c}{Primacy} & \multicolumn{3}{c}{Recency} & \multicolumn{2}{c}{Anchors} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7} \cmidrule(lr){8-9}
+Model & {$\Delta$} & {95\% CI} & {$p$} & {$\Delta$} & {95\% CI} & {$p$} & {Floor} & {Ceiling} \\
 \midrule
-\texttt{pythia-2.8b} & $+0.052$ $[0.032,0.072]$, $p{<}10^{-4}$ & $+0.075$ $[0.054,0.097]$, $p{<}10^{-4}$ & $0.091 / 0.640$ \\
-\texttt{mamba-2.8b} & $-0.001$ $[-0.016,0.014]$, $p{=}0.91$ & $+0.077$ $[0.058,0.097]$, $p{<}10^{-4}$ & $0.115 / 0.615$ \\
-\texttt{mamba2-2.7b} & $-0.018$ $[-0.034,-0.003]$, $p{=}0.02$ & $+0.105$ $[0.086,0.124]$, $p{<}10^{-4}$ & $0.128 / 0.619$ \\
+\texttt{pythia-2.8b}  & 0.052  & $[0.032, 0.072]$   & {\bfseries\boldmath${<}10^{-4}$} & 0.075 & $[0.054, 0.097]$ & {\bfseries\boldmath${<}10^{-4}$} & 0.091 & 0.640 \\
+\texttt{mamba-2.8b}   & -0.001 & $[-0.016, 0.014]$  & $0.91$                           & 0.077 & $[0.058, 0.097]$ & {\bfseries\boldmath${<}10^{-4}$} & 0.115 & 0.615 \\
+\texttt{mamba2-2.7b}  & -0.018 & $[-0.034, -0.003]$ & {\bfseries\boldmath$0.02$}        & 0.105 & $[0.086, 0.124]$ & {\bfseries\boldmath${<}10^{-4}$} & 0.128 & 0.619 \\
 \bottomrule
 \end{tabular}
-\end{table}
+\begin{tablenotes}
+\footnotesize
+\item[] $\Delta$ is anchor-minus-middle accuracy; Floor/Ceiling are the no-gold/gold-only anchors from Fig.~\ref{fig:position-harness}.
+\end{tablenotes}
+\end{threeparttable}
+\end{table*}
 
-\begin{figure}[H]
+\begin{figure}[t]
 \centering
 \begin{minipage}[t]{0.49\linewidth}
 \centering
@@ -176,7 +320,7 @@ One estimate being significant and the other not does not establish that the mod
 The paired hybrid-minus-pure primacy effect is $+0.019$ (95\% CI $[-0.006,0.044]$, Holm $p=0.144$), while the recency effect is $-0.028$ (95\% CI $[-0.055,-0.001]$, Holm $p=0.089$).
 This direction supports the 2.8B observation but does not isolate a causal attention effect.
 
-\begin{table}[H]
+\begin{table}[t]
 \caption{Matched 8B primacy comparison on 800 exploratory questions.
 The paired interaction is the relevant architecture test.}
 \label{tab:phase3}
@@ -481,12 +625,13 @@ The canonical figure files are SVG; the PDF companions embedded here are produce
 Table~\ref{tab:phase-ledger} separates executed measurements from their allowed interpretation.
 The standard ten-position sweep contains ten prompts per question and uses the same question bundle at every position.
 
-\begin{table}[H]
+\begin{table}[t]
 \caption{Executed evidence by phase.
 Sample counts are questions unless otherwise stated.}
 \label{tab:phase-ledger}
 \centering
 \scriptsize
+\setlength{\tabcolsep}{5.5pt}
 \begin{tabular}{@{}clll@{}}
 \toprule
 Phase & Executed comparison & Committed source & Interpretation in this paper \\
@@ -514,7 +659,7 @@ Phase 1 calibrates the primary Pythia checkpoint before the cross-family compari
 The no-gold floor is $0.095$, the gold-only ceiling is $0.650$, and moving the gold document from the middle to the first position changes accuracy by $+0.115$ (95\% CI $[0.055,0.175]$).
 The key-value control produces a $+0.38$ edge-versus-middle effect, demonstrating that the position-intervention pipeline can recover an imposed positional signal.
 
-\begin{figure}[H]
+\begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/paper-phase1-calibration.pdf}
 \caption{Phase 1 calibration.
@@ -529,7 +674,7 @@ Figure~\ref{fig:artifact-scale-corpus} reports the complete Phase 4 and Phase 5 
 The scale trend is inseparable from task capability at the smallest sizes.
 The corpus comparison changes the accuracy level but does not detect an edge-shape difference under the fixed Mamba-2.8B architecture.
 
-\begin{figure}[H]
+\begin{figure}[t]
 \centering
 \begin{minipage}[t]{0.62\linewidth}
 \centering
@@ -553,7 +698,7 @@ Open markers denote the synthetic task and filled markers denote QA.
 Mamba and Mamba-2 saturate the needle task, so the absence of an edge effect for those models is a ceiling result rather than evidence of better middle-context behavior.
 Only the summary and plots for this phase are committed; raw generations and an environment manifest are not available in the repository snapshot.
 
-\begin{figure}[H]
+\begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/paper-phase6-task.pdf}
 \caption{Primacy and recency across the main QA task and 2K-token RULER needle retrieval.
@@ -568,7 +713,7 @@ The sink statistic and probe results are associations, not interventions.
 The attempted hybrid attention-sink block is excluded because the model's custom attention path did not honor the hook, so the intervention did not change the computation.
 The prompt variants jointly alter query position, repetition, and token layout and therefore do not isolate one mechanism.
 
-\begin{figure}[H]
+\begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/paper-phase7-mechanisms.pdf}
 \caption{Phase 7 mechanism-oriented evidence.
@@ -584,7 +729,7 @@ Figure~\ref{fig:artifact-production} shows the full position curves for the desc
 Marker shape and line style distinguish systems without adding colors.
 These checkpoints differ on several factors beyond the sequence mixer, so the figure is evidence of prevalence rather than a controlled architecture result.
 
-\begin{figure}[H]
+\begin{figure}[t]
 \centering
 \includegraphics[width=0.72\linewidth]{figures/paper-phase8-production.pdf}
 \caption{Position curves for Nemotron-H-8B, Llama-3.1-8B, and Qwen2.5-7B on the 800-question exploratory split.}
@@ -604,7 +749,7 @@ A 50-generation blinded audit sample exists, but the human labels were not compl
 The negative and distractor-order controls are implemented but have no committed outputs.
 These missing validations are not counted as passed controls.
 
-\begin{table}[H]
+\begin{table}[t]
 \caption{Execution environments recorded by the phase artifacts.}
 \label{tab:compute}
 \centering
@@ -627,7 +772,7 @@ Phases & Recorded accelerator & Scope \\
 Table~\ref{tab:checkpoints} records the immutable revisions for the checkpoints that define the primary, matched, corpus, and additional-system comparisons.
 The complete scale-suite registry appears in \texttt{src/mixing\_matters/models.py}.
 
-\begin{table}[H]
+\begin{table}[t]
 \caption{Selected checkpoint repositories and pinned revisions.}
 \label{tab:checkpoints}
 \centering
