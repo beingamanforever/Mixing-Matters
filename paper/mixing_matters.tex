@@ -57,6 +57,7 @@ Language models often use relevant evidence less effectively when it appears in 
 We ask whether this position bias changes with the mechanism used to mix information across tokens.
 For each multi-document question, we move the answer-bearing document through ten positions while holding the question and distractors fixed.
 In a shared-corpus comparison near 2.8B parameters, Pythia shows a clear beginning advantage that two Mamba variants lack, while all three models show an end advantage.
+This near-2.8B family comparison confounds sequence mixing with depth, RoPE or other positional encoding, recurrent-state size, and checkpoint family.
 A tighter comparison between pure and hybrid Mamba-2 models points in the same direction, but its paired effect remains statistically uncertain.
 Across additional exploratory studies, the family gap appears only once the compared models can answer the task, a corpus swap changes overall accuracy without a detectable change in curve shape, and Pythia reproduces the beginning advantage on synthetic retrieval.
 Prompt placement can materially reshape both edges.
@@ -80,12 +81,13 @@ It is difficult to test cleanly, however, because model families also differ in 
 We study the question with a paired intervention on evidence position.
 For every question, the same answer document and distractors form one bundle, and only the answer document's position changes.
 The main comparison finds a beginning advantage for Pythia that is absent in two similarly sized Mamba models trained on the same corpus, while the end advantage is shared.
+This near-2.8B family comparison confounds sequence mixing with depth, RoPE or other positional encoding, recurrent-state size, and checkpoint family.
 A more tightly matched pure-versus-hybrid Mamba-2 comparison is directionally compatible but does not detect a reliable paired attention effect.
 Scale, corpus, task, production-model, prompt, sink, and probe studies then define where the observation does and does not generalize.
 
 The paper makes three contributions.
 First, it provides an auditable position-intervention harness with anchors, preserved outputs, paired inference, and an untouched confirmatory split.
-Second, it separates a strong exploratory family interaction from a tighter but statistically uncertain attention comparison.
+Second, it presents an exploratory family-by-position comparison together with a tighter but statistically uncertain attention comparison.
 Third, it turns the remaining phases into bounded evidence: corpus and task checks test scope, while prompt interventions and internal measurements generate mechanistic hypotheses without being presented as causal proof.
 
 \section{Related work}
@@ -245,7 +247,9 @@ Each phase fixes one execution path within its controlled comparison, although t
 Committed standard QA sweeps preserve prompts, raw generations, failures, token counts, software versions, and decoding settings.
 The synthetic retrieval check is represented by summaries and plots only; raw generations and an environment manifest are not available in the repository snapshot.
 The released key-value task provides an executed positive control: the pipeline detects a $+0.38$ Pythia edge-versus-middle effect.
-Negative and distractor-order controls are implemented but have no committed run artifacts, so we do not count them as passed controls.
+For the sham-gold control, accuracy was $0.1235$ versus a $0.0950$ floor, a difference of $0.0285$; primacy was $+0.0050$ with 95\% CI $[-0.0325, 0.0425]$, and recency was $-0.0175$ with 95\% CI $[-0.0500, 0.0125]$.
+Distractor-order permutation accuracies were $0.2850$, $0.3000$, and $0.2767$, with a maximum spread of $0.0233$.
+Both certification controls passed their gates on the 200-question exploratory Pythia sample only, and they do not test the 8B Megatron checkpoints.
 
 \section{Architecture comparisons}
 \label{sec:contrast}
@@ -391,10 +395,10 @@ Several limitations set the confirmatory boundary.
 All analyses use the exploratory split, so the planned 1{,}855-question test must be run under a frozen analysis before confirmatory language is warranted.
 The 2.8B and scale comparisons retain depth, positional-encoding, state-size, and capability confounds.
 The matched 8B paired contrast crosses zero after Holm correction, and its run manifest records a dirty source tree, weakening exact reproducibility.
-The negative and distractor-order controls lack committed outputs.
+These certification controls passed on Pythia, but they do not test the 8B Megatron checkpoints.
 A 50-generation blinded audit sample exists, but human labels were not completed.
 Finally, the attempted hybrid sink block did not alter the model because its custom attention path did not honor the hook; it is not an ablation result.
-The next decisive study should freeze exclusions and contrasts, complete these controls, repair the hybrid intervention, and evaluate the held-out split once.
+The next decisive study should freeze exclusions and contrasts, repair the hybrid intervention, and evaluate the held-out split once.
 
 \runin{Broader impact}
 Position-sensitive evidence use can make retrieval-augmented systems unreliable even when retrieval succeeds.
@@ -407,7 +411,7 @@ This work releases diagnostics and outputs, not a new generative model.
 
 On the exploratory Lost-in-the-Middle split, Pythia-2.8B and two Pile-trained Mamba models have different primacy profiles under a paired ten-position evaluation.
 A matched 8B comparison is directionally consistent but statistically uncertain, so the present evidence supports a family-by-position interaction without establishing that attention causes it.
-The held-out split and the remaining control work provide a clear path from this exploratory workshop result to a confirmatory study.
+The held-out split and extension of the certification controls beyond Pythia provide a clear path from this exploratory workshop result to a confirmatory study.
 
 {
 \small
@@ -746,8 +750,7 @@ Prompt-length checks keep the compared position prompts within one token.
 
 The producing manifest for Phase 3 records uncommitted source changes, so the result is included with an explicit exact-reproduction limitation.
 A 50-generation blinded audit sample exists, but the human labels were not completed.
-The negative and distractor-order controls are implemented but have no committed outputs.
-These missing validations are not counted as passed controls.
+The committed negative and distractor-order controls passed on the exploratory Pythia sample only and do not test the 8B Megatron checkpoints.
 
 \begin{table}[t]
 \caption{Execution environments recorded by the phase artifacts.}
