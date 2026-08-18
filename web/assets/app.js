@@ -612,10 +612,53 @@ const observer = new ResizeObserver((entries) => {
   }
 });
 
+const pending = [];
+
+/** Register a chart. The first draw waits for `flush`, once the DOM is settled. */
 function mount(container, draw) {
   charts.set(container, { draw, width: 0 });
+  pending.push(container);
   observer.observe(container);
 }
+
+/**
+ * Draw every chart registered since the last call.
+ *
+ * Charts cannot draw as they mount: a grid column is full width until its
+ * sibling arrives, so an eager draw measures the wrong box. Deferring to the
+ * observer instead is not an option either, because a hidden document (a page
+ * opened in a background tab) receives no observer callbacks and would show
+ * nothing at all. Drawing explicitly, after the section is built, is correct in
+ * both cases.
+ */
+function flush() {
+  for (const container of pending.splice(0)) {
+    const chart = charts.get(container);
+    chart.width = Math.round(container.getBoundingClientRect().width);
+    chart.draw(container);
+  }
+}
+
+/** Redraw any chart whose container has since been laid out at another width. */
+function resize() {
+  for (const [container, chart] of charts) {
+    if (!container.isConnected) {
+      charts.delete(container);
+      continue;
+    }
+    const width = Math.round(container.getBoundingClientRect().width);
+    if (width < 1 || width === chart.width) continue;
+    chart.width = width;
+    chart.draw(container);
+  }
+}
+
+// A hidden document reports zero-width containers and gets no observer
+// callbacks, so charts mounted before the first paint need re-measuring once
+// the page actually becomes visible.
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) resize();
+});
 
 function figure(parent, { id, title, caption, controls }) {
   const node = html("figure", { class: "figure", id }, parent);
@@ -723,6 +766,9 @@ function buildPanels() {
 
   const draw = () => {
     body.textContent = "";
+    // Apply the figure padding before mounting, so the chart is measured at the
+    // width it will actually occupy rather than the full band width.
+    body.className = "figure";
     const panel = DATA.panels[current];
     const series = panel.models.map((key) => {
       const style = styleFor(panel.models, key);
@@ -792,7 +838,7 @@ function buildPanels() {
     html("figcaption", {
       html: `${panel.caption} Shaded ribbons are 95% bootstrap intervals over 800 question bundles. Primacy is positions 1-2 minus 5-6; recency is positions 9-10 minus 5-6.`,
     }, body);
-    body.className = "figure";
+    flush();
   };
 
   DATA.panels.forEach((panel, index) => {
@@ -867,6 +913,7 @@ function buildContrasts() {
         xLabel: `Paired ${measure} difference (percentage points)`,
       })
     );
+    flush();
   }
 
   kinds.forEach((entry, index) => {
@@ -1211,6 +1258,7 @@ async function boot() {
   buildTransfer();
   buildCalibration();
   buildPhases();
+  flush();
 }
 
 boot();
