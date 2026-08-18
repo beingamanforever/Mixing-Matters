@@ -1,5 +1,8 @@
 import json
+import os
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -103,6 +106,45 @@ def test_committed_site_data_is_current(tmp_path):
     """The page ships a generated file; drift from artifacts/ is a bug."""
     fresh = write_site_data(ROOT, tmp_path / "results.json")
     assert COMMITTED.read_text() == fresh.read_text()
+
+
+def test_page_data_builds_without_matplotlib(tmp_path):
+    """The Pages workflow builds the page on a bare interpreter.
+
+    Running the module through `cli` instead would import `figures` and fail on
+    a runner that has not installed the project, so block matplotlib and prove
+    the module entry point never reaches for it.
+    """
+    output = tmp_path / "results.json"
+    script = f"""
+import runpy, sys
+
+
+class Block:
+    def find_spec(self, name, path=None, target=None):
+        if name.split(".")[0] == "matplotlib":
+            raise ImportError("building page data must not require matplotlib")
+        return None
+
+
+sys.meta_path.insert(0, Block())
+sys.argv = ["site", "--root", {str(ROOT)!r}, "--output", {str(output)!r}]
+runpy.run_module("mixing_matters.site", run_name="__main__")
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        check=False,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "PYTHONPATH": str(ROOT / "src")},
+    )
+    assert result.returncode == 0, result.stderr
+    assert output.read_text() == COMMITTED.read_text()
+
+
+def test_pages_workflow_runs_the_module_entry_point():
+    workflow = (ROOT / ".github" / "workflows" / "pages.yml").read_text()
+    assert "python -m mixing_matters.site --output web/data/results.json" in workflow
 
 
 def test_page_only_references_files_that_exist():

@@ -31,10 +31,11 @@ jobs:
         with:
           python-version: "3.12"
 
-      # site.py reads only the committed summaries and the standard library,
-      # so the page can be built without installing the project.
+      # site.py reads only the committed summaries and the standard library, so
+      # the page builds without installing the project. It is run as its own
+      # module rather than through the CLI, which imports figures and matplotlib.
       - name: Regenerate page data from artifacts
-        run: PYTHONPATH=src python -m mixing_matters.cli build-site-data --output web/data/results.json
+        run: PYTHONPATH=src python -m mixing_matters.site --output web/data/results.json
 
       - name: Stage the paper and the dataset alongside the page
         run: |

@@ -8,6 +8,7 @@ Every number here is copied from a committed summary; nothing is recomputed.
 
 from __future__ import annotations
 
+import argparse
 import json
 from collections.abc import Mapping
 from pathlib import Path
@@ -448,3 +449,21 @@ def write_site_data(root: Path, output: Path) -> Path:
     payload = json.dumps(build_site_data(root), indent=1, sort_keys=True)
     output.write_text(payload + "\n")
     return output
+
+
+def main() -> None:
+    """Entry point for ``python -m mixing_matters.site``.
+
+    This module reads only committed summaries and the standard library, so the
+    Pages workflow can build the page without installing the project. Going
+    through ``cli`` instead would import ``figures`` and require matplotlib.
+    """
+    parser = argparse.ArgumentParser(description="Build the project-page data file.")
+    parser.add_argument("--root", type=Path, default=Path("."))
+    parser.add_argument("--output", type=Path, default=Path("web") / "data" / "results.json")
+    args = parser.parse_args()
+    print(write_site_data(args.root, args.output))
+
+
+if __name__ == "__main__":
+    main()
