@@ -342,7 +342,9 @@ code,
 /* ---------- figures ---------- */
 
 .figure {
-  margin: 0;
+  /* Drop the UA figure margin without clobbering the auto inline margins that
+     `.band > *` uses to centre every section child. */
+  margin-block: 0;
   background: var(--surface);
   border: 1px solid var(--rule);
   border-radius: 10px;
