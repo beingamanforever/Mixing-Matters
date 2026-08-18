@@ -5,7 +5,7 @@
 This repository studies whether language models use the same evidence differently when only its position in a long context changes.
 It compares Transformer, state-space, and hybrid sequence mixers with a paired, ten-position intervention derived from the [Lost in the Middle](https://aclanthology.org/2024.tacl-1.9/) evaluation.
 
-[**Paper**](paper/mixing-matters-newinml-2026.pdf) | [**Evidence ledger**](paper/EXPERIMENT-SOURCE-OF-TRUTH.md) | [**Artifacts**](artifacts/) | [**Runbooks**](docs/) | [**Code**](src/mixing_matters/) | [**License**](LICENSE)
+[**Project page**](https://beingamanforever.github.io/Mixing-Matters/) | [**Paper**](paper/mixing-matters-newinml-2026.pdf) | [**Dataset**](dataset/) | [**Evidence ledger**](paper/EXPERIMENT-SOURCE-OF-TRUTH.md) | [**Artifacts**](artifacts/) | [**Runbooks**](docs/) | [**Code**](src/mixing_matters/) | [**License**](LICENSE)
 
 ## Study design
 
@@ -86,6 +86,29 @@ uv run python paper/generate_figures.py
 
 GPU execution, checkpoint validation, and phase-specific analysis commands are documented in the [runbooks](docs/).
 The [figure tests](tests/test_paper_figures.py) check deterministic regeneration, expected labels, and source-summary provenance.
+
+## Released dataset
+
+Every generation the study produced is flattened into one schema in [`dataset/`](dataset/): 229,700 model generations across 17 pinned checkpoints, 10 evidence positions, 4 prompt variants, and 2 tasks, plus 280,000 per-layer attention-sink measurements.
+Field documentation and collection details are in the [datasheet](dataset/DATASHEET.md).
+
+```bash
+uv run mixing-matters build-dataset --output dataset
+```
+
+The builder reads only committed artifacts, so any clone reproduces the same files.
+
+## Project page
+
+The [project page](https://beingamanforever.github.io/Mixing-Matters/) presents these results interactively.
+Its source is in [`web/`](web/), and every number it renders is generated from the committed phase summaries.
+
+```bash
+uv run mixing-matters build-site-data --output web/data/results.json
+python3 -m http.server 8123 --directory web
+```
+
+Pushing to `main` deploys it through [the Pages workflow](.github/workflows/pages.yml), which regenerates the page data and stages the paper PDF and the dataset alongside it.
 
 ## Evidence boundary
 

@@ -1,0 +1,57 @@
+name: Project page
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - "artifacts/**"
+      - "dataset/**"
+      - "paper/mixing-matters-newinml-2026.pdf"
+      - "src/mixing_matters/site.py"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # site.py reads only the committed summaries and the standard library,
+      # so the page can be built without installing the project.
+      - name: Regenerate page data from artifacts
+        run: PYTHONPATH=src python -m mixing_matters.cli build-site-data --output web/data/results.json
+
+      - name: Stage the paper and the dataset alongside the page
+        run: |
+          cp paper/mixing-matters-newinml-2026.pdf web/paper.pdf
+          cp -R dataset web/dataset
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

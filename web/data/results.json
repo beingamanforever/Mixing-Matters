@@ -1,0 +1,2194 @@
+{
+ "calibration": {
+  "conditions": [
+   {
+    "accuracy": 0.095,
+    "ci": [
+     0.055,
+     0.14
+    ],
+    "label": "Closed book"
+   },
+   {
+    "accuracy": 0.225,
+    "ci": [
+     0.17,
+     0.285
+    ],
+    "label": "Gold middle"
+   },
+   {
+    "accuracy": 0.34,
+    "ci": [
+     0.275,
+     0.405
+    ],
+    "label": "Gold first"
+   },
+   {
+    "accuracy": 0.65,
+    "ci": [
+     0.585,
+     0.715
+    ],
+    "label": "Oracle"
+   }
+  ],
+  "kv_curve": [
+   {
+    "accuracy": 0.94,
+    "slot": 1
+   },
+   {
+    "accuracy": 0.34,
+    "slot": 2
+   },
+   {
+    "accuracy": 0.2,
+    "slot": 3
+   },
+   {
+    "accuracy": 0.08,
+    "slot": 4
+   },
+   {
+    "accuracy": 0.18,
+    "slot": 5
+   },
+   {
+    "accuracy": 0.16,
+    "slot": 6
+   },
+   {
+    "accuracy": 0.08,
+    "slot": 7
+   },
+   {
+    "accuracy": 0.2,
+    "slot": 8
+   },
+   {
+    "accuracy": 0.42,
+    "slot": 9
+   },
+   {
+    "accuracy": 0.16,
+    "slot": 10
+   }
+  ]
+ },
+ "contrasts": [
+  {
+   "kind": "architecture",
+   "label": "Mamba 2.8B minus Mamba-2 2.7B",
+   "phase": "phase2",
+   "primacy": {
+    "ci": [
+     -0.00437499999999999,
+     0.03812500000000002
+    ],
+    "estimate": 0.016875,
+    "p": 0.125
+   },
+   "recency": {
+    "ci": [
+     -0.05375000000000002,
+     -0.0025000000000000022
+    ],
+    "estimate": -0.028124999999999983,
+    "p": 0.06
+   }
+  },
+  {
+   "kind": "architecture",
+   "label": "Mamba 2.8B minus Pythia 2.8B",
+   "phase": "phase2",
+   "primacy": {
+    "ci": [
+     -0.07749999999999999,
+     -0.02812500000000001
+    ],
+    "estimate": -0.053125000000000006,
+    "p": 0.0
+   },
+   "recency": {
+    "ci": [
+     -0.026249999999999996,
+     0.029375000000000012
+    ],
+    "estimate": 0.0018750000000000155,
+    "p": 0.9204
+   }
+  },
+  {
+   "kind": "architecture",
+   "label": "Mamba-2 2.7B minus Pythia 2.8B",
+   "phase": "phase2",
+   "primacy": {
+    "ci": [
+     -0.095,
+     -0.044999999999999984
+    ],
+    "estimate": -0.07,
+    "p": 0.0
+   },
+   "recency": {
+    "ci": [
+     0.0037500000000000033,
+     0.056249999999999994
+    ],
+    "estimate": 0.03,
+    "p": 0.0264
+   }
+  },
+  {
+   "kind": "attention",
+   "label": "Hybrid minus pure Mamba-2 8B",
+   "phase": "phase3",
+   "primacy": {
+    "ci": [
+     -0.005625000000000047,
+     0.04437499999999994
+    ],
+    "estimate": 0.018750000000000044,
+    "p": 0.1442
+   },
+   "recency": {
+    "ci": [
+     -0.05499999999999999,
+     -0.0012499999999999734
+    ],
+    "estimate": -0.028124999999999956,
+    "p": 0.0892
+   }
+  },
+  {
+   "kind": "corpus",
+   "label": "Pile minus SlimPajama (Mamba 2.8B)",
+   "phase": "phase5",
+   "primacy": {
+    "ci": [
+     -0.03,
+     0.01624999999999996
+    ],
+    "estimate": -0.006874999999999992,
+    "p": 0.568
+   },
+   "recency": {
+    "ci": [
+     -0.04374999999999998,
+     0.011874999999999997
+    ],
+    "estimate": -0.016250000000000014,
+    "p": 0.502
+   }
+  },
+  {
+   "kind": "scale",
+   "label": "Pythia 160M minus Mamba 130M",
+   "phase": "phase4",
+   "primacy": {
+    "ci": [
+     -0.009374999999999998,
+     0.007500000000000003
+    ],
+    "estimate": -0.0006249999999999997,
+    "p": 0.9108
+   },
+   "recency": {
+    "ci": [
+     -0.05562500000000001,
+     -0.028749999999999994
+    ],
+    "estimate": -0.041875,
+    "p": 0.0
+   }
+  },
+  {
+   "kind": "scale",
+   "label": "Pythia 410M minus Mamba 370M",
+   "phase": "phase4",
+   "primacy": {
+    "ci": [
+     -0.016249999999999987,
+     0.020625000000000004
+    ],
+    "estimate": 0.0024999999999999953,
+    "p": 0.7928
+   },
+   "recency": {
+    "ci": [
+     -0.06874999999999999,
+     -0.023749999999999993
+    ],
+    "estimate": -0.04562500000000001,
+    "p": 0.0
+   }
+  },
+  {
+   "kind": "scale",
+   "label": "Pythia 1B minus Mamba 790M",
+   "phase": "phase4",
+   "primacy": {
+    "ci": [
+     0.041874999999999996,
+     0.08312499999999999
+    ],
+    "estimate": 0.061875,
+    "p": 0.0
+   },
+   "recency": {
+    "ci": [
+     -0.015000000000000013,
+     0.0325
+    ],
+    "estimate": 0.008749999999999994,
+    "p": 0.4812
+   }
+  },
+  {
+   "kind": "scale",
+   "label": "Pythia 1.4B minus Mamba 1.4B",
+   "phase": "phase4",
+   "primacy": {
+    "ci": [
+     0.046249999999999986,
+     0.09312499999999999
+    ],
+    "estimate": 0.06937499999999999,
+    "p": 0.0
+   },
+   "recency": {
+    "ci": [
+     -0.050625,
+     0.0050000000000000044
+    ],
+    "estimate": -0.02250000000000002,
+    "p": 0.1108
+   }
+  },
+  {
+   "kind": "scale",
+   "label": "Pythia 2.8B minus Mamba 2.8B",
+   "phase": "phase4",
+   "primacy": {
+    "ci": [
+     0.02812500000000001,
+     0.07749999999999999
+    ],
+    "estimate": 0.053125000000000006,
+    "p": 0.0
+   },
+   "recency": {
+    "ci": [
+     -0.029375000000000012,
+     0.026249999999999996
+    ],
+    "estimate": -0.0018750000000000155,
+    "p": 0.9204
+   }
+  },
+  {
+   "kind": "production",
+   "label": "Nemotron-H 8B minus Llama 3.1 8B",
+   "phase": "phase8",
+   "primacy": {
+    "ci": [
+     -0.040000000000000036,
+     0.020625000000000004
+    ],
+    "estimate": -0.009375000000000022,
+    "p": 0.8176
+   },
+   "recency": {
+    "ci": [
+     -0.014374999999999971,
+     0.03749999999999998
+    ],
+    "estimate": 0.011249999999999982,
+    "p": 0.8176
+   }
+  },
+  {
+   "kind": "production",
+   "label": "Nemotron-H 8B minus Qwen2.5 7B",
+   "phase": "phase8",
+   "primacy": {
+    "ci": [
+     -0.0037499999999999756,
+     0.05625000000000002
+    ],
+    "estimate": 0.02624999999999994,
+    "p": 0.178
+   },
+   "recency": {
+    "ci": [
+     -0.006249999999999978,
+     0.048750000000000016
+    ],
+    "estimate": 0.021249999999999936,
+    "p": 0.178
+   }
+  },
+  {
+   "kind": "production",
+   "label": "Llama 3.1 8B minus Qwen2.5 7B",
+   "phase": "phase8",
+   "primacy": {
+    "ci": [
+     0.008750000000000036,
+     0.06250000000000006
+    ],
+    "estimate": 0.03562499999999996,
+    "p": 0.0164
+   },
+   "recency": {
+    "ci": [
+     -0.015000000000000013,
+     0.03562499999999996
+    ],
+    "estimate": 0.009999999999999953,
+    "p": 0.447
+   }
+  }
+ ],
+ "design": {
+  "confirmatory_held_out": 1855,
+  "dataset_sha256": "192a05b27af2b09eec33ca0c94bb5cf82bcaf70d78b3bdff1258df34bf37aab9",
+  "exploratory": 800,
+  "positions": 10,
+  "questions_total": 2655,
+  "resamples": 10000,
+  "split_seed": 240521
+ },
+ "mechanisms": {
+  "probe": [
+   {
+    "accuracy": 0.6477501946724635,
+    "label": "Mamba 2.8B",
+    "layer": 32,
+    "model": "mamba-2.8b",
+    "shuffled_accuracy": 0.5077036500955667
+   },
+   {
+    "accuracy": 0.6032599120729373,
+    "label": "Pythia 2.8B",
+    "layer": 16,
+    "model": "pythia-2.8b",
+    "shuffled_accuracy": 0.48419220991296924
+   }
+  ],
+  "sink": [
+   {
+    "final_layer_sink_mass": 0.0030669045448303224,
+    "label": "Pythia 160M",
+    "model": "pythia-160m",
+    "primacy": {
+     "ci": [
+      -0.005625000000000001,
+      0.004375
+     ],
+     "estimate": -0.0006249999999999997,
+     "p": 1.0
+    }
+   },
+   {
+    "final_layer_sink_mass": 0.034450073242187504,
+    "label": "Pythia 410M",
+    "model": "pythia-410m",
+    "primacy": {
+     "ci": [
+      -0.0037500000000000033,
+      0.02875000000000001
+     ],
+     "estimate": 0.012499999999999997,
+     "p": 0.135
+    }
+   },
+   {
+    "final_layer_sink_mass": 0.0889083251953125,
+    "label": "Pythia 1B",
+    "model": "pythia-1b",
+    "primacy": {
+     "ci": [
+      0.036250000000000004,
+      0.068125
+     ],
+     "estimate": 0.051875000000000004,
+     "p": 0.0
+    }
+   },
+   {
+    "final_layer_sink_mass": 0.13858892822265625,
+    "label": "Pythia 1.4B",
+    "model": "pythia-1.4b",
+    "primacy": {
+     "ci": [
+      0.03437499999999999,
+      0.07187500000000002
+     ],
+     "estimate": 0.053125000000000006,
+     "p": 0.0
+    }
+   },
+   {
+    "final_layer_sink_mass": 0.45502197265625,
+    "label": "Pythia 2.8B",
+    "model": "pythia-2.8b",
+    "primacy": {
+     "ci": [
+      0.031875000000000014,
+      0.07187500000000002
+     ],
+     "estimate": 0.051875000000000004,
+     "p": 0.0
+    }
+   }
+  ],
+  "variants": [
+   {
+    "label": "Liu baseline",
+    "primacy": {
+     "mamba-2.8b": {
+      "ci": [
+       -0.035,
+       0.035
+      ],
+      "estimate": 0.0,
+      "p": 1.0
+     },
+     "pythia-2.8b": {
+      "ci": [
+       0.02999999999999997,
+       0.11249999999999999
+      ],
+      "estimate": 0.06999999999999998,
+      "p": 0.0028
+     }
+    }
+   },
+   {
+    "label": "Bookend",
+    "primacy": {
+     "mamba-2.8b": {
+      "ci": [
+       0.05500000000000002,
+       0.15
+      ],
+      "estimate": 0.1025,
+      "p": 0.0
+     },
+     "pythia-2.8b": {
+      "ci": [
+       0.11249999999999999,
+       0.19
+      ],
+      "estimate": 0.15000000000000002,
+      "p": 0.0
+     }
+    }
+   },
+   {
+    "label": "Gold padded",
+    "primacy": {
+     "mamba-2.8b": {
+      "ci": [
+       -0.012499999999999983,
+       0.0675
+      ],
+      "estimate": 0.027499999999999997,
+      "p": 0.183
+     },
+     "pythia-2.8b": {
+      "ci": [
+       -0.009999999999999981,
+       0.08250000000000002
+      ],
+      "estimate": 0.037500000000000006,
+      "p": 0.123
+     }
+    }
+   },
+   {
+    "label": "Question first",
+    "primacy": {
+     "mamba-2.8b": {
+      "ci": [
+       -0.007500000000000007,
+       0.0475
+      ],
+      "estimate": 0.020000000000000004,
+      "p": 0.366
+     },
+     "pythia-2.8b": {
+      "ci": [
+       0.052500000000000005,
+       0.12000000000000001
+      ],
+      "estimate": 0.08750000000000001,
+      "p": 0.0
+     }
+    }
+   },
+   {
+    "label": "Concise template",
+    "primacy": {
+     "mamba-2.8b": {
+      "ci": [
+       -0.035,
+       0.03
+      ],
+      "estimate": -0.0025000000000000022,
+      "p": 0.936
+     },
+     "pythia-2.8b": {
+      "ci": [
+       0.037500000000000006,
+       0.11750000000000002
+      ],
+      "estimate": 0.07749999999999999,
+      "p": 0.0
+     }
+    }
+   },
+   {
+    "label": "Instructional template",
+    "primacy": {
+     "mamba-2.8b": {
+      "ci": [
+       -0.04500000000000001,
+       0.025000000000000022
+      ],
+      "estimate": -0.010000000000000009,
+      "p": 0.6154
+     },
+     "pythia-2.8b": {
+      "ci": [
+       -0.03999999999999998,
+       0.047500000000000014
+      ],
+      "estimate": 0.0050000000000000044,
+      "p": 0.8582
+     }
+    }
+   }
+  ]
+ },
+ "models": {
+  "llama-3.1-8b": {
+   "corpus": null,
+   "family": "llama",
+   "label": "Llama 3.1 8B",
+   "mixer": "attention",
+   "params_millions": null,
+   "repo": "meta-llama/Llama-3.1-8B",
+   "revision": "d04e592bb4f6aa9cfee91e2e20afa771667e1d4b"
+  },
+  "mamba-1.4b": {
+   "corpus": null,
+   "family": "mamba",
+   "label": "Mamba 1.4B",
+   "mixer": "state-space",
+   "params_millions": 1400,
+   "repo": "state-spaces/mamba-1.4b-hf",
+   "revision": "6e46eae61c27280517feef46f536d16b91076f08"
+  },
+  "mamba-130m": {
+   "corpus": null,
+   "family": "mamba",
+   "label": "Mamba 130M",
+   "mixer": "state-space",
+   "params_millions": 130,
+   "repo": "state-spaces/mamba-130m-hf",
+   "revision": "1e76775f628fbf1350fbe4dbb3d971ba64af25a1"
+  },
+  "mamba-2.8b": {
+   "corpus": "pile",
+   "family": "mamba",
+   "label": "Mamba 2.8B",
+   "mixer": "state-space",
+   "params_millions": 2800,
+   "repo": "state-spaces/mamba-2.8b-hf",
+   "revision": "96c48e0292b63f5346b6d30061af2551f7101e26"
+  },
+  "mamba-2.8b-slimpj": {
+   "corpus": "slimpajama",
+   "family": "mamba",
+   "label": "Mamba 2.8B (SlimPajama)",
+   "mixer": "state-space",
+   "params_millions": 2800,
+   "repo": "state-spaces/mamba-2.8b-slimpj",
+   "revision": "a7bdd41af90ca0cc4ecfbd967e2ec28f1954b915"
+  },
+  "mamba-370m": {
+   "corpus": null,
+   "family": "mamba",
+   "label": "Mamba 370M",
+   "mixer": "state-space",
+   "params_millions": 370,
+   "repo": "state-spaces/mamba-370m-hf",
+   "revision": "b519127f5bfaaa1c27dd938dad051ec360972b23"
+  },
+  "mamba-790m": {
+   "corpus": null,
+   "family": "mamba",
+   "label": "Mamba 790M",
+   "mixer": "state-space",
+   "params_millions": 790,
+   "repo": "state-spaces/mamba-790m-hf",
+   "revision": "9822dd4b76af2bd9099b6ce2f19efd8329189a7e"
+  },
+  "mamba2-2.7b": {
+   "corpus": null,
+   "family": "mamba2",
+   "label": "Mamba-2 2.7B",
+   "mixer": "state-space",
+   "params_millions": null,
+   "repo": "AntonV/mamba2-2.7b-hf",
+   "revision": "ef542707386fa9ec86bbf8a35ed2952af84bf566"
+  },
+  "mamba2-8b": {
+   "corpus": null,
+   "family": "mamba2",
+   "label": "Mamba-2 8B (pure)",
+   "mixer": "state-space",
+   "params_millions": null,
+   "repo": "nvidia/mamba2-8b-3t-4k",
+   "revision": "b915550c63ba9359f88f44d1f6a600d85af27302"
+  },
+  "mamba2-hybrid-8b": {
+   "corpus": null,
+   "family": "mamba2-hybrid",
+   "label": "Mamba-2 8B (hybrid)",
+   "mixer": "hybrid",
+   "params_millions": null,
+   "repo": "nvidia/mamba2-hybrid-8b-3t-4k",
+   "revision": "35e8852e2240b350ac2fe2a3b8aa341b5930018e"
+  },
+  "nemotron-h-8b": {
+   "corpus": null,
+   "family": "nemotron-h",
+   "label": "Nemotron-H 8B",
+   "mixer": "hybrid",
+   "params_millions": null,
+   "repo": "nvidia/Nemotron-H-8B-Base-8K",
+   "revision": "94ea861e008c2dfced3e8e1302094024077aa04e"
+  },
+  "pythia-1.4b": {
+   "corpus": null,
+   "family": "pythia",
+   "label": "Pythia 1.4B",
+   "mixer": "attention",
+   "params_millions": 1400,
+   "repo": "EleutherAI/pythia-1.4b",
+   "revision": "fedc38a16eea3bd36a96b906d78d11d2ce18ed79"
+  },
+  "pythia-160m": {
+   "corpus": null,
+   "family": "pythia",
+   "label": "Pythia 160M",
+   "mixer": "attention",
+   "params_millions": 160,
+   "repo": "EleutherAI/pythia-160m",
+   "revision": "50f5173d932e8e61f858120bcb800b97af589f46"
+  },
+  "pythia-1b": {
+   "corpus": null,
+   "family": "pythia",
+   "label": "Pythia 1B",
+   "mixer": "attention",
+   "params_millions": 1000,
+   "repo": "EleutherAI/pythia-1b",
+   "revision": "f73d7dcc545c8bd326d8559c8ef84ffe92fea6b2"
+  },
+  "pythia-2.8b": {
+   "corpus": null,
+   "family": "pythia",
+   "label": "Pythia 2.8B",
+   "mixer": "attention",
+   "params_millions": 2800,
+   "repo": "EleutherAI/pythia-2.8b",
+   "revision": "2a259cdd96a4beb1cdf467512e3904197345f6a9"
+  },
+  "pythia-410m": {
+   "corpus": null,
+   "family": "pythia",
+   "label": "Pythia 410M",
+   "mixer": "attention",
+   "params_millions": 410,
+   "repo": "EleutherAI/pythia-410m",
+   "revision": "9879c9b5f8bea9051dcb0e68dff21493d67e9d4f"
+  },
+  "qwen2.5-7b": {
+   "corpus": null,
+   "family": "qwen2",
+   "label": "Qwen2.5 7B",
+   "mixer": "attention",
+   "params_millions": null,
+   "repo": "Qwen/Qwen2.5-7B",
+   "revision": "d149729398750b98c0af14eb82c78cfe92750796"
+  }
+ },
+ "panels": [
+  {
+   "caption": "Pythia, Mamba, and Mamba-2 at the same scale on the same 800 questions.",
+   "curves": {
+    "mamba-2.8b": [
+     {
+      "accuracy": 0.19875,
+      "ci": [
+       0.17125,
+       0.2275
+      ],
+      "position": 1
+     },
+     {
+      "accuracy": 0.185,
+      "ci": [
+       0.15875,
+       0.2125
+      ],
+      "position": 2
+     },
+     {
+      "accuracy": 0.185,
+      "ci": [
+       0.15875,
+       0.2125
+      ],
+      "position": 3
+     },
+     {
+      "accuracy": 0.18875,
+      "ci": [
+       0.1625,
+       0.21625
+      ],
+      "position": 4
+     },
+     {
+      "accuracy": 0.18875,
+      "ci": [
+       0.16125,
+       0.215
+      ],
+      "position": 5
+     },
+     {
+      "accuracy": 0.1975,
+      "ci": [
+       0.17,
+       0.225
+      ],
+      "position": 6
+     },
+     {
+      "accuracy": 0.19375,
+      "ci": [
+       0.16625,
+       0.22125
+      ],
+      "position": 7
+     },
+     {
+      "accuracy": 0.20375,
+      "ci": [
+       0.17625,
+       0.23125
+      ],
+      "position": 8
+     },
+     {
+      "accuracy": 0.22375,
+      "ci": [
+       0.195,
+       0.2525
+      ],
+      "position": 9
+     },
+     {
+      "accuracy": 0.31625,
+      "ci": [
+       0.28375,
+       0.34875
+      ],
+      "position": 10
+     }
+    ],
+    "mamba2-2.7b": [
+     {
+      "accuracy": 0.18125,
+      "ci": [
+       0.155,
+       0.20875
+      ],
+      "position": 1
+     },
+     {
+      "accuracy": 0.175,
+      "ci": [
+       0.14875,
+       0.20125
+      ],
+      "position": 2
+     },
+     {
+      "accuracy": 0.17375,
+      "ci": [
+       0.1475,
+       0.2
+      ],
+      "position": 3
+     },
+     {
+      "accuracy": 0.1725,
+      "ci": [
+       0.14625,
+       0.2
+      ],
+      "position": 4
+     },
+     {
+      "accuracy": 0.18375,
+      "ci": [
+       0.15625,
+       0.21125
+      ],
+      "position": 5
+     },
+     {
+      "accuracy": 0.20875,
+      "ci": [
+       0.18125,
+       0.2375
+      ],
+      "position": 6
+     },
+     {
+      "accuracy": 0.19875,
+      "ci": [
+       0.1725,
+       0.2275
+      ],
+      "position": 7
+     },
+     {
+      "accuracy": 0.2125,
+      "ci": [
+       0.185,
+       0.24125
+      ],
+      "position": 8
+     },
+     {
+      "accuracy": 0.24375,
+      "ci": [
+       0.215,
+       0.27375
+      ],
+      "position": 9
+     },
+     {
+      "accuracy": 0.35875,
+      "ci": [
+       0.32625,
+       0.39125
+      ],
+      "position": 10
+     }
+    ],
+    "pythia-2.8b": [
+     {
+      "accuracy": 0.26625,
+      "ci": [
+       0.23625,
+       0.2975
+      ],
+      "position": 1
+     },
+     {
+      "accuracy": 0.1975,
+      "ci": [
+       0.17125,
+       0.225
+      ],
+      "position": 2
+     },
+     {
+      "accuracy": 0.19625,
+      "ci": [
+       0.16875,
+       0.22375
+      ],
+      "position": 3
+     },
+     {
+      "accuracy": 0.19,
+      "ci": [
+       0.1625,
+       0.2175
+      ],
+      "position": 4
+     },
+     {
+      "accuracy": 0.18,
+      "ci": [
+       0.15375,
+       0.2075
+      ],
+      "position": 5
+     },
+     {
+      "accuracy": 0.18,
+      "ci": [
+       0.15375,
+       0.20625
+      ],
+      "position": 6
+     },
+     {
+      "accuracy": 0.20375,
+      "ci": [
+       0.17625,
+       0.2325
+      ],
+      "position": 7
+     },
+     {
+      "accuracy": 0.2175,
+      "ci": [
+       0.18875,
+       0.24625
+      ],
+      "position": 8
+     },
+     {
+      "accuracy": 0.23125,
+      "ci": [
+       0.2025,
+       0.26
+      ],
+      "position": 9
+     },
+     {
+      "accuracy": 0.27875,
+      "ci": [
+       0.2475,
+       0.31
+      ],
+      "position": 10
+     }
+    ]
+   },
+   "edges": {
+    "mamba-2.8b": {
+     "primacy": {
+      "ci": [
+       -0.016249999999999987,
+       0.013749999999999984
+      ],
+      "estimate": -0.0012500000000000011,
+      "p": 0.9136
+     },
+     "recency": {
+      "ci": [
+       0.057499999999999996,
+       0.09687499999999999
+      ],
+      "estimate": 0.07687500000000003,
+      "p": 0.0
+     }
+    },
+    "mamba2-2.7b": {
+     "primacy": {
+      "ci": [
+       -0.03375,
+       -0.0025000000000000022
+      ],
+      "estimate": -0.018125000000000002,
+      "p": 0.0226
+     },
+     "recency": {
+      "ci": [
+       0.08562500000000003,
+       0.12437499999999999
+      ],
+      "estimate": 0.10500000000000001,
+      "p": 0.0
+     }
+    },
+    "pythia-2.8b": {
+     "primacy": {
+      "ci": [
+       0.031875000000000014,
+       0.07187500000000002
+      ],
+      "estimate": 0.051875000000000004,
+      "p": 0.0
+     },
+     "recency": {
+      "ci": [
+       0.05374999999999999,
+       0.09687499999999999
+      ],
+      "estimate": 0.07500000000000001,
+      "p": 0.0
+     }
+    }
+   },
+   "floor_ceiling": {
+    "mamba-2.8b": {
+     "ceiling_accuracy": 0.615,
+     "floor_accuracy": 0.115
+    },
+    "mamba2-2.7b": {
+     "ceiling_accuracy": 0.61875,
+     "floor_accuracy": 0.1275
+    },
+    "pythia-2.8b": {
+     "ceiling_accuracy": 0.64,
+     "floor_accuracy": 0.09125
+    }
+   },
+   "id": "phase2",
+   "models": [
+    "pythia-2.8b",
+    "mamba-2.8b",
+    "mamba2-2.7b"
+   ],
+   "title": "Matched 2.8B comparison"
+  },
+  {
+   "caption": "Two NVIDIA checkpoints that share training data and scale; the hybrid replaces about 7% of Mamba-2 blocks with attention.",
+   "curves": {
+    "mamba2-8b": [
+     {
+      "accuracy": 0.30875,
+      "ci": [
+       0.2775,
+       0.34125
+      ],
+      "position": 1
+     },
+     {
+      "accuracy": 0.27375,
+      "ci": [
+       0.24375,
+       0.305
+      ],
+      "position": 2
+     },
+     {
+      "accuracy": 0.28,
+      "ci": [
+       0.24875,
+       0.31125
+      ],
+      "position": 3
+     },
+     {
+      "accuracy": 0.27875,
+      "ci": [
+       0.2475,
+       0.31
+      ],
+      "position": 4
+     },
+     {
+      "accuracy": 0.28,
+      "ci": [
+       0.25,
+       0.31125
+      ],
+      "position": 5
+     },
+     {
+      "accuracy": 0.28625,
+      "ci": [
+       0.255,
+       0.3175
+      ],
+      "position": 6
+     },
+     {
+      "accuracy": 0.2875,
+      "ci": [
+       0.2575,
+       0.31875
+      ],
+      "position": 7
+     },
+     {
+      "accuracy": 0.29875,
+      "ci": [
+       0.2675,
+       0.33
+      ],
+      "position": 8
+     },
+     {
+      "accuracy": 0.32625,
+      "ci": [
+       0.29375,
+       0.35875
+      ],
+      "position": 9
+     },
+     {
+      "accuracy": 0.395,
+      "ci": [
+       0.36125,
+       0.42875
+      ],
+      "position": 10
+     }
+    ],
+    "mamba2-hybrid-8b": [
+     {
+      "accuracy": 0.42625,
+      "ci": [
+       0.3925,
+       0.46
+      ],
+      "position": 1
+     },
+     {
+      "accuracy": 0.36375,
+      "ci": [
+       0.33125,
+       0.3975
+      ],
+      "position": 2
+     },
+     {
+      "accuracy": 0.37125,
+      "ci": [
+       0.3375,
+       0.405
+      ],
+      "position": 3
+     },
+     {
+      "accuracy": 0.36625,
+      "ci": [
+       0.33375,
+       0.4
+      ],
+      "position": 4
+     },
+     {
+      "accuracy": 0.3725,
+      "ci": [
+       0.34,
+       0.405
+      ],
+      "position": 5
+     },
+     {
+      "accuracy": 0.36375,
+      "ci": [
+       0.33125,
+       0.39625
+      ],
+      "position": 6
+     },
+     {
+      "accuracy": 0.36625,
+      "ci": [
+       0.33375,
+       0.4
+      ],
+      "position": 7
+     },
+     {
+      "accuracy": 0.38625,
+      "ci": [
+       0.35375,
+       0.42
+      ],
+      "position": 8
+     },
+     {
+      "accuracy": 0.3875,
+      "ci": [
+       0.355,
+       0.42125
+      ],
+      "position": 9
+     },
+     {
+      "accuracy": 0.4475,
+      "ci": [
+       0.41375,
+       0.4825
+      ],
+      "position": 10
+     }
+    ]
+   },
+   "edges": {
+    "mamba2-8b": {
+     "primacy": {
+      "ci": [
+       -0.00874999999999998,
+       0.02437499999999998
+      ],
+      "estimate": 0.008124999999999993,
+      "p": 0.3624
+     },
+     "recency": {
+      "ci": [
+       0.05750000000000005,
+       0.09749999999999998
+      ],
+      "estimate": 0.07749999999999996,
+      "p": 0.0
+     }
+    },
+    "mamba2-hybrid-8b": {
+     "primacy": {
+      "ci": [
+       0.007500000000000007,
+       0.046875
+      ],
+      "estimate": 0.026875000000000038,
+      "p": 0.007
+     },
+     "recency": {
+      "ci": [
+       0.03125,
+       0.06812499999999999
+      ],
+      "estimate": 0.049375,
+      "p": 0.0
+     }
+    }
+   },
+   "floor_ceiling": {
+    "mamba2-8b": {
+     "ceiling_accuracy": 0.65125,
+     "floor_accuracy": 0.2575
+    },
+    "mamba2-hybrid-8b": {
+     "ceiling_accuracy": 0.61625,
+     "floor_accuracy": 0.2425
+    }
+   },
+   "id": "phase3",
+   "models": [
+    "mamba2-8b",
+    "mamba2-hybrid-8b"
+   ],
+   "title": "Matched 8B pure vs hybrid"
+  },
+  {
+   "caption": "The same Mamba 2.8B architecture trained on the Pile and on SlimPajama.",
+   "curves": {
+    "mamba-2.8b": [
+     {
+      "accuracy": 0.1925,
+      "ci": [
+       0.165,
+       0.22125
+      ],
+      "position": 1
+     },
+     {
+      "accuracy": 0.19,
+      "ci": [
+       0.1625,
+       0.2175
+      ],
+      "position": 2
+     },
+     {
+      "accuracy": 0.18125,
+      "ci": [
+       0.155,
+       0.20875
+      ],
+      "position": 3
+     },
+     {
+      "accuracy": 0.19125,
+      "ci": [
+       0.165,
+       0.21875
+      ],
+      "position": 4
+     },
+     {
+      "accuracy": 0.19125,
+      "ci": [
+       0.165,
+       0.21875
+      ],
+      "position": 5
+     },
+     {
+      "accuracy": 0.1975,
+      "ci": [
+       0.17,
+       0.225
+      ],
+      "position": 6
+     },
+     {
+      "accuracy": 0.19,
+      "ci": [
+       0.1625,
+       0.2175
+      ],
+      "position": 7
+     },
+     {
+      "accuracy": 0.2075,
+      "ci": [
+       0.18,
+       0.23625
+      ],
+      "position": 8
+     },
+     {
+      "accuracy": 0.22375,
+      "ci": [
+       0.195,
+       0.2525
+      ],
+      "position": 9
+     },
+     {
+      "accuracy": 0.31375,
+      "ci": [
+       0.28125,
+       0.34625
+      ],
+      "position": 10
+     }
+    ],
+    "mamba-2.8b-slimpj": [
+     {
+      "accuracy": 0.24875,
+      "ci": [
+       0.22,
+       0.27875
+      ],
+      "position": 1
+     },
+     {
+      "accuracy": 0.2325,
+      "ci": [
+       0.20375,
+       0.2625
+      ],
+      "position": 2
+     },
+     {
+      "accuracy": 0.2325,
+      "ci": [
+       0.20375,
+       0.26125
+      ],
+      "position": 3
+     },
+     {
+      "accuracy": 0.23125,
+      "ci": [
+       0.2025,
+       0.26125
+      ],
+      "position": 4
+     },
+     {
+      "accuracy": 0.22875,
+      "ci": [
+       0.20125,
+       0.2575
+      ],
+      "position": 5
+     },
+     {
+      "accuracy": 0.245,
+      "ci": [
+       0.21625,
+       0.275
+      ],
+      "position": 6
+     },
+     {
+      "accuracy": 0.25,
+      "ci": [
+       0.22,
+       0.28
+      ],
+      "position": 7
+     },
+     {
+      "accuracy": 0.2675,
+      "ci": [
+       0.2375,
+       0.29875
+      ],
+      "position": 8
+     },
+     {
+      "accuracy": 0.27625,
+      "ci": [
+       0.24625,
+       0.3075
+      ],
+      "position": 9
+     },
+     {
+      "accuracy": 0.37875,
+      "ci": [
+       0.345,
+       0.4125
+      ],
+      "position": 10
+     }
+    ]
+   },
+   "edges": {
+    "mamba-2.8b": {
+     "primacy": {
+      "ci": [
+       -0.018750000000000017,
+       0.012500000000000011
+      ],
+      "estimate": -0.003124999999999989,
+      "p": 0.727
+     },
+     "recency": {
+      "ci": [
+       0.05499999999999999,
+       0.09375000000000003
+      ],
+      "estimate": 0.074375,
+      "p": 0.0
+     }
+    },
+    "mamba-2.8b-slimpj": {
+     "primacy": {
+      "ci": [
+       -0.012500000000000011,
+       0.020000000000000018
+      ],
+      "estimate": 0.0037500000000000033,
+      "p": 0.6878
+     },
+     "recency": {
+      "ci": [
+       0.07,
+       0.11062499999999997
+      ],
+      "estimate": 0.09062500000000001,
+      "p": 0.0
+     }
+    }
+   },
+   "floor_ceiling": {
+    "mamba-2.8b": {
+     "ceiling_accuracy": 0.615,
+     "floor_accuracy": 0.11375
+    },
+    "mamba-2.8b-slimpj": {
+     "ceiling_accuracy": 0.625,
+     "floor_accuracy": 0.27
+    }
+   },
+   "id": "phase5",
+   "models": [
+    "mamba-2.8b",
+    "mamba-2.8b-slimpj"
+   ],
+   "title": "Pretraining corpus control"
+  },
+  {
+   "caption": "Three complete 7-8B systems that differ on many axes at once.",
+   "curves": {
+    "llama-3.1-8b": [
+     {
+      "accuracy": 0.62625,
+      "ci": [
+       0.5925,
+       0.66
+      ],
+      "position": 1
+     },
+     {
+      "accuracy": 0.52125,
+      "ci": [
+       0.4875,
+       0.555
+      ],
+      "position": 2
+     },
+     {
+      "accuracy": 0.52125,
+      "ci": [
+       0.4875,
+       0.555
+      ],
+      "position": 3
+     },
+     {
+      "accuracy": 0.49875,
+      "ci": [
+       0.465,
+       0.53375
+      ],
+      "position": 4
+     },
+     {
+      "accuracy": 0.4975,
+      "ci": [
+       0.46375,
+       0.5325
+      ],
+      "position": 5
+     },
+     {
+      "accuracy": 0.4975,
+      "ci": [
+       0.46375,
+       0.5325
+      ],
+      "position": 6
+     },
+     {
+      "accuracy": 0.5025,
+      "ci": [
+       0.46875,
+       0.5375
+      ],
+      "position": 7
+     },
+     {
+      "accuracy": 0.50125,
+      "ci": [
+       0.46625,
+       0.535
+      ],
+      "position": 8
+     },
+     {
+      "accuracy": 0.48625,
+      "ci": [
+       0.4525,
+       0.52
+      ],
+      "position": 9
+     },
+     {
+      "accuracy": 0.54375,
+      "ci": [
+       0.50875,
+       0.57875
+      ],
+      "position": 10
+     }
+    ],
+    "nemotron-h-8b": [
+     {
+      "accuracy": 0.53625,
+      "ci": [
+       0.5025,
+       0.57125
+      ],
+      "position": 1
+     },
+     {
+      "accuracy": 0.43875,
+      "ci": [
+       0.40375,
+       0.4725
+      ],
+      "position": 2
+     },
+     {
+      "accuracy": 0.425,
+      "ci": [
+       0.3925,
+       0.45875
+      ],
+      "position": 3
+     },
+     {
+      "accuracy": 0.4125,
+      "ci": [
+       0.37875,
+       0.44625
+      ],
+      "position": 4
+     },
+     {
+      "accuracy": 0.4175,
+      "ci": [
+       0.38375,
+       0.45125
+      ],
+      "position": 5
+     },
+     {
+      "accuracy": 0.42375,
+      "ci": [
+       0.39,
+       0.4575
+      ],
+      "position": 6
+     },
+     {
+      "accuracy": 0.41,
+      "ci": [
+       0.37625,
+       0.44375
+      ],
+      "position": 7
+     },
+     {
+      "accuracy": 0.425,
+      "ci": [
+       0.39125,
+       0.46
+      ],
+      "position": 8
+     },
+     {
+      "accuracy": 0.42,
+      "ci": [
+       0.38625,
+       0.455
+      ],
+      "position": 9
+     },
+     {
+      "accuracy": 0.47875,
+      "ci": [
+       0.44375,
+       0.5125
+      ],
+      "position": 10
+     }
+    ],
+    "qwen2.5-7b": [
+     {
+      "accuracy": 0.625,
+      "ci": [
+       0.59125,
+       0.65875
+      ],
+      "position": 1
+     },
+     {
+      "accuracy": 0.5225,
+      "ci": [
+       0.48875,
+       0.55625
+      ],
+      "position": 2
+     },
+     {
+      "accuracy": 0.54625,
+      "ci": [
+       0.51125,
+       0.58
+      ],
+      "position": 3
+     },
+     {
+      "accuracy": 0.53875,
+      "ci": [
+       0.50375,
+       0.57375
+      ],
+      "position": 4
+     },
+     {
+      "accuracy": 0.5325,
+      "ci": [
+       0.49875,
+       0.56625
+      ],
+      "position": 5
+     },
+     {
+      "accuracy": 0.53375,
+      "ci": [
+       0.5,
+       0.56875
+      ],
+      "position": 6
+     },
+     {
+      "accuracy": 0.5325,
+      "ci": [
+       0.4975,
+       0.56625
+      ],
+      "position": 7
+     },
+     {
+      "accuracy": 0.5125,
+      "ci": [
+       0.4775,
+       0.5475
+      ],
+      "position": 8
+     },
+     {
+      "accuracy": 0.52125,
+      "ci": [
+       0.4875,
+       0.55625
+      ],
+      "position": 9
+     },
+     {
+      "accuracy": 0.56,
+      "ci": [
+       0.525,
+       0.595
+      ],
+      "position": 10
+     }
+    ]
+   },
+   "edges": {
+    "llama-3.1-8b": {
+     "primacy": {
+      "ci": [
+       0.05687500000000001,
+       0.09562500000000002
+      ],
+      "estimate": 0.07624999999999998,
+      "p": 0.0
+     },
+     "recency": {
+      "ci": [
+       0.0,
+       0.034375000000000044
+      ],
+      "estimate": 0.017500000000000016,
+      "p": 0.0506
+     }
+    },
+    "nemotron-h-8b": {
+     "primacy": {
+      "ci": [
+       0.043749999999999956,
+       0.09062500000000001
+      ],
+      "estimate": 0.06687499999999996,
+      "p": 0.0
+     },
+     "recency": {
+      "ci": [
+       0.008124999999999993,
+       0.049375
+      ],
+      "estimate": 0.028749999999999998,
+      "p": 0.006
+     }
+    },
+    "qwen2.5-7b": {
+     "primacy": {
+      "ci": [
+       0.020625000000000004,
+       0.06062499999999993
+      ],
+      "estimate": 0.04062500000000002,
+      "p": 0.0008
+     },
+     "recency": {
+      "ci": [
+       -0.01187500000000008,
+       0.026875000000000093
+      ],
+      "estimate": 0.007500000000000062,
+      "p": 0.474
+     }
+    }
+   },
+   "floor_ceiling": {
+    "llama-3.1-8b": {
+     "ceiling_accuracy": 0.7825,
+     "floor_accuracy": 0.315
+    },
+    "nemotron-h-8b": {
+     "ceiling_accuracy": 0.5875,
+     "floor_accuracy": 0.31125
+    },
+    "qwen2.5-7b": {
+     "ceiling_accuracy": 0.815,
+     "floor_accuracy": 0.28
+    }
+   },
+   "id": "phase8",
+   "models": [
+    "nemotron-h-8b",
+    "llama-3.1-8b",
+    "qwen2.5-7b"
+   ],
+   "title": "Production systems"
+  }
+ ],
+ "phases": [
+  {
+   "finding": "Yes. The key-value positive control moves 38 points between edge and middle slots, and the four QA calibration conditions order as designed.",
+   "id": "phase1",
+   "name": "Calibration",
+   "question": "Can the harness detect a position effect that is known to exist?",
+   "status": "instrument check"
+  },
+  {
+   "finding": "Pythia carries a +5.19 point primacy edge; both Mamba variants sit at or below zero. Both paired differences clear Holm correction at p < 0.0001.",
+   "id": "phase2",
+   "name": "Matched 2.8B architectures",
+   "question": "Do attention and state-space mixers use the same evidence differently?",
+   "status": "primary result"
+  },
+  {
+   "finding": "The hybrid has a significant within-model primacy edge and the pure model does not, but the paired difference is +1.88 points with Holm p = 0.1442.",
+   "id": "phase3",
+   "name": "Pure vs hybrid at 8B",
+   "question": "Does adding attention blocks to a state-space model create primacy?",
+   "status": "suggestive, not significant"
+  },
+  {
+   "finding": "No. It is near zero at the two smallest pairs and appears from 790M vs 1B onward. Capability and architecture remain confounded.",
+   "id": "phase4",
+   "name": "Scale sweep",
+   "question": "Is the family gap present at every model size?",
+   "status": "scale-emergent"
+  },
+  {
+   "finding": "No. Pile vs SlimPajama moves the level of the curve by 16 points but the primacy interaction is -0.69 points with Holm p = 0.568.",
+   "id": "phase5",
+   "name": "Pretraining corpus",
+   "question": "Does swapping the pretraining corpus reproduce the effect?",
+   "status": "null shape change"
+  },
+  {
+   "finding": "Partly. Pythia reproduces a +12 point primacy edge on RULER at 2K tokens; both Mamba models saturate at 1.0 and cannot be compared there.",
+   "id": "phase6",
+   "name": "Synthetic retrieval",
+   "question": "Does the effect transfer off multi-document QA?",
+   "status": "one arm only"
+  },
+  {
+   "finding": "Late-layer attention-sink mass tracks primacy across Pythia scale, and position stays linearly decodable in both families, favouring a utilisation gap over a storage gap.",
+   "id": "phase7",
+   "name": "Mechanisms",
+   "question": "What distinguishes the two families internally?",
+   "status": "correlational"
+  },
+  {
+   "finding": "All three show positive primacy edges, but their many differences make this a prevalence description rather than an architecture test.",
+   "id": "phase8",
+   "name": "Production systems",
+   "question": "Do deployed 7-8B systems show the same shape?",
+   "status": "descriptive"
+  }
+ ],
+ "scale": [
+  {
+   "attention": {
+    "model": "pythia-160m",
+    "primacy": {
+     "ci": [
+      -0.005625000000000001,
+      0.004375
+     ],
+     "estimate": -0.0006249999999999997,
+     "p": 1.0
+    }
+   },
+   "difference": {
+    "ci": [
+     -0.009374999999999998,
+     0.007500000000000003
+    ],
+    "estimate": -0.0006249999999999997,
+    "p": 0.9108
+   },
+   "pair": "130m-160m",
+   "params_millions": 145.0,
+   "state_space": {
+    "model": "mamba-130m",
+    "primacy": {
+     "ci": [
+      -0.006874999999999999,
+      0.006874999999999999
+     ],
+     "estimate": 0.0,
+     "p": 1.0
+    }
+   }
+  },
+  {
+   "attention": {
+    "model": "pythia-410m",
+    "primacy": {
+     "ci": [
+      -0.0037500000000000033,
+      0.02875000000000001
+     ],
+     "estimate": 0.012499999999999997,
+     "p": 0.135
+    }
+   },
+   "difference": {
+    "ci": [
+     -0.016249999999999987,
+     0.020625000000000004
+    ],
+    "estimate": 0.0024999999999999953,
+    "p": 0.7928
+   },
+   "pair": "370m-410m",
+   "params_millions": 390.0,
+   "state_space": {
+    "model": "mamba-370m",
+    "primacy": {
+     "ci": [
+      0.0006250000000000006,
+      0.019375000000000003
+     ],
+     "estimate": 0.010000000000000002,
+     "p": 0.0428
+    }
+   }
+  },
+  {
+   "attention": {
+    "model": "pythia-1b",
+    "primacy": {
+     "ci": [
+      0.036250000000000004,
+      0.068125
+     ],
+     "estimate": 0.051875000000000004,
+     "p": 0.0
+    }
+   },
+   "difference": {
+    "ci": [
+     0.041874999999999996,
+     0.08312499999999999
+    ],
+    "estimate": 0.061875,
+    "p": 0.0
+   },
+   "pair": "790m-1b",
+   "params_millions": 895.0,
+   "state_space": {
+    "model": "mamba-790m",
+    "primacy": {
+     "ci": [
+      -0.02187499999999999,
+      0.0018750000000000017
+     ],
+     "estimate": -0.009999999999999995,
+     "p": 0.1092
+    }
+   }
+  },
+  {
+   "attention": {
+    "model": "pythia-1.4b",
+    "primacy": {
+     "ci": [
+      0.03437499999999999,
+      0.07187500000000002
+     ],
+     "estimate": 0.053125000000000006,
+     "p": 0.0
+    }
+   },
+   "difference": {
+    "ci": [
+     0.046249999999999986,
+     0.09312499999999999
+    ],
+    "estimate": 0.06937499999999999,
+    "p": 0.0
+   },
+   "pair": "1.4b-1.4b",
+   "params_millions": 1400.0,
+   "state_space": {
+    "model": "mamba-1.4b",
+    "primacy": {
+     "ci": [
+      -0.03,
+      -0.003124999999999989
+     ],
+     "estimate": -0.016249999999999987,
+     "p": 0.0166
+    }
+   }
+  },
+  {
+   "attention": {
+    "model": "pythia-2.8b",
+    "primacy": {
+     "ci": [
+      0.031875000000000014,
+      0.07187500000000002
+     ],
+     "estimate": 0.051875000000000004,
+     "p": 0.0
+    }
+   },
+   "difference": {
+    "ci": [
+     0.02812500000000001,
+     0.07749999999999999
+    ],
+    "estimate": 0.053125000000000006,
+    "p": 0.0
+   },
+   "pair": "2.8b-2.8b",
+   "params_millions": 2800.0,
+   "state_space": {
+    "model": "mamba-2.8b",
+    "primacy": {
+     "ci": [
+      -0.016249999999999987,
+      0.013749999999999984
+     ],
+     "estimate": -0.0012500000000000011,
+     "p": 0.9136
+    }
+   }
+  }
+ ],
+ "task_transfer": {
+  "rows": [
+   {
+    "label": "Pythia 2.8B",
+    "model": "pythia-2.8b",
+    "needle": {
+     "primacy": {
+      "ci": [
+       0.050000000000000044,
+       0.19999999999999996
+      ],
+      "estimate": 0.12,
+      "p": 0.0
+     },
+     "recency": {
+      "ci": [
+       0.039999999999999925,
+       0.16999999999999993
+      ],
+      "estimate": 0.09999999999999998,
+      "p": 0.0022
+     }
+    },
+    "needle_accuracy": 0.9019999999999999,
+    "qa": {
+     "primacy": {
+      "ci": [
+       0.031875000000000014,
+       0.07187500000000002
+      ],
+      "estimate": 0.051875000000000004,
+      "p": 0.0
+     },
+     "recency": {
+      "ci": [
+       0.05374999999999999,
+       0.09687499999999999
+      ],
+      "estimate": 0.07500000000000001,
+      "p": 0.0
+     }
+    }
+   },
+   {
+    "label": "Mamba 2.8B",
+    "model": "mamba-2.8b",
+    "needle": {
+     "primacy": {
+      "ci": [
+       0.0,
+       0.0
+      ],
+      "estimate": 0.0,
+      "p": 1.0
+     },
+     "recency": {
+      "ci": [
+       0.0,
+       0.0
+      ],
+      "estimate": 0.0,
+      "p": 1.0
+     }
+    },
+    "needle_accuracy": 1.0,
+    "qa": {
+     "primacy": {
+      "ci": [
+       -0.016249999999999987,
+       0.013749999999999984
+      ],
+      "estimate": -0.0012500000000000011,
+      "p": 0.9136
+     },
+     "recency": {
+      "ci": [
+       0.057499999999999996,
+       0.09687499999999999
+      ],
+      "estimate": 0.07687500000000003,
+      "p": 0.0
+     }
+    }
+   },
+   {
+    "label": "Mamba-2 2.7B",
+    "model": "mamba2-2.7b",
+    "needle": {
+     "primacy": {
+      "ci": [
+       0.0,
+       0.0
+      ],
+      "estimate": 0.0,
+      "p": 1.0
+     },
+     "recency": {
+      "ci": [
+       0.0,
+       0.0
+      ],
+      "estimate": 0.0,
+      "p": 1.0
+     }
+    },
+    "needle_accuracy": 1.0,
+    "qa": {
+     "primacy": {
+      "ci": [
+       -0.03375,
+       -0.0025000000000000022
+      ],
+      "estimate": -0.018125000000000002,
+      "p": 0.0226
+     },
+     "recency": {
+      "ci": [
+       0.08562500000000003,
+       0.12437499999999999
+      ],
+      "estimate": 0.10500000000000001,
+      "p": 0.0
+     }
+    }
+   }
+  ],
+  "task": "niah_single_1"
+ }
+}

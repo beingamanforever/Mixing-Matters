@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mixing Matters: Evidence Position Bias Across Sequence Mixers</title>
+    <meta
+      name="description"
+      content="A paired ten-position intervention comparing how attention, state-space, and hybrid
+      sequence mixers use the same evidence in long-context question answering."
+    />
+    <meta property="og:title" content="Mixing Matters: Evidence Position Bias Across Sequence Mixers" />
+    <meta
+      property="og:description"
+      content="Move one answer-bearing passage through ten positions and hold everything else fixed.
+      Transformers lose the middle. State-space models never had the beginning."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="stylesheet" href="assets/style.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%2312161b'/><rect x='2' y='7' width='2' height='6' fill='%230072b2'/><rect x='6' y='9' width='2' height='4' fill='%23e69f00'/><rect x='10' y='5' width='2' height='8' fill='%23009e73'/></svg>"
+    />
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-eyebrow">Long-context evaluation · sequence mixers</div>
+      <h1>
+        Mixing Matters
+        <span class="sub">Evidence Position Bias Across Sequence Mixers in Long-Context Question Answering</span>
+      </h1>
+      <p class="byline">
+        Author list withheld pending review
+        <span class="venue">New in ML @ NeurIPS 2026 · under submission</span>
+      </p>
+      <nav class="links" aria-label="Resources">
+        <a href="paper.pdf">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <path d="M14 2v6h6" />
+          </svg>
+          Paper
+        </a>
+        <a href="https://github.com/beingamanforever/Mixing-Matters">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path
+              d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7 0-.7 0-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17 4.7 18 5 18 5c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"
+            />
+          </svg>
+          Code
+        </a>
+        <a href="https://github.com/beingamanforever/Mixing-Matters/tree/main/dataset">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <ellipse cx="12" cy="5" rx="8" ry="3" />
+            <path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5" />
+            <path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" />
+          </svg>
+          Dataset
+        </a>
+        <a href="https://github.com/beingamanforever/Mixing-Matters/tree/main/artifacts">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M3 7h18v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" />
+            <path d="M3 7l2-4h14l2 4" />
+          </svg>
+          Artifacts
+        </a>
+        <a href="https://github.com/beingamanforever/Mixing-Matters/blob/main/paper/EXPERIMENT-SOURCE-OF-TRUTH.md">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M9 11l3 3 8-8" />
+            <path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9" />
+          </svg>
+          Evidence ledger
+        </a>
+      </nav>
+    </header>
+
+    <nav class="nav" aria-label="Sections">
+      <ul>
+        <li><a href="#tldr">Summary</a></li>
+        <li><a href="#setup">Intervention</a></li>
+        <li><a href="#results">Main result</a></li>
+        <li><a href="#contrasts">All contrasts</a></li>
+        <li><a href="#scale">Scale</a></li>
+        <li><a href="#mechanisms">Mechanisms</a></li>
+        <li><a href="#transfer">Task transfer</a></li>
+        <li><a href="#calibration">Calibration</a></li>
+        <li><a href="#phase-table">Phases</a></li>
+        <li><a href="#cite">Cite</a></li>
+      </ul>
+    </nav>
+
+    <section class="band" id="tldr">
+      <div class="head">
+        <div class="eyebrow">Summary</div>
+        <h2>The same evidence, moved</h2>
+      </div>
+      <div class="prose">
+        <p>
+          Language models are known to answer better when the evidence they need sits at the start or the end
+          of a long context. That result was established on transformers. It is usually read as a property of
+          long context itself, and increasingly quoted about models that are not transformers at all.
+        </p>
+        <p>
+          We test that reading directly. For each of 800 multi-document questions we move a single
+          answer-bearing passage through ten positions while holding the question, the nine distractors, the
+          prompt template, and the decoding configuration fixed. Everything that changes is where the evidence
+          sits. We run that intervention across 17 pinned checkpoints spanning attention, state-space, and
+          hybrid mixers.
+        </p>
+        <p>
+          <strong>The U-shape is not one phenomenon.</strong> At matched 2.8B scale on the same corpus, Pythia
+          carries a clear primacy arm; Mamba and Mamba-2 carry none. All three carry a recency arm of similar
+          size. The middle-of-context penalty that gets quoted as universal is, in this comparison, two
+          separable effects with different scopes: recency travels across mixers, primacy does not.
+        </p>
+      </div>
+      <div class="stats" id="headline-stats"></div>
+      <p class="prose note" style="margin-top: 18px">
+        Primacy effect at matched 2.8B scale, in percentage points, over 800 questions with 10,000 paired
+        bootstrap resamples. Paired Pythia-minus-Mamba differences are +5.31 and +7.00 points, both Holm
+        <span class="num">p &lt; 0.0001</span>.
+      </p>
+    </section>
+
+    <section class="band alt" id="setup">
+      <div class="head">
+        <div class="eyebrow">Intervention</div>
+        <h2>One passage, ten positions, nothing else moved</h2>
+        <p>
+          The unit of analysis is the question, not the generation. Every bootstrap resample draws complete
+          bundles of all ten positions together, so the interval covers variation across questions rather than
+          across independently sampled prompts.
+        </p>
+      </div>
+
+      <figure class="figure">
+        <div class="figure-head"><h3>Design of the position sweep</h3></div>
+        <svg viewBox="0 0 900 268" width="100%" role="img" aria-label="Three rows of ten document slots, with the gold passage at position 1, position 5, and position 10">
+          <style>
+            .slot { fill: #ffffff; stroke: #dcdcd7; stroke-width: 1.2; }
+            .gold { fill: #0072b2; stroke: #0072b2; }
+            .slotnum { font: 500 11px ui-sans-serif, system-ui, sans-serif; fill: #85898e; }
+            .rowlab { font: 600 12.5px ui-sans-serif, system-ui, sans-serif; fill: #4f5459; }
+            .caplab { font: 400 12px ui-sans-serif, system-ui, sans-serif; fill: #7d8288; }
+            .qbox { fill: #f0f0ec; stroke: #dcdcd7; stroke-width: 1.2; }
+            .qlab { font: 600 11.5px ui-sans-serif, system-ui, sans-serif; fill: #4f5459; }
+          </style>
+          <g>
+            <text class="rowlab" x="0" y="34">Position 1</text>
+            <text class="rowlab" x="0" y="118">Position 5</text>
+            <text class="rowlab" x="0" y="202">Position 10</text>
+          </g>
+          <g id="slots">
+            <!-- rows are drawn by pattern: 10 slots per row, gold index differs -->
+            <g transform="translate(96,16)">
+              <rect class="slot gold" x="0" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="64" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="128" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="192" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="256" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="320" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="384" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="448" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="512" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="576" y="0" width="58" height="26" rx="4" />
+              <rect class="qbox" x="648" y="0" width="118" height="26" rx="4" />
+              <text class="qlab" x="707" y="17" text-anchor="middle">Question</text>
+            </g>
+            <g transform="translate(96,100)">
+              <rect class="slot" x="0" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="64" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="128" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="192" y="0" width="58" height="26" rx="4" />
+              <rect class="slot gold" x="256" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="320" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="384" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="448" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="512" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="576" y="0" width="58" height="26" rx="4" />
+              <rect class="qbox" x="648" y="0" width="118" height="26" rx="4" />
+              <text class="qlab" x="707" y="17" text-anchor="middle">Question</text>
+            </g>
+            <g transform="translate(96,184)">
+              <rect class="slot" x="0" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="64" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="128" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="192" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="256" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="320" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="384" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="448" y="0" width="58" height="26" rx="4" />
+              <rect class="slot" x="512" y="0" width="58" height="26" rx="4" />
+              <rect class="slot gold" x="576" y="0" width="58" height="26" rx="4" />
+              <rect class="qbox" x="648" y="0" width="118" height="26" rx="4" />
+              <text class="qlab" x="707" y="17" text-anchor="middle">Question</text>
+            </g>
+          </g>
+          <g transform="translate(96,232)">
+            <text class="slotnum" x="29" y="0" text-anchor="middle">1</text>
+            <text class="slotnum" x="93" y="0" text-anchor="middle">2</text>
+            <text class="slotnum" x="157" y="0" text-anchor="middle">3</text>
+            <text class="slotnum" x="221" y="0" text-anchor="middle">4</text>
+            <text class="slotnum" x="285" y="0" text-anchor="middle">5</text>
+            <text class="slotnum" x="349" y="0" text-anchor="middle">6</text>
+            <text class="slotnum" x="413" y="0" text-anchor="middle">7</text>
+            <text class="slotnum" x="477" y="0" text-anchor="middle">8</text>
+            <text class="slotnum" x="541" y="0" text-anchor="middle">9</text>
+            <text class="slotnum" x="605" y="0" text-anchor="middle">10</text>
+            <text class="caplab" x="0" y="26">
+              Filled slot = the one passage that contains the answer. Nine distractors keep their identity and order.
+            </text>
+          </g>
+        </svg>
+        <figcaption>
+          Each question contributes twelve generations per model: ten gold positions, one closed-book condition
+          that anchors guessing, and one gold-only oracle condition that anchors answerability. Within a
+          question, prompt length varies by at most one token across the ten positions.
+        </figcaption>
+      </figure>
+
+      <div class="prose" style="margin-top: 30px">
+        <p>
+          <strong>Primacy</strong> is mean accuracy at positions 1 and 2 minus mean accuracy at positions 5 and
+          6. <strong>Recency</strong> is mean accuracy at positions 9 and 10 minus mean accuracy at positions 5
+          and 6. Inference uses 10,000 bootstrap resamples of complete question bundles with Holm correction
+          across the two edge tests. The 2,655-question release was split once with seed
+          <span class="num">240521</span> into 800 exploratory and 1,855 confirmatory questions; every number on
+          this page comes from the exploratory allocation.
+        </p>
+      </div>
+    </section>
+
+    <section class="band" id="results">
+      <div class="head">
+        <div class="eyebrow">Main result</div>
+        <h2>Position curves by sequence mixer</h2>
+        <p>
+          Switch between the matched architecture comparison, the matched 8B attention control, the corpus
+          control, and the production systems. Colour encodes the mixer class: attention, state-space, hybrid.
+        </p>
+      </div>
+      <div id="panels"></div>
+      <div class="prose note" style="margin-top: 26px">
+        <p>
+          The matched 8B panel is the closest thing here to a causal test, and it does not settle the question.
+          Both checkpoints share training data, tokenizer, scale, depth, and positional-encoding setup, and the
+          hybrid replaces about 7% of Mamba-2 blocks with attention. The hybrid has a significant within-model
+          primacy edge and the pure model does not, but the paired hybrid-minus-pure difference is
+          <span class="num">+1.88</span> points with a 95% interval of
+          <span class="num">[−0.56, +4.44]</span> and Holm <span class="num">p = 0.1442</span>. The direction
+          agrees with the primary comparison. The evidence does not establish that attention caused it.
+        </p>
+      </div>
+    </section>
+
+    <section class="band alt" id="contrasts">
+      <div class="head">
+        <div class="eyebrow">All contrasts</div>
+        <h2>Every paired difference we measured</h2>
+        <p>
+          One row per paired contrast, computed on the same question bundles so the interval reflects the
+          difference rather than two independent estimates.
+        </p>
+      </div>
+    </section>
+
+    <section class="band" id="scale">
+      <div class="head">
+        <div class="eyebrow">Scale</div>
+        <h2>The family gap is scale-emergent</h2>
+        <p>
+          Five approximate Pythia-Mamba size pairs, from 145M to 2.8B mean parameters, each run through the
+          same harness on the same host.
+        </p>
+      </div>
+    </section>
+
+    <section class="band alt" id="mechanisms">
+      <div class="head">
+        <div class="eyebrow">Mechanisms</div>
+        <h2>What separates the two families</h2>
+        <p>
+          These are exploratory diagnostics on 200-question subsets and previously collected sweeps. They are
+          correlational. None of them is a causal ablation.
+        </p>
+      </div>
+    </section>
+
+    <section class="band" id="transfer">
+      <div class="head">
+        <div class="eyebrow">Task transfer</div>
+        <h2>Does it survive off multi-document QA?</h2>
+        <p>
+          Half of it does. The transformer primacy arm reappears on synthetic needle retrieval; the state-space
+          models saturate and cannot be compared there.
+        </p>
+      </div>
+    </section>
+
+    <section class="band alt" id="calibration">
+      <div class="head">
+        <div class="eyebrow">Calibration</div>
+        <h2>Proving the instrument can see the effect</h2>
+        <p>
+          A null result is only informative if the measurement could have detected a real effect. Before any
+          model comparison, the harness was shown to recover a known position effect end to end.
+        </p>
+      </div>
+    </section>
+
+    <section class="band" id="phase-table">
+      <div class="head">
+        <div class="eyebrow">Study structure</div>
+        <h2>Eight phases, one question each</h2>
+        <p>Every phase has a committed summary, raw records, an environment manifest, and a producing commit.</p>
+      </div>
+      <div class="phases" id="phases"></div>
+    </section>
+
+    <section class="band alt" id="cite">
+      <div class="head">
+        <div class="eyebrow">Citation</div>
+        <h2>Cite this work</h2>
+        <p>
+          The public author list and archival URL are not yet available. Until they are, please cite by title.
+        </p>
+      </div>
+      <div class="prose">
+        <pre><code>@misc{mixingmatters2026,
+  title  = {Mixing Matters: Evidence Position Bias Across Sequence
+            Mixers in Long-Context Question Answering},
+  note   = {New in ML workshop submission},
+  year   = {2026}
+}</code></pre>
+        <p class="note" style="margin-top: 22px">
+          This work builds on the position-intervention protocol of
+          <a href="https://aclanthology.org/2024.tacl-1.9/">Liu et al. (2024)</a> and evaluates models introduced
+          by <a href="https://proceedings.mlr.press/v202/biderman23a.html">Biderman et al. (2023)</a>,
+          <a href="https://openreview.net/forum?id=tEYskw1VY2">Gu and Dao (2024)</a>,
+          <a href="https://proceedings.mlr.press/v235/dao24a.html">Dao and Gu (2024)</a>, and
+          <a href="https://arxiv.org/abs/2406.07887">Waleffe et al. (2024)</a>. Synthetic retrieval uses
+          <a href="https://openreview.net/forum?id=kIoBbc76Sy">RULER</a>; the sink analysis follows
+          <a href="https://openreview.net/forum?id=NG7sS51zVF">Xiao et al. (2024)</a>.
+        </p>
+      </div>
+    </section>
+
+    <footer>
+      <p>
+        Code and artifacts released under the Apache License 2.0. Computational resources for this research were
+        provided by the Indian Institute of Technology Roorkee.
+      </p>
+      <p>
+        Every number on this page is generated from the committed summary files in
+        <a href="https://github.com/beingamanforever/Mixing-Matters/tree/main/artifacts">artifacts/</a>. Nothing
+        here is transcribed by hand.
+      </p>
+    </footer>
+
+    <script src="assets/app.js"></script>
+  </body>
+</html>

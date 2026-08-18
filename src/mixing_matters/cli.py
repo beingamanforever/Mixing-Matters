@@ -20,6 +20,7 @@ from .figures import (
 from .io import read_jsonl
 from .models import MODELS
 from .positive_control import validate_control
+from .release import build_dataset
 from .run import (
     MODEL,
     NIAH_LENGTHS,
@@ -36,6 +37,7 @@ from .run import (
     run_sweep,
     run_tracer,
 )
+from .site import write_site_data
 
 
 def _normalize_sweep_record(record: dict) -> dict:
@@ -316,6 +318,14 @@ def main() -> None:
     cert_ord.add_argument("--perms", type=int, default=3)
     cert_ord.add_argument("--dry-run", action="store_true")
 
+    dataset_cmd = commands.add_parser("build-dataset")
+    dataset_cmd.add_argument("--root", type=Path, default=Path("."))
+    dataset_cmd.add_argument("--output", type=Path, default=Path("dataset"))
+
+    site_cmd = commands.add_parser("build-site-data")
+    site_cmd.add_argument("--root", type=Path, default=Path("."))
+    site_cmd.add_argument("--output", type=Path, default=Path("web") / "data" / "results.json")
+
     args = parser.parse_args()
 
     if args.command == "download":
@@ -512,6 +522,10 @@ def main() -> None:
         records = read_jsonl(args.results)
         paths = write_audit_sample(records, args.output)
         print(json.dumps({"paths": [str(path) for path in paths]}, indent=2))
+    elif args.command == "build-dataset":
+        print(json.dumps(build_dataset(args.root, args.output), indent=2, sort_keys=True))
+    elif args.command == "build-site-data":
+        print(str(write_site_data(args.root, args.output)))
     else:
         records = read_jsonl(args.results)
         validate_phase1(records)
