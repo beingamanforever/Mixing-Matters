@@ -1,7 +1,7 @@
 /* Mixing Matters project page.
    Charts are hand-rolled SVG so the page stays dependency-free and works from
-   a plain static host. Three renderers cover every figure: a line/dot chart on
-   shared axes, grouped horizontal bars anchored at zero, and a labelled scatter. */
+   a plain static host. Two renderers cover every figure: a line/dot chart on
+   shared axes and grouped horizontal bars anchored at zero. */
 
 const NS = "http://www.w3.org/2000/svg";
 
@@ -537,64 +537,6 @@ function renderBars(container, spec) {
   title.textContent = spec.xLabel;
 }
 
-/* ---------- renderer: labelled scatter ---------- */
-
-/** spec = { points:[{x, y, lo, hi, label, color}], x:{label, format}, y:{label} } */
-function renderScatter(container, spec) {
-  const height = spec.height || 300;
-  const { svg, width } = frame(container, height);
-  const box = { left: 56, right: width - 24, top: 26, bottom: height - 46 };
-
-  const xDomain = pad([Math.min(...spec.points.map((p) => p.x)), Math.max(...spec.points.map((p) => p.x))], 0.14);
-  const yValues = spec.points.flatMap((p) => [p.lo ?? p.y, p.hi ?? p.y, 0]);
-  const x = linear(xDomain, [box.left, box.right]);
-  const y = linear(pad([Math.min(...yValues), Math.max(...yValues)], 0.14), [box.bottom, box.top]);
-
-  yAxis(svg, y, box, { label: spec.y.label, format: ppTick });
-  const { values: xTicks } = ticks(xDomain, 5);
-  xAxis(
-    svg,
-    box,
-    xTicks.map((value) => ({ x: x(value), label: spec.x.format ? spec.x.format(value) : value.toFixed(2) })),
-    spec.x.label
-  );
-  make("line", { class: "zero-line", x1: box.left, x2: box.right, y1: y(0), y2: y(0) }, svg);
-
-  const labels = [];
-  for (const point of spec.points) {
-    if (point.lo !== undefined) {
-      make("line", {
-        x1: x(point.x),
-        x2: x(point.x),
-        y1: y(point.lo),
-        y2: y(point.hi),
-        stroke: point.color,
-        "stroke-width": 1.5,
-        "stroke-linecap": "round",
-      }, svg);
-    }
-    make("circle", {
-      cx: x(point.x),
-      cy: y(point.y),
-      r: 4.5,
-      fill: point.color,
-      stroke: "var(--surface)",
-      "stroke-width": 2,
-    }, svg);
-    // Sit the label above the interval so it never lands on a neighbour's bar.
-    labels.push({ x: x(point.x), y: y(point.hi ?? point.y) - 9, text: point.label });
-  }
-  for (const label of labels) {
-    const text = make("text", {
-      class: "point-label",
-      x: Math.min(Math.max(label.x, box.left + 12), box.right - 12),
-      y: label.y,
-      "text-anchor": "middle",
-    }, svg);
-    text.textContent = label.text;
-  }
-}
-
 /* ---------- figure scaffolding ---------- */
 
 /* Charts render at their container's true pixel width so text stays at its
@@ -739,22 +681,6 @@ const styleFor = (models, key) => {
 
 function effectCell(effect) {
   return `${pp(effect.estimate)} <span style="color:var(--ink-mute)">[${pp(effect.ci[0])}, ${pp(effect.ci[1])}]</span>`;
-}
-
-function buildHeadline() {
-  const parent = $("#headline-stats");
-  const panel = DATA.panels.find((item) => item.id === "phase2");
-  for (const key of panel.models) {
-    const effect = panel.edges[key].primacy;
-    const model = DATA.models[key];
-    const stat = html("div", { class: "stat", "data-mixer": model.mixer }, parent);
-    html("div", { class: "value", text: pp(effect.estimate) }, stat);
-    html("div", { class: "label", text: model.label }, stat);
-    html("div", {
-      class: "detail",
-      text: `${model.mixer} mixer · 95% CI [${pp(effect.ci[0])}, ${pp(effect.ci[1])}] · Holm p ${pval(effect.p)}`,
-    }, stat);
-  }
 }
 
 function buildPanels() {
@@ -1016,161 +942,6 @@ function buildScale() {
   );
 }
 
-function buildMechanisms() {
-  const parent = $("#mechanisms");
-  const grid = html("div", { class: "grid-2" }, parent);
-
-  const sinkBox = figure(grid, {
-    title: "Late-layer attention sink vs primacy",
-    caption:
-      "Token-0 attention share in the final layer, against the measured primacy effect, across five Pythia scales. " +
-      "Correlational: Pythia 410M carries substantial mid-network sink mass with little final-layer sink and no significant primacy edge.",
-  });
-  mount(html("div", { class: "chart" }, sinkBox), (container) =>
-    renderScatter(container, {
-      height: 300,
-      points: DATA.mechanisms.sink.map((entry) => ({
-        x: entry.final_layer_sink_mass,
-        y: entry.primacy.estimate,
-        lo: entry.primacy.ci[0],
-        hi: entry.primacy.ci[1],
-        label: entry.label.replace("Pythia ", ""),
-        color: MIXER.attention,
-      })),
-      x: { label: "Final-layer sink mass", format: (value) => value.toFixed(2) },
-      y: { label: "Primacy effect (pp)" },
-    })
-  );
-
-  const probeBox = figure(grid, {
-    title: "Position probe: storage vs utilisation",
-    caption:
-      "A frozen linear probe reading edge-versus-middle gold position out of mid-depth hidden states, with a " +
-      "shuffled-label control. Mamba stores position at least as well as Pythia while showing no primacy edge in accuracy.",
-  });
-  const probeSeries = [
-    {
-      label: "Observed labels",
-      color: INK,
-      connect: false,
-      points: DATA.mechanisms.probe.map((entry, index) => ({ x: index, y: entry.accuracy })),
-    },
-    {
-      label: "Shuffled labels",
-      color: "var(--ink-mute)",
-      hollow: true,
-      connect: false,
-      points: DATA.mechanisms.probe.map((entry, index) => ({ x: index, y: entry.shuffled_accuracy })),
-    },
-  ];
-  legend(probeBox, probeSeries);
-  mount(html("div", { class: "chart" }, probeBox), (container) =>
-    renderLine(container, {
-      height: 300,
-      x: {
-        kind: "band",
-        values: DATA.mechanisms.probe.map((entry, index) => index),
-        format: (index) => DATA.mechanisms.probe[index].label,
-        tipLabel: (index) => `${DATA.mechanisms.probe[index].label}, layer ${DATA.mechanisms.probe[index].layer}`,
-        label: "Probed model",
-      },
-      y: { label: "5-fold probe accuracy", format: (value) => value.toFixed(2), domain: [0.42, 0.7] },
-      rule: { y: 0.5, label: "chance" },
-      connectors: true,
-      dodge: false,
-      series: probeSeries,
-    })
-  );
-
-  const variantBox = figure(parent, {
-    title: "Prompt sensitivity",
-    caption:
-      "Primacy under four query placements and two instruction templates, on a 200-question subset. " +
-      "The bookend prompt creates a primacy edge in Mamba that the Liu baseline does not, and the instructional " +
-      "template flattens Pythia's. Direction is robust; magnitude is not.",
-  });
-  const variantModels = ["pythia-2.8b", "mamba-2.8b"];
-  legend(
-    variantBox,
-    variantModels.map((key) => ({
-      label: DATA.models[key].label,
-      color: MIXER[DATA.models[key].mixer],
-    }))
-  );
-  mount(html("div", { class: "chart" }, variantBox), (container) =>
-    renderBars(container, {
-      labelWidth: 190,
-      groups: DATA.mechanisms.variants.map((entry) => ({
-        label: entry.label,
-        bars: variantModels.map((key) => ({
-          label: `${entry.label} · ${DATA.models[key].label}`,
-          value: entry.primacy[key].estimate,
-          lo: entry.primacy[key].ci[0],
-          hi: entry.primacy[key].ci[1],
-          color: MIXER[DATA.models[key].mixer],
-        })),
-      })),
-      xLabel: "Primacy effect (percentage points)",
-    })
-  );
-}
-
-function buildTransfer() {
-  const parent = $("#transfer");
-  const tasks = [
-    { key: "qa", label: "Multi-document QA" },
-    { key: "needle", label: "Needle, 2K tokens" },
-  ];
-  const groups = DATA.task_transfer.rows.map((row) => ({
-    label: row.label,
-    bars: tasks.map((task) => ({
-      label: `${row.label} · ${task.label}`,
-      value: row[task.key].primacy.estimate,
-      lo: row[task.key].primacy.ci[0],
-      hi: row[task.key].primacy.ci[1],
-      note: pval(row[task.key].primacy.p),
-      color: MIXER[DATA.models[row.model].mixer],
-      hollow: task.key === "needle",
-    })),
-  }));
-  const box = figure(parent, {
-    title: "Primacy on multi-document QA and on synthetic needle retrieval",
-    caption:
-      "RULER <code>niah_single_1</code> at 2,048 tokens, 50 needle instances per model. Pythia reproduces its primacy " +
-      "arm on the synthetic task. Both Mamba models answer every needle depth correctly, so their zero edges are " +
-      "saturation rather than position invariance and the task cannot support a mixer comparison there.",
-  });
-  legend(box, [
-    { label: "Multi-document QA", color: INK },
-    { label: "Needle, 2K tokens", color: INK, faded: true },
-  ]);
-  mount(html("div", { class: "chart" }, box), (container) =>
-    renderBars(container, {
-      groups,
-      barHeight: 17,
-      labelWidth: 160,
-      xLabel: "Primacy effect (percentage points)",
-    })
-  );
-
-  table(
-    parent,
-    [
-      { label: "Model" },
-      { label: "QA primacy", numeric: true },
-      { label: "Needle primacy", numeric: true },
-      { label: "Needle accuracy", numeric: true },
-    ],
-    DATA.task_transfer.rows.map((row) => [
-      row.label,
-      effectCell(row.qa.primacy),
-      effectCell(row.needle.primacy),
-      acc(row.needle_accuracy),
-    ]),
-    "Phase 6 task transfer."
-  );
-}
-
 function buildCalibration() {
   const parent = $("#calibration");
   const grid = html("div", { class: "grid-2" }, parent);
@@ -1232,32 +1003,14 @@ function buildCalibration() {
   );
 }
 
-function buildPhases() {
-  const parent = $("#phases");
-  DATA.phases.forEach((phase, index) => {
-    const node = html("div", { class: "phase" }, parent);
-    const left = html("div", {}, node);
-    html("div", { class: "idx", text: `Phase ${index + 1}` }, left);
-    html("div", { class: "name", text: phase.name }, left);
-    html("div", { class: "tag", text: phase.status }, left);
-    const right = html("div", {}, node);
-    html("div", { class: "q", text: phase.question }, right);
-    html("div", { class: "a", text: phase.finding }, right);
-  });
-}
-
 /* ---------- boot ---------- */
 
 async function boot() {
   DATA = await (await fetch("data/results.json")).json();
-  buildHeadline();
   buildPanels();
   buildContrasts();
   buildScale();
-  buildMechanisms();
-  buildTransfer();
   buildCalibration();
-  buildPhases();
   flush();
 }
 

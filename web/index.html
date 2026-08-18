@@ -81,10 +81,7 @@
         <li><a href="#results">Main result</a></li>
         <li><a href="#contrasts">All contrasts</a></li>
         <li><a href="#scale">Scale</a></li>
-        <li><a href="#mechanisms">Mechanisms</a></li>
-        <li><a href="#transfer">Task transfer</a></li>
         <li><a href="#calibration">Calibration</a></li>
-        <li><a href="#phase-table">Phases</a></li>
         <li><a href="#cite">Cite</a></li>
       </ul>
     </nav>
@@ -101,25 +98,18 @@
           long context itself, and increasingly quoted about models that are not transformers at all.
         </p>
         <p>
-          We test that reading directly. For each of 800 multi-document questions we move a single
-          answer-bearing passage through ten positions while holding the question, the nine distractors, the
-          prompt template, and the decoding configuration fixed. Everything that changes is where the evidence
-          sits. We run that intervention across 17 pinned checkpoints spanning attention, state-space, and
-          hybrid mixers.
+          We test that reading directly. For each question we move a single answer-bearing passage through
+          every position in a fixed document set, holding the question, the distractors, the prompt template,
+          and the decoding configuration constant. Everything that changes is where the evidence sits. We run
+          that intervention across pinned checkpoints spanning attention, state-space, and hybrid mixers.
         </p>
         <p>
-          <strong>The U-shape is not one phenomenon.</strong> At matched 2.8B scale on the same corpus, Pythia
-          carries a clear primacy arm; Mamba and Mamba-2 carry none. All three carry a recency arm of similar
-          size. The middle-of-context penalty that gets quoted as universal is, in this comparison, two
-          separable effects with different scopes: recency travels across mixers, primacy does not.
+          <strong>The U-shape is not one phenomenon.</strong> At matched scale on the same pretraining corpus,
+          Pythia carries a clear primacy arm; Mamba and Mamba-2 carry none. All three carry a recency arm of
+          comparable size. The middle-of-context penalty that gets quoted as universal is, in this comparison,
+          two separable effects with different scopes: recency travels across mixers, primacy does not.
         </p>
       </div>
-      <div class="stats" id="headline-stats"></div>
-      <p class="prose note" style="margin-top: 18px">
-        Primacy effect at matched 2.8B scale, in percentage points, over 800 questions with 10,000 paired
-        bootstrap resamples. Paired Pythia-minus-Mamba differences are +5.31 and +7.00 points, both Holm
-        <span class="num">p &lt; 0.0001</span>.
-      </p>
     </section>
 
     <section class="band alt" id="setup">
@@ -275,28 +265,6 @@
       </div>
     </section>
 
-    <section class="band alt" id="mechanisms">
-      <div class="head">
-        <div class="eyebrow">Mechanisms</div>
-        <h2>What separates the two families</h2>
-        <p>
-          These are exploratory diagnostics on 200-question subsets and previously collected sweeps. They are
-          correlational. None of them is a causal ablation.
-        </p>
-      </div>
-    </section>
-
-    <section class="band" id="transfer">
-      <div class="head">
-        <div class="eyebrow">Task transfer</div>
-        <h2>Does it survive off multi-document QA?</h2>
-        <p>
-          Half of it does. The transformer primacy arm reappears on synthetic needle retrieval; the state-space
-          models saturate and cannot be compared there.
-        </p>
-      </div>
-    </section>
-
     <section class="band alt" id="calibration">
       <div class="head">
         <div class="eyebrow">Calibration</div>
@@ -308,16 +276,7 @@
       </div>
     </section>
 
-    <section class="band" id="phase-table">
-      <div class="head">
-        <div class="eyebrow">Study structure</div>
-        <h2>Eight phases, one question each</h2>
-        <p>Every phase has a committed summary, raw records, an environment manifest, and a producing commit.</p>
-      </div>
-      <div class="phases" id="phases"></div>
-    </section>
-
-    <section class="band alt" id="cite">
+    <section class="band" id="cite">
       <div class="head">
         <div class="eyebrow">Citation</div>
         <h2>Cite this work</h2>
@@ -344,18 +303,6 @@
         </p>
       </div>
     </section>
-
-    <footer>
-      <p>
-        Code and artifacts released under the Apache License 2.0. Computational resources for this research were
-        provided by the Indian Institute of Technology Roorkee.
-      </p>
-      <p>
-        Every number on this page is generated from the committed summary files in
-        <a href="https://github.com/beingamanforever/Mixing-Matters/tree/main/artifacts">artifacts/</a>. Nothing
-        here is transcribed by hand.
-      </p>
-    </footer>
 
     <script src="assets/app.js"></script>
   </body>

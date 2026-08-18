@@ -23,14 +23,7 @@ SUMMARIES: dict[str, str] = {
     "phase3": "artifacts/phase3/report/phase3-summary.json",
     "phase4": "artifacts/phase4/report/phase4-summary.json",
     "phase5": "artifacts/phase5/report/phase5-summary.json",
-    "phase6": "artifacts/phase6/report/phase6-summary.json",
-    "phase7": "artifacts/phase7-mechanisms/report/phase7-summary.json",
     "phase8": "artifacts/phase8/report/phase8-summary.json",
-    "sink": "artifacts/phase7-mechanisms/4c-sink-scan/report/sink-mass-summary.json",
-    "query": "artifacts/phase7-mechanisms/4a-query-position/report/phase7-variants-summary.json",
-    "template": "artifacts/phase7-mechanisms/4e-template/report/phase7-variants-summary.json",
-    "probe_mamba": "artifacts/phase7-mechanisms/4d-probe/mamba-2.8b-layer32-probe.json",
-    "probe_pythia": "artifacts/phase7-mechanisms/4d-probe/pythia-2.8b-layer16-probe.json",
 }
 
 LABELS: dict[str, str] = {
@@ -82,74 +75,6 @@ CURVE_PANELS: tuple[tuple[str, str, str, tuple[str, ...]], ...] = (
         "Three complete 7-8B systems that differ on many axes at once.",
         ("nemotron-h-8b", "llama-3.1-8b", "qwen2.5-7b"),
     ),
-)
-
-PHASES: tuple[dict[str, str], ...] = (
-    {
-        "id": "phase1",
-        "name": "Calibration",
-        "question": "Can the harness detect a position effect that is known to exist?",
-        "finding": "Yes. The key-value positive control moves 38 points between edge and "
-        "middle slots, and the four QA calibration conditions order as designed.",
-        "status": "instrument check",
-    },
-    {
-        "id": "phase2",
-        "name": "Matched 2.8B architectures",
-        "question": "Do attention and state-space mixers use the same evidence differently?",
-        "finding": "Pythia carries a +5.19 point primacy edge; both Mamba variants sit at or "
-        "below zero. Both paired differences clear Holm correction at p < 0.0001.",
-        "status": "primary result",
-    },
-    {
-        "id": "phase3",
-        "name": "Pure vs hybrid at 8B",
-        "question": "Does adding attention blocks to a state-space model create primacy?",
-        "finding": "The hybrid has a significant within-model primacy edge and the pure model "
-        "does not, but the paired difference is +1.88 points with Holm p = 0.1442.",
-        "status": "suggestive, not significant",
-    },
-    {
-        "id": "phase4",
-        "name": "Scale sweep",
-        "question": "Is the family gap present at every model size?",
-        "finding": "No. It is near zero at the two smallest pairs and appears from 790M vs 1B "
-        "onward. Capability and architecture remain confounded.",
-        "status": "scale-emergent",
-    },
-    {
-        "id": "phase5",
-        "name": "Pretraining corpus",
-        "question": "Does swapping the pretraining corpus reproduce the effect?",
-        "finding": "No. Pile vs SlimPajama moves the level of the curve by 16 points but the "
-        "primacy interaction is -0.69 points with Holm p = 0.568.",
-        "status": "null shape change",
-    },
-    {
-        "id": "phase6",
-        "name": "Synthetic retrieval",
-        "question": "Does the effect transfer off multi-document QA?",
-        "finding": "Partly. Pythia reproduces a +12 point primacy edge on RULER at 2K tokens; "
-        "both Mamba models saturate at 1.0 and cannot be compared there.",
-        "status": "one arm only",
-    },
-    {
-        "id": "phase7",
-        "name": "Mechanisms",
-        "question": "What distinguishes the two families internally?",
-        "finding": "Late-layer attention-sink mass tracks primacy across Pythia scale, and "
-        "position stays linearly decodable in both families, favouring a "
-        "utilisation gap over a storage gap.",
-        "status": "correlational",
-    },
-    {
-        "id": "phase8",
-        "name": "Production systems",
-        "question": "Do deployed 7-8B systems show the same shape?",
-        "finding": "All three show positive primacy edges, but their many differences make "
-        "this a prevalence description rather than an architecture test.",
-        "status": "descriptive",
-    },
 )
 
 
@@ -313,86 +238,6 @@ def _scale(root: Path) -> list[dict[str, Any]]:
     ]
 
 
-def _final_sink_mass(entry: Mapping[str, Any]) -> float:
-    layers = [position["mean_sink_mass_per_layer"][-1] for position in entry["positions"].values()]
-    return sum(layers) / len(layers)
-
-
-def _mechanisms(root: Path) -> dict[str, Any]:
-    sink = _read(root, "sink")["by_model"]
-    depth = {entry["model_key"]: entry for entry in _read(root, "phase7")["depth_trend"]["models"]}
-    query = _read(root, "query")
-    template = _read(root, "template")
-    variants = (
-        ("Liu baseline", "baseline", query),
-        ("Bookend", "bookend", query),
-        ("Gold padded", "gold_padded", query),
-        ("Question first", "question_first", query),
-        ("Concise template", "baseline+tmpl:concise", template),
-        ("Instructional template", "baseline+tmpl:instructional", template),
-    )
-    return {
-        "sink": [
-            {
-                "model": model,
-                "label": LABELS[model],
-                "final_layer_sink_mass": _final_sink_mass(sink[model]),
-                "primacy": _effect(depth[model]["primacy"]),
-            }
-            for model in sorted(sink, key=lambda key: MODELS[key].params_millions)
-        ],
-        "probe": [
-            {
-                "model": model,
-                "label": LABELS[model],
-                "layer": probe["layer"],
-                "accuracy": probe["accuracy"],
-                "shuffled_accuracy": probe["shuffled_accuracy"],
-            }
-            for model, probe in (
-                ("mamba-2.8b", _read(root, "probe_mamba")),
-                ("pythia-2.8b", _read(root, "probe_pythia")),
-            )
-        ],
-        "variants": [
-            {
-                "label": label,
-                "primacy": {
-                    model: _effect(source["edges"][model][key]["primacy"])
-                    for model in ("pythia-2.8b", "mamba-2.8b")
-                },
-            }
-            for label, key, source in variants
-        ],
-    }
-
-
-def _mean_accuracy(entry: Mapping[str, Any]) -> float:
-    positions = entry["positions"].values()
-    return sum(point["accuracy"] for point in positions) / len(positions)
-
-
-def _task_transfer(root: Path) -> dict[str, Any]:
-    summary = _read(root, "phase6")
-    needle = summary["lengths"]["2048"]
-    models = ("pythia-2.8b", "mamba-2.8b", "mamba2-2.7b")
-    return {
-        "task": summary["task"],
-        "rows": [
-            {
-                "model": model,
-                "label": LABELS[model],
-                "qa": _edges(summary["qa_edges"][model]),
-                "needle": _edges(needle["edges"][model]),
-                # Mean over the ten needle depths, which is what shows the
-                # state-space models saturating rather than being flat.
-                "needle_accuracy": _mean_accuracy(needle["position_curve"][model]),
-            }
-            for model in models
-        ],
-    }
-
-
 def _calibration(root: Path) -> dict[str, Any]:
     summary = _read(root, "phase1")
     calibration = summary["phase1_condition_accuracy"]
@@ -423,22 +268,10 @@ def build_site_data(root: Path) -> dict[str, Any]:
     panels = _panels(root)
     models = sorted(LABELS)
     return {
-        "design": {
-            "questions_total": 2655,
-            "exploratory": 800,
-            "confirmatory_held_out": 1855,
-            "positions": 10,
-            "resamples": 10000,
-            "split_seed": 240521,
-            "dataset_sha256": ("192a05b27af2b09eec33ca0c94bb5cf82bcaf70d78b3bdff1258df34bf37aab9"),
-        },
         "models": {model: _model_entry(model) for model in models},
-        "phases": list(PHASES),
         "panels": panels,
         "contrasts": _contrasts(root),
         "scale": _scale(root),
-        "mechanisms": _mechanisms(root),
-        "task_transfer": _task_transfer(root),
         "calibration": _calibration(root),
     }
 

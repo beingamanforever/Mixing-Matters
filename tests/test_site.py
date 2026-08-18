@@ -81,27 +81,6 @@ def test_scale_trend_is_ordered_by_size(data):
     assert len(data["scale"]) == 5
 
 
-def test_task_transfer_reports_needle_saturation(data):
-    rows = {row["model"]: row for row in data["task_transfer"]["rows"]}
-    assert rows["mamba-2.8b"]["needle_accuracy"] == 1.0
-    assert rows["mamba2-2.7b"]["needle_accuracy"] == 1.0
-    assert rows["pythia-2.8b"]["needle"]["primacy"]["estimate"] > 0
-
-
-def test_mechanisms_carry_sink_probe_and_variants(data):
-    mechanisms = data["mechanisms"]
-    assert [entry["model"] for entry in mechanisms["sink"]] == [
-        "pythia-160m",
-        "pythia-410m",
-        "pythia-1b",
-        "pythia-1.4b",
-        "pythia-2.8b",
-    ]
-    assert len(mechanisms["variants"]) == 6
-    for entry in mechanisms["probe"]:
-        assert entry["accuracy"] > entry["shuffled_accuracy"]
-
-
 def test_committed_site_data_is_current(tmp_path):
     """The page ships a generated file; drift from artifacts/ is a bug."""
     fresh = write_site_data(ROOT, tmp_path / "results.json")
@@ -153,6 +132,16 @@ def test_page_only_references_files_that_exist():
         target = WEB / path
         # paper.pdf is copied in by the Pages workflow at deploy time.
         assert target.exists() or path == "paper.pdf", path
+
+
+def test_nav_links_point_at_sections_that_exist():
+    """Removing a section has to take its nav entry with it."""
+    page = (WEB / "index.html").read_text()
+    nav = page.split('<nav class="nav"', 1)[1].split("</nav>", 1)[0]
+    anchors = re.findall(r'href="#([a-z-]+)"', nav)
+    assert anchors
+    for anchor in anchors:
+        assert f'id="{anchor}"' in page, anchor
 
 
 def test_page_mounts_every_section_the_script_fills():
