@@ -5,6 +5,8 @@ __pycache__/
 *.egg-info/
 dist/
 data/
+# The project page ships its generated data file.
+!web/data/
 runs/
 graphify-out/
 AGENTS.mdpaper/mixing_matters_preview.pdf
@@ -12,3 +14,7 @@ paper/*.aux
 paper/*.log
 paper/*.out
 paper/*.xdv
+
+# Agent tooling and local preview config
+.claude/
+.DS_Store
