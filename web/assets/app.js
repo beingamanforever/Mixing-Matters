@@ -48,7 +48,6 @@ const ppTick = (value, step) => {
   const points = step * 100;
   return pp(value, points >= 1 && Number.isInteger(points) ? 0 : points >= 1 ? 1 : 2);
 };
-const pval = (value) => (value < 0.0001 ? "<0.0001" : value.toFixed(4));
 const significant = (effect) => effect.p < 0.05;
 
 /* ---------- scales ---------- */
@@ -534,7 +533,7 @@ function renderBars(container, spec) {
             `<span class="v">${mark(bar.value)}</span></div>` +
             `<div class="row"><span>95% interval</span>` +
             `<span class="v">[${mark(bar.lo)}, ${mark(bar.hi)}]</span></div>` +
-            (bar.note ? `<div class="row"><span>Holm p</span><span class="v">${bar.note}</span></div>` : "")
+            (bar.note ? `<div class="row"><span>Verdict</span><span class="v">${bar.note}</span></div>` : "")
         );
       });
       target.addEventListener("pointerleave", () => tip.hide());
@@ -759,9 +758,8 @@ function buildPanels() {
           { label: "Model" },
           { label: "Primacy", numeric: true },
           { label: "Recency", numeric: true },
-          { label: "Holm p (primacy)", numeric: true },
-          { label: "Floor", numeric: true },
-          { label: "Ceiling", numeric: true },
+          { label: "Without documents", numeric: true },
+          { label: "With only the answer", numeric: true },
         ];
         const rows = panel.models.map((key) => {
           const style = styleFor(panel.models, key);
@@ -770,12 +768,18 @@ function buildPanels() {
             `<span class="dot${style.dash ? " hollow" : ""}" style="background:${style.color};color:${style.color}"></span>${DATA.models[key].label}`,
             effectCell(edge.primacy),
             effectCell(edge.recency),
-            pval(edge.primacy.p),
             acc(panel.floor_ceiling[key].floor_accuracy),
             acc(panel.floor_ceiling[key].ceiling_accuracy),
           ];
         });
-        table(container, columns, rows, "Edge effects in percentage points, with 95% bootstrap intervals.");
+        table(
+          container,
+          columns,
+          rows,
+          "Primacy and recency in points of accuracy, with the plausible range beside each. The last two " +
+            "columns anchor the scale: accuracy with no documents at all, and with only the answer-bearing " +
+            "passage."
+        );
       },
     });
 
@@ -859,7 +863,7 @@ function buildContrasts() {
             value: effect.estimate,
             lo: effect.ci[0],
             hi: effect.ci[1],
-            note: pval(effect.p),
+            note: significant(effect) ? "holds up" : "inconclusive",
             color: "var(--attention)",
             hollow: !significant(effect),
           },
