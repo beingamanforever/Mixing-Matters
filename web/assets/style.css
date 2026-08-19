@@ -264,7 +264,7 @@ code,
 }
 
 .head h2 {
-  font-size: clamp(23px, 3vw, 30px);
+  font-size: clamp(28px, 3.7vw, 40px);
 }
 
 .head p {
@@ -284,7 +284,7 @@ code,
 
 .hook {
   margin: 0 0 26px;
-  font-size: clamp(21px, 2.7vw, 27px);
+  font-size: clamp(18.5px, 2.1vw, 22px);
   font-weight: 650;
   line-height: 1.28;
   letter-spacing: -0.02em;
@@ -393,35 +393,6 @@ code,
 .chip.mid {
   background: rgba(22, 24, 26, 0.07);
   color: var(--ink-soft);
-}
-
-.callout {
-  margin-top: 26px;
-  padding: 18px 20px;
-  border-radius: 9px;
-  background: var(--surface-alt);
-  border: 1px solid var(--rule-soft);
-}
-
-.band.alt .callout {
-  background: #f1f1ed;
-}
-
-.callout h4 {
-  margin: 0 0 8px;
-  font-size: 14.5px;
-  font-weight: 650;
-}
-
-.callout p {
-  margin: 0 0 10px;
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--ink-soft);
-}
-
-.callout p:last-child {
-  margin-bottom: 0;
 }
 
 math {
@@ -562,20 +533,18 @@ h4.sub {
 }
 
 .row-label {
-  font-size: 12.5px;
+  font-size: 12px;
   font-family: var(--sans);
-  fill: var(--ink);
+  fill: var(--ink-soft);
 }
 
-/* Subordinate to the row labels it groups: smaller, lighter, and muted, so the
-   data rows stay the most prominent text in the chart. */
+/* Leads the block it heads: larger and darker than the model names under it. */
 .group-label {
-  font-size: 9.5px;
+  font-size: 13.5px;
   font-family: var(--sans);
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  fill: #9a9ea2;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  fill: var(--ink);
 }
 
 .row-rule {

@@ -438,7 +438,7 @@ function renderBars(container, spec) {
   const barHeight = spec.barHeight || 15;
   const gap = 2;
   const groupGap = 16;
-  const headerHeight = 32;
+  const headerHeight = 40;
   // A `header` entry is a section rule, not data: it labels the runs beneath it.
   const groupHeight = (row) =>
     row.header ? headerHeight : row.bars.length * barHeight + (row.bars.length - 1) * gap;
@@ -474,8 +474,17 @@ function renderBars(container, spec) {
   let cursor = box.top + groupGap / 2;
   for (const row of spec.groups) {
     if (row.header) {
+      make("line", {
+        class: "row-rule",
+        x1: 0,
+        x2: box.right,
+        y1: cursor + 5,
+        y2: cursor + 5,
+      }, svg);
       const label = make("text", { class: "group-label", x: 0, y: cursor + headerHeight - 8 }, svg);
       label.textContent = row.header;
+      // A heading may run past the label column into the plot; it has no bar to collide with.
+      fitText(label, box.right);
       cursor += headerHeight;
       continue;
     }
@@ -776,9 +785,9 @@ function buildPanels() {
           container,
           columns,
           rows,
-          "Primacy and recency in points of accuracy, with the plausible range beside each. The last two " +
-            "columns anchor the scale: accuracy with no documents at all, and with only the answer-bearing " +
-            "passage."
+          "Primacy and recency in points of accuracy, each with the range it varies over across questions. " +
+            "The last two columns anchor the scale: accuracy with no documents at all, and with only the " +
+            "answer-bearing passage."
         );
       },
     });
@@ -880,8 +889,8 @@ function buildContrasts() {
     caption.innerHTML =
       `Each bar is one pair of models measured on the same questions, so it reads as "the first model's ` +
       `${measure} minus the second model's". Bars to the right mean the first model leans on that end of the ` +
-      `context more. The line through each bar is the range the true value plausibly sits in; where that range ` +
-      `crosses zero, the comparison is inconclusive and the bar is drawn faded.`;
+      `context more. The line through each bar shows how much the result moves across questions; where it ` +
+      `crosses zero the comparison is inconclusive, and the bar is drawn faded.`;
 
     const viewToggle = withTable(body, {
       initial: view,
@@ -906,21 +915,9 @@ function buildContrasts() {
       buildTable(container) {
         table(
           container,
-          [
-            { label: "Comparison" },
-            { label: `Difference in ${measure}`, numeric: true },
-            { label: "Plausible range", numeric: true },
-          ],
-          rows().map((row) => {
-            const effect = row[measure];
-            return [
-              row.label,
-              pp(effect.estimate),
-              `${pp(effect.ci[0])} to ${pp(effect.ci[1])}`,
-            ];
-          }),
-          "All values in points of accuracy: one point is one extra correct answer per hundred questions. " +
-            "Where the plausible range spans zero, the comparison is inconclusive."
+          [{ label: "Comparison" }, { label: `Difference in ${measure}`, numeric: true }],
+          rows().map((row) => [row.label, pp(row[measure].estimate)]),
+          "Points of accuracy: one point is one extra correct answer per hundred questions."
         );
       },
     });
@@ -1017,17 +1014,14 @@ function buildScale() {
           { label: "Attention primacy", numeric: true },
           { label: "State-space primacy", numeric: true },
           { label: "Gap", numeric: true },
-          { label: "Plausible range for the gap", numeric: true },
         ],
         DATA.scale.map((entry) => [
           `${DATA.models[entry.attention.model].label} vs ${DATA.models[entry.state_space.model].label}`,
           pp(entry.attention.primacy.estimate),
           pp(entry.state_space.primacy.estimate),
           pp(entry.difference.estimate),
-          `${pp(entry.difference.ci[0])} to ${pp(entry.difference.ci[1])}`,
         ]),
-        "All values in points of accuracy: one point is one extra correct answer per hundred questions. " +
-          "Where the plausible range spans zero, the gap is inconclusive."
+        "Points of accuracy: one point is one extra correct answer per hundred questions."
       );
     },
   });
