@@ -79,8 +79,8 @@
         <li><a href="#tldr">Summary</a></li>
         <li><a href="#setup">Intervention</a></li>
         <li><a href="#results">Main result</a></li>
-        <li><a href="#contrasts">All contrasts</a></li>
-        <li><a href="#scale">Scale</a></li>
+        <li><a href="#contrasts">Comparisons</a></li>
+        <li><a href="#scale">Model size</a></li>
         <li><a href="#calibration">Calibration</a></li>
         <li><a href="#cite">Cite</a></li>
       </ul>
@@ -92,22 +92,25 @@
         <h2>The same evidence, moved</h2>
       </div>
       <div class="prose">
-        <p>
-          Language models are known to answer better when the evidence they need sits at the start or the end
-          of a long context. That result was established on transformers. It is usually read as a property of
-          long context itself, and increasingly quoted about models that are not transformers at all.
+        <p class="hook">
+          Transformers lose the middle.
+          <span>State-space models never had the beginning.</span>
         </p>
         <p>
-          We test that reading directly. For each question we move a single answer-bearing passage through
-          every position in a fixed document set, holding the question, the distractors, the prompt template,
-          and the decoding configuration constant. Everything that changes is where the evidence sits. We run
-          that intervention across pinned checkpoints spanning attention, state-space, and hybrid mixers.
+          Hide an answer inside a long context and models find it more easily near the edges than in the middle.
+          That "lost in the middle" result was measured on transformers, but it now gets quoted as a fact about
+          long context itself, including for architectures that work nothing like one.
         </p>
         <p>
-          <strong>The U-shape is not one phenomenon.</strong> At matched scale on the same pretraining corpus,
-          Pythia carries a clear primacy arm; Mamba and Mamba-2 carry none. All three carry a recency arm of
-          comparable size. The middle-of-context penalty that gets quoted as universal is, in this comparison,
-          two separable effects with different scopes: recency travels across mixers, primacy does not.
+          So we tested it. We slide one answer-bearing passage through every position of a fixed document set
+          and change nothing else, then repeat the sweep across attention, state-space, and hybrid models on
+          identical questions.
+        </p>
+        <p>
+          <strong>The U-shape splits in two.</strong> Every family reads the end of a context well. Only
+          attention models also favour the beginning, and only once they are big enough to use long context at
+          all. Advice inherited from transformers, like putting the important document first, does not
+          transfer for free.
         </p>
       </div>
     </section>
@@ -125,6 +128,11 @@
 
       <figure class="figure">
         <div class="figure-head"><h3>Design of the position sweep</h3></div>
+        <div class="key">
+          <span><i class="swatch gold"></i>Answer-bearing passage: the one document that contains the answer</span>
+          <span><i class="swatch plain"></i>Distractor: retrieved for the same question, but does not answer it</span>
+          <span><i class="swatch query"></i>The question, always last</span>
+        </div>
         <svg viewBox="0 0 900 268" width="100%" role="img" aria-label="Three rows of ten document slots, with the gold passage at position 1, position 5, and position 10">
           <style>
             .slot { fill: #ffffff; stroke: #dcdcd7; stroke-width: 1.2; }
@@ -197,7 +205,7 @@
             <text class="slotnum" x="541" y="0" text-anchor="middle">9</text>
             <text class="slotnum" x="605" y="0" text-anchor="middle">10</text>
             <text class="caplab" x="0" y="26">
-              Filled slot = the one passage that contains the answer. Nine distractors keep their identity and order.
+              The nine distractors keep their identity and their relative order in every row.
             </text>
           </g>
         </svg>
@@ -208,16 +216,138 @@
         </figcaption>
       </figure>
 
-      <div class="prose" style="margin-top: 30px">
-        <p>
-          <strong>Primacy</strong> is mean accuracy at positions 1 and 2 minus mean accuracy at positions 5 and
-          6. <strong>Recency</strong> is mean accuracy at positions 9 and 10 minus mean accuracy at positions 5
-          and 6. Inference uses 10,000 bootstrap resamples of complete question bundles with Holm correction
-          across the two edge tests. The 2,655-question release was split once with seed
-          <span class="num">240521</span> into 800 exploratory and 1,855 confirmatory questions; every number on
-          this page comes from the exploratory allocation.
+      <figure class="figure" style="margin-top: 22px">
+        <div class="figure-head"><h3>How the two effects are measured</h3></div>
+        <p class="note" style="margin: 0 0 18px">
+          Both numbers are one subtraction: an end of the context, minus the middle.
         </p>
-      </div>
+        <svg viewBox="0 0 634 96" width="100%" role="img" aria-label="Ten positions with the first two, middle two, and last two marked as the compared zones">
+          <style>
+            .zbox-edge { fill: rgba(0, 114, 178, 0.13); }
+            .zbox-mid { fill: rgba(22, 24, 26, 0.07); }
+            .zslot { fill: #ffffff; stroke: #dcdcd7; stroke-width: 1.2; }
+            .znum { font: 500 11px ui-sans-serif, system-ui, sans-serif; fill: #85898e; }
+            .zsym { font: italic 13px "Times New Roman", Times, serif; fill: #16181a; }
+            .zaxis { font: 500 11px ui-sans-serif, system-ui, sans-serif; fill: #a0a4a8; }
+            .zlab-edge { font: 600 11px ui-sans-serif, system-ui, sans-serif; fill: #0072b2; }
+            .zlab-mid { font: 600 11px ui-sans-serif, system-ui, sans-serif; fill: #4f5459; }
+          </style>
+          <rect class="zbox-edge" x="-6" y="20" width="134" height="38" rx="6" />
+          <rect class="zbox-mid" x="250" y="20" width="134" height="38" rx="6" />
+          <rect class="zbox-edge" x="506" y="20" width="134" height="38" rx="6" />
+          <text class="zlab-edge" x="61" y="12" text-anchor="middle">start</text>
+          <text class="zlab-mid" x="317" y="12" text-anchor="middle">middle</text>
+          <text class="zlab-edge" x="573" y="12" text-anchor="middle">end</text>
+          <g>
+            <rect class="zslot" x="0" y="27" width="58" height="24" rx="4" />
+            <rect class="zslot" x="64" y="27" width="58" height="24" rx="4" />
+            <rect class="zslot" x="128" y="27" width="58" height="24" rx="4" />
+            <rect class="zslot" x="192" y="27" width="58" height="24" rx="4" />
+            <rect class="zslot" x="256" y="27" width="58" height="24" rx="4" />
+            <rect class="zslot" x="320" y="27" width="58" height="24" rx="4" />
+            <rect class="zslot" x="384" y="27" width="58" height="24" rx="4" />
+            <rect class="zslot" x="448" y="27" width="58" height="24" rx="4" />
+            <rect class="zslot" x="512" y="27" width="58" height="24" rx="4" />
+            <rect class="zslot" x="576" y="27" width="58" height="24" rx="4" />
+          </g>
+          <g>
+            <text class="zsym" x="29" y="43" text-anchor="middle">A₁</text>
+            <text class="zsym" x="93" y="43" text-anchor="middle">A₂</text>
+            <text class="zsym" x="157" y="43" text-anchor="middle">A₃</text>
+            <text class="zsym" x="221" y="43" text-anchor="middle">A₄</text>
+            <text class="zsym" x="285" y="43" text-anchor="middle">A₅</text>
+            <text class="zsym" x="349" y="43" text-anchor="middle">A₆</text>
+            <text class="zsym" x="413" y="43" text-anchor="middle">A₇</text>
+            <text class="zsym" x="477" y="43" text-anchor="middle">A₈</text>
+            <text class="zsym" x="541" y="43" text-anchor="middle">A₉</text>
+            <text class="zsym" x="605" y="43" text-anchor="middle">A₁₀</text>
+          </g>
+          <g>
+            <text class="zaxis" x="0" y="70">slot</text>
+            <text class="znum" x="29" y="70" text-anchor="middle">1</text>
+            <text class="znum" x="93" y="70" text-anchor="middle">2</text>
+            <text class="znum" x="157" y="70" text-anchor="middle">3</text>
+            <text class="znum" x="221" y="70" text-anchor="middle">4</text>
+            <text class="znum" x="285" y="70" text-anchor="middle">5</text>
+            <text class="znum" x="349" y="70" text-anchor="middle">6</text>
+            <text class="znum" x="413" y="70" text-anchor="middle">7</text>
+            <text class="znum" x="477" y="70" text-anchor="middle">8</text>
+            <text class="znum" x="541" y="70" text-anchor="middle">9</text>
+            <text class="znum" x="605" y="70" text-anchor="middle">10</text>
+          </g>
+        </svg>
+
+        <div class="formulas">
+          <p class="note" style="margin: 0 0 16px">
+            Each slot above has its own accuracy. <math><msub><mi>A</mi><mn>5</mn></msub></math> is how often
+            the model answers correctly when the answer sits in slot 5, and so on for every slot.
+          </p>
+
+          <div class="formula">
+            <span class="lhs">primacy</span>
+            <span class="rel">=</span>
+            <span class="chip edge">accuracy at <b>start</b></span>
+            <span class="op">−</span>
+            <span class="chip mid">accuracy in <b>middle</b></span>
+          </div>
+          <math display="block" class="mathline">
+            <mrow>
+              <mfrac><mn>1</mn><mn>2</mn></mfrac>
+              <mo stretchy="false">(</mo>
+              <msub><mi>A</mi><mn>1</mn></msub><mo>+</mo><msub><mi>A</mi><mn>2</mn></msub>
+              <mo stretchy="false">)</mo>
+              <mo>−</mo>
+              <mfrac><mn>1</mn><mn>2</mn></mfrac>
+              <mo stretchy="false">(</mo>
+              <msub><mi>A</mi><mn>5</mn></msub><mo>+</mo><msub><mi>A</mi><mn>6</mn></msub>
+              <mo stretchy="false">)</mo>
+            </mrow>
+          </math>
+
+          <div class="formula">
+            <span class="lhs">recency</span>
+            <span class="rel">=</span>
+            <span class="chip edge">accuracy at <b>end</b></span>
+            <span class="op">−</span>
+            <span class="chip mid">accuracy in <b>middle</b></span>
+          </div>
+          <math display="block" class="mathline">
+            <mrow>
+              <mfrac><mn>1</mn><mn>2</mn></mfrac>
+              <mo stretchy="false">(</mo>
+              <msub><mi>A</mi><mn>9</mn></msub><mo>+</mo><msub><mi>A</mi><mn>10</mn></msub>
+              <mo stretchy="false">)</mo>
+              <mo>−</mo>
+              <mfrac><mn>1</mn><mn>2</mn></mfrac>
+              <mo stretchy="false">(</mo>
+              <msub><mi>A</mi><mn>5</mn></msub><mo>+</mo><msub><mi>A</mi><mn>6</mn></msub>
+              <mo stretchy="false">)</mo>
+            </mrow>
+          </math>
+        </div>
+
+        <div class="callout">
+          <h4>Where the "plausible range" comes from</h4>
+          <p>
+            A single number could be luck of the draw in which questions we happened to use. So we redraw the
+            question set at random, with replacement, ten thousand times, recomputing the effect on each redraw.
+            The middle 95% of those ten thousand values is the range we report. It answers: <em>if we had asked
+            a different sample of questions, how much would this number have moved?</em>
+          </p>
+          <p>
+            A range that stays entirely above or below zero means the effect survives that resampling. A range
+            straddling zero means it does not, and we call the comparison inconclusive. Each question is redrawn
+            as a whole bundle of all ten slots together, because the ten slots are the same question and cannot
+            be treated as independent. We also correct for testing two effects rather than one.
+          </p>
+        </div>
+
+        <figcaption>
+          Positive primacy means the opening is read better than the middle; positive recency, the closing. An
+          effect of <span class="num">+5</span> points is five more correct answers per hundred questions. Every
+          number comes from a question set held separate from a larger one that has never been opened.
+        </figcaption>
+      </figure>
     </section>
 
     <section class="band" id="results">
@@ -230,37 +360,45 @@
         </p>
       </div>
       <div id="panels"></div>
-      <div class="prose note" style="margin-top: 26px">
+      <div class="prose" style="margin-top: 30px">
+        <h3 class="minor">Why the matched 8B panel matters, and why it is not a verdict</h3>
         <p>
-          The matched 8B panel is the closest thing here to a causal test, and it does not settle the question.
-          Both checkpoints share training data, tokenizer, scale, depth, and positional-encoding setup, and the
-          hybrid replaces about 7% of Mamba-2 blocks with attention. The hybrid has a significant within-model
-          primacy edge and the pure model does not, but the paired hybrid-minus-pure difference is
-          <span class="num">+1.88</span> points with a 95% interval of
-          <span class="num">[−0.56, +4.44]</span> and Holm <span class="num">p = 0.1442</span>. The direction
-          agrees with the primary comparison. The evidence does not establish that attention caused it.
+          If attention is what creates primacy, then adding attention to a state-space model should create
+          primacy. The matched 8B panel is the one place we can ask that almost directly: the two checkpoints
+          come from the same lab, the same training data, and the same scale, and differ mainly in that the
+          hybrid swaps a small fraction of its state-space blocks for attention.
+        </p>
+        <p>
+          The hybrid does show a primacy effect on its own, and the pure model does not. But the honest
+          comparison is the gap <em>between</em> them, and that gap is small with an interval that still
+          includes zero. So the result points the same way as the main comparison without proving the case.
+        </p>
+        <p class="note">
+          Read the two panels together rather than separately: a within-model effect answers "does this model
+          have primacy", and only the between-model gap answers "did attention put it there". The second
+          question is the one that stays open.
         </p>
       </div>
     </section>
 
     <section class="band alt" id="contrasts">
       <div class="head">
-        <div class="eyebrow">All contrasts</div>
-        <h2>Every paired difference we measured</h2>
+        <div class="eyebrow">All comparisons</div>
+        <h2>Which differences hold up</h2>
         <p>
-          One row per paired contrast, computed on the same question bundles so the interval reflects the
-          difference rather than two independent estimates.
+          Every comparison on this page puts two models against each other on exactly the same questions. That
+          matters: it means the difference is measured directly, rather than inferred from two separate scores.
         </p>
       </div>
     </section>
 
     <section class="band" id="scale">
       <div class="head">
-        <div class="eyebrow">Scale</div>
-        <h2>The family gap is scale-emergent</h2>
+        <div class="eyebrow">Model size</div>
+        <h2>The gap is not there at every size</h2>
         <p>
-          Five approximate Pythia-Mamba size pairs, from 145M to 2.8B mean parameters, each run through the
-          same harness on the same host.
+          Repeating the same head-to-head comparison at five model sizes shows the difference switching on
+          partway up, rather than being a fixed property of either architecture.
         </p>
       </div>
     </section>

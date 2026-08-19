@@ -19,6 +19,8 @@
   --attention: #0072b2;
   --state-space: #e69f00;
   --hybrid: #009e73;
+  /* Darkened for text, where the chart orange fails contrast. */
+  --state-space-ink: #a05f00;
 
   --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
@@ -191,29 +193,35 @@ code,
   position: sticky;
   top: 0;
   z-index: 20;
+  padding: 0 24px;
   background: rgba(255, 255, 255, 0.93);
   backdrop-filter: saturate(180%) blur(10px);
   border-bottom: 1px solid var(--rule);
+  /* The nav itself scrolls, not the list. `justify-content: center` on an
+     overflowing flex container makes its leading items unreachable, so the
+     list is sized to its content and centred with auto margins instead. */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.nav::-webkit-scrollbar {
+  display: none;
 }
 
 .nav ul {
   display: flex;
-  gap: 4px;
-  overflow-x: auto;
+  gap: 24px;
+  width: max-content;
   margin: 0 auto;
-  padding: 0 20px;
-  max-width: var(--wide);
+  padding: 0;
   list-style: none;
-  scrollbar-width: none;
 }
 
-.nav ul::-webkit-scrollbar {
-  display: none;
-}
-
+/* Spacing comes from the flex gap, not from link padding, so the label text
+   aligns with the section content rather than sitting inset from it. */
 .nav a {
   display: block;
-  padding: 13px 11px;
+  padding: 13px 0;
   font-size: 14px;
   color: var(--ink-soft);
   white-space: nowrap;
@@ -274,6 +282,20 @@ code,
   margin: 0 0 17px;
 }
 
+.hook {
+  margin: 0 0 26px;
+  font-size: clamp(21px, 2.7vw, 27px);
+  font-weight: 650;
+  line-height: 1.28;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.hook span {
+  display: block;
+  color: var(--state-space-ink);
+}
+
 .prose p:last-child {
   margin-bottom: 0;
 }
@@ -281,6 +303,148 @@ code,
 .note {
   font-size: 14.5px;
   color: var(--ink-soft);
+}
+
+.minor {
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+/* ---------- diagram key ---------- */
+
+.key {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 20px;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
+
+.key span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.swatch {
+  width: 26px;
+  height: 15px;
+  border-radius: 3px;
+  flex: none;
+  border: 1.2px solid var(--rule);
+}
+
+.swatch.gold {
+  background: var(--attention);
+  border-color: var(--attention);
+}
+
+.swatch.plain {
+  background: var(--surface);
+}
+
+.swatch.query {
+  background: #f0f0ec;
+}
+
+/* ---------- rendered formulas ---------- */
+
+.formulas {
+  margin-top: 24px;
+}
+
+.formula {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  font-size: 15px;
+}
+
+.formula .lhs {
+  font-weight: 650;
+  min-width: 4.6em;
+}
+
+.formula .rel,
+.formula .op {
+  font-family: var(--mono);
+  color: var(--ink-mute);
+}
+
+.chip {
+  padding: 4px 11px;
+  border-radius: 6px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.chip b {
+  font-weight: 650;
+}
+
+.chip.edge {
+  background: rgba(0, 114, 178, 0.13);
+  color: #0a4f77;
+}
+
+.chip.mid {
+  background: rgba(22, 24, 26, 0.07);
+  color: var(--ink-soft);
+}
+
+.callout {
+  margin-top: 26px;
+  padding: 18px 20px;
+  border-radius: 9px;
+  background: var(--surface-alt);
+  border: 1px solid var(--rule-soft);
+}
+
+.band.alt .callout {
+  background: #f1f1ed;
+}
+
+.callout h4 {
+  margin: 0 0 8px;
+  font-size: 14.5px;
+  font-weight: 650;
+}
+
+.callout p {
+  margin: 0 0 10px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+.callout p:last-child {
+  margin-bottom: 0;
+}
+
+math {
+  font-size: 15.5px;
+}
+
+/* Browsers centre block-level math by default; align it under the plain-language
+   line it restates instead. */
+.mathline {
+  margin: 8px 0 22px 0;
+  padding-left: calc(4.6em + 9px);
+  text-align: left;
+  color: var(--ink-soft);
+}
+
+.mathline:last-child {
+  margin-bottom: 2px;
+}
+
+@media (max-width: 560px) {
+  .mathline {
+    padding-left: 0;
+  }
 }
 
 /* ---------- figures ---------- */
@@ -311,6 +475,13 @@ code,
 .figure-head h3 {
   font-size: 16.5px;
   font-weight: 600;
+}
+
+h4.sub {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-soft);
 }
 
 .figure figcaption {
@@ -391,9 +562,20 @@ code,
 }
 
 .row-label {
-  font-size: 12px;
+  font-size: 12.5px;
   font-family: var(--sans);
   fill: var(--ink);
+}
+
+/* Subordinate to the row labels it groups: smaller, lighter, and muted, so the
+   data rows stay the most prominent text in the chart. */
+.group-label {
+  font-size: 9.5px;
+  font-family: var(--sans);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  fill: #9a9ea2;
 }
 
 .row-rule {
@@ -600,6 +782,11 @@ th.n {
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  padding-right: 26px;
+}
+
+/* Only the final column sits flush with the table edge. */
+tr > *:last-child {
   padding-right: 0;
 }
 

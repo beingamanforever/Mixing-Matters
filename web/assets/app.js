@@ -126,8 +126,8 @@ function yAxis(svg, scale, box, { label, format = acc, count = 5 }) {
   if (label) {
     const text = make("text", {
       class: "axis-title",
-      transform: `rotate(-90 ${14} ${(box.top + box.bottom) / 2})`,
-      x: 14,
+      transform: `rotate(-90 ${15} ${(box.top + box.bottom) / 2})`,
+      x: 15,
       y: (box.top + box.bottom) / 2,
       "text-anchor": "middle",
     }, svg);
@@ -216,7 +216,8 @@ function renderLine(container, spec) {
   const { svg, width } = frame(container, height);
   const directLabels = spec.directLabels && width >= 520;
   const box = {
-    left: 52,
+    // Wide enough that the rotated axis title clears the widest tick label.
+    left: spec.y.label ? 68 : 44,
     right: width - (directLabels ? Math.min(150, width * 0.24) : 16),
     top: 12,
     bottom: height - (spec.x.rotate ? 100 : spec.x.label ? 46 : 28),
@@ -438,8 +439,14 @@ function renderBars(container, spec) {
   const barHeight = spec.barHeight || 15;
   const gap = 2;
   const groupGap = 16;
-  const groupHeight = (row) => row.bars.length * barHeight + (row.bars.length - 1) * gap;
-  const plotHeight = spec.groups.reduce((total, row) => total + groupHeight(row) + groupGap, 0);
+  const headerHeight = 32;
+  // A `header` entry is a section rule, not data: it labels the runs beneath it.
+  const groupHeight = (row) =>
+    row.header ? headerHeight : row.bars.length * barHeight + (row.bars.length - 1) * gap;
+  const plotHeight = spec.groups.reduce(
+    (total, row) => total + groupHeight(row) + (row.header ? 0 : groupGap),
+    0
+  );
   const height = plotHeight + 44;
   const { svg, width } = frame(container, height, 470);
   const labelWidth = Math.min(spec.labelWidth || 210, width * 0.4);
@@ -447,7 +454,10 @@ function renderBars(container, spec) {
   const tick = spec.tickFormat || ppTick;
   const mark = spec.markFormat || ((value) => pp(value));
 
-  const values = spec.groups.flatMap((row) => row.bars.flatMap((bar) => [bar.lo, bar.hi, bar.value, 0]));
+  const values = spec.groups.flatMap((row) =>
+    (row.bars || []).flatMap((bar) => [bar.lo, bar.hi, bar.value, 0])
+  );
+  values.push(0);
   const x = linear(pad([Math.min(...values), Math.max(...values)], 0.1), [box.left, box.right]);
 
   const { values: tickValues, step } = ticks(x.domain, 5);
@@ -464,6 +474,12 @@ function renderBars(container, spec) {
   const tip = tooltipFor(container);
   let cursor = box.top + groupGap / 2;
   for (const row of spec.groups) {
+    if (row.header) {
+      const label = make("text", { class: "group-label", x: 0, y: cursor + headerHeight - 8 }, svg);
+      label.textContent = row.header;
+      cursor += headerHeight;
+      continue;
+    }
     const span = groupHeight(row);
     const label = make("text", {
       class: "row-label",
@@ -625,10 +641,10 @@ function legend(parent, series) {
   return node;
 }
 
-function toggle(labels, onChange) {
+function toggle(labels, onChange, initial = 0) {
   const node = html("div", { class: "toggle", role: "group" });
   const buttons = labels.map((label, index) => {
-    const button = html("button", { type: "button", text: label, "aria-pressed": index === 0 }, node);
+    const button = html("button", { type: "button", text: label, "aria-pressed": index === initial }, node);
     button.addEventListener("click", () => {
       buttons.forEach((other, position) => other.setAttribute("aria-pressed", position === index));
       onChange(index);
@@ -658,14 +674,20 @@ function table(parent, columns, rows, caption) {
 
 /** Chart / table switch. Satisfies the relief rule for the low-contrast series hue. */
 function withTable(parent, spec) {
-  const chartBox = html("div", {}, parent);
-  const tableBox = html("div", { hidden: "" }, parent);
+  const initial = spec.initial || 0;
+  const chartBox = html("div", { hidden: initial === 1 ? "" : null }, parent);
+  const tableBox = html("div", { hidden: initial === 0 ? "" : null }, parent);
   spec.buildChart(chartBox);
   spec.buildTable(tableBox);
-  return toggle(["Chart", "Table"], (index) => {
-    chartBox.hidden = index === 1;
-    tableBox.hidden = index === 0;
-  });
+  return toggle(
+    ["Chart", "Table"],
+    (index) => {
+      chartBox.hidden = index === 1;
+      tableBox.hidden = index === 0;
+      if (spec.onView) spec.onView(index);
+    },
+    initial
+  );
 }
 
 /* ---------- page sections ---------- */
@@ -781,64 +803,126 @@ function buildPanels() {
 function buildContrasts() {
   const parent = $("#contrasts");
   const kinds = [
-    { key: "all", label: "All contrasts" },
-    { key: "architecture", label: "Architecture" },
-    { key: "attention", label: "Attention" },
-    { key: "scale", label: "Scale" },
-    { key: "corpus", label: "Corpus" },
-    { key: "production", label: "Production" },
+    { key: "all", label: "All comparisons" },
+    { key: "architecture", label: "Matched 2.8B" },
+    { key: "attention", label: "Attention added" },
+    { key: "scale", label: "Model size" },
+    { key: "corpus", label: "Training data" },
+    { key: "production", label: "Production systems" },
   ];
+  // Reading order for the blocks, which is not the order the phases ran in.
+  const order = ["architecture", "attention", "scale", "corpus", "production"];
+  const headings = {
+    architecture: "Same size, different mixer",
+    attention: "Attention added to a state-space model",
+    scale: "Same comparison, repeated at five model sizes",
+    corpus: "Same model, different training data",
+    production: "Deployed systems, many differences at once",
+  };
   let kind = "all";
   let measure = "primacy";
+  let view = 0;
 
   const filters = html("div", { class: "filters" }, parent);
   const node = html("figure", { class: "figure" }, parent);
   const head = html("div", { class: "figure-head" }, node);
-  const title = html("h3", { text: "Paired primacy differences" }, head);
+  const title = html("h3", { text: "Where the primacy gap comes from" }, head);
+  const measureToggle = toggle(["Primacy", "Recency"], (index) => {
+    measure = index === 0 ? "primacy" : "recency";
+    draw();
+  });
+  head.appendChild(measureToggle);
+  const viewSlot = html("div", {}, head);
   const body = html("div", {}, node);
-  html("figcaption", {
-    html:
-      "Each bar is a paired contrast on the same question bundles, in percentage points. Solid bars clear Holm " +
-      "correction at p &lt; 0.05; faded bars do not. The rule through each bar is its 95% bootstrap interval.",
-  }, node);
+  const caption = html("figcaption", {}, node);
 
-  head.appendChild(
-    toggle(["Primacy", "Recency"], (index) => {
-      measure = index === 0 ? "primacy" : "recency";
-      title.textContent = index === 0 ? "Paired primacy differences" : "Paired recency differences";
-      draw();
-    })
-  );
+  function rows() {
+    return DATA.contrasts
+      .filter((row) => kind === "all" || row.kind === kind)
+      .sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
+  }
+
+  /** Bars, with a heading before each block of comparisons when nothing is filtered. */
+  function groups() {
+    const out = [];
+    let previous = null;
+    for (const row of rows()) {
+      if (kind === "all" && row.kind !== previous) {
+        out.push({ header: headings[row.kind] });
+        previous = row.kind;
+      }
+      const effect = row[measure];
+      out.push({
+        label: row.label,
+        bars: [
+          {
+            value: effect.estimate,
+            lo: effect.ci[0],
+            hi: effect.ci[1],
+            note: pval(effect.p),
+            color: "var(--attention)",
+            hollow: !significant(effect),
+          },
+        ],
+      });
+    }
+    return out;
+  }
 
   function draw() {
     body.textContent = "";
-    const groups = DATA.contrasts
-      .filter((row) => kind === "all" || row.kind === kind)
-      .map((row) => {
-        const effect = row[measure];
-        return {
-          label: row.label,
-          bars: [
-            {
-              value: effect.estimate,
-              lo: effect.ci[0],
-              hi: effect.ci[1],
-              note: pval(effect.p),
-              color: "var(--attention)",
-              hollow: !significant(effect),
-            },
+    title.textContent =
+      measure === "primacy" ? "Where the primacy gap comes from" : "Where the recency gap comes from";
+    caption.innerHTML =
+      `Each bar is one pair of models measured on the same questions, so it reads as "the first model's ` +
+      `${measure} minus the second model's". Bars to the right mean the first model leans on that end of the ` +
+      `context more. The line through each bar is the range the true value plausibly sits in; where that range ` +
+      `crosses zero, the comparison is inconclusive and the bar is drawn faded.`;
+
+    const viewToggle = withTable(body, {
+      initial: view,
+      onView: (index) => {
+        view = index;
+      },
+      buildChart(container) {
+        legend(container, [
+          { label: "Difference we can rely on", color: "var(--attention)" },
+          { label: "Range still includes zero", color: "var(--attention)", faded: true },
+        ]);
+        const chart = html("div", { class: "chart" }, container);
+        mount(chart, (node) =>
+          renderBars(node, {
+            groups: groups(),
+            barHeight: 17,
+            labelWidth: 270,
+            xLabel: `Difference in ${measure}, in points of accuracy`,
+          })
+        );
+      },
+      buildTable(container) {
+        table(
+          container,
+          [
+            { label: "Comparison" },
+            { label: `Difference in ${measure}`, numeric: true },
+            { label: "Plausible range", numeric: true },
           ],
-        };
-      });
-    const chart = html("div", { class: "chart" }, body);
-    mount(chart, (container) =>
-      renderBars(container, {
-        groups,
-        barHeight: 17,
-        labelWidth: 260,
-        xLabel: `Paired ${measure} difference (percentage points)`,
-      })
-    );
+          rows().map((row) => {
+            const effect = row[measure];
+            return [
+              row.label,
+              pp(effect.estimate),
+              `${pp(effect.ci[0])} to ${pp(effect.ci[1])}`,
+            ];
+          }),
+          "All values in points of accuracy: one point is one extra correct answer per hundred questions. " +
+            "Where the plausible range spans zero, the comparison is inconclusive."
+        );
+      },
+    });
+    // The reader keeps whichever view they had open across filter and measure changes.
+    viewSlot.textContent = "";
+    viewSlot.appendChild(viewToggle);
     flush();
   }
 
@@ -853,32 +937,28 @@ function buildContrasts() {
   draw();
 }
 
+
 function buildScale() {
   const parent = $("#scale");
-  const grid = html("div", { class: "grid-2" }, parent);
+  const node = html("figure", { class: "figure" }, parent);
+  const head = html("div", { class: "figure-head" }, node);
+  html("h3", { text: "The gap only appears once models are big enough" }, head);
+  const body = html("div", {}, node);
 
-  const attention = {
-    label: "Attention (Pythia)",
-    color: MIXER.attention,
+  const series = (key, label, color) => ({
+    label,
+    color,
     points: DATA.scale.map((entry) => ({
       x: entry.params_millions,
-      y: entry.attention.primacy.estimate,
-      lo: entry.attention.primacy.ci[0],
-      hi: entry.attention.primacy.ci[1],
+      y: entry[key].primacy.estimate,
+      lo: entry[key].primacy.ci[0],
+      hi: entry[key].primacy.ci[1],
     })),
-  };
-  const stateSpace = {
-    label: "State-space (Mamba)",
-    color: MIXER["state-space"],
-    points: DATA.scale.map((entry) => ({
-      x: entry.params_millions,
-      y: entry.state_space.primacy.estimate,
-      lo: entry.state_space.primacy.ci[0],
-      hi: entry.state_space.primacy.ci[1],
-    })),
-  };
+  });
+  const attention = series("attention", "Attention (Pythia)", MIXER.attention);
+  const stateSpace = series("state_space", "State-space (Mamba)", MIXER["state-space"]);
   const difference = {
-    label: "Attention minus state-space",
+    label: "Gap between the two",
     color: INK,
     points: DATA.scale.map((entry) => ({
       x: entry.params_millions,
@@ -891,56 +971,75 @@ function buildScale() {
   const xSpec = {
     kind: "band",
     values: DATA.scale.map((entry) => entry.params_millions),
-    label: "Mean parameters of the pair (millions)",
+    label: "Model size",
     format: (value) => (value >= 1000 ? `${(value / 1000).toFixed(1)}B` : `${Math.round(value)}M`),
     tipLabel: (value) => `${Math.round(value)}M parameter pair`,
   };
-  const ySpec = { label: "Primacy effect (pp)", format: ppTick, tipFormat: (value) => pp(value), zero: true };
+  const ySpec = {
+    label: "Primacy, in points of accuracy",
+    format: ppTick,
+    tipFormat: (value) => pp(value),
+    zero: true,
+  };
 
-  const left = figure(grid, {
-    title: "Primacy by scale, per family",
-    caption: "Five approximate size pairs, each run on the same 800 questions. Bars are 95% bootstrap intervals.",
+  const viewToggle = withTable(body, {
+    buildChart(container) {
+      const grid = html("div", { class: "grid-2" }, container);
+
+      const left = html("div", {}, grid);
+      html("h4", { class: "sub", text: "Each family on its own" }, left);
+      legend(left, [attention, stateSpace]);
+      mount(html("div", { class: "chart" }, left), (chart) =>
+        renderLine(chart, { height: 300, x: xSpec, y: ySpec, series: [attention, stateSpace] })
+      );
+
+      const right = html("div", {}, grid);
+      html("h4", { class: "sub", text: "The gap between them" }, right);
+      legend(right, [difference]);
+      mount(html("div", { class: "chart" }, right), (chart) =>
+        renderLine(chart, {
+          height: 300,
+          x: xSpec,
+          y: { ...ySpec, label: "Attention minus state-space" },
+          series: [difference],
+        })
+      );
+    },
+    buildTable(container) {
+      table(
+        container,
+        [
+          { label: "Comparison" },
+          { label: "Attention primacy", numeric: true },
+          { label: "State-space primacy", numeric: true },
+          { label: "Gap", numeric: true },
+          { label: "Plausible range for the gap", numeric: true },
+        ],
+        DATA.scale.map((entry) => [
+          `${DATA.models[entry.attention.model].label} vs ${DATA.models[entry.state_space.model].label}`,
+          pp(entry.attention.primacy.estimate),
+          pp(entry.state_space.primacy.estimate),
+          pp(entry.difference.estimate),
+          `${pp(entry.difference.ci[0])} to ${pp(entry.difference.ci[1])}`,
+        ]),
+        "All values in points of accuracy: one point is one extra correct answer per hundred questions. " +
+          "Where the plausible range spans zero, the gap is inconclusive."
+      );
+    },
   });
-  legend(left, [attention, stateSpace]);
-  mount(html("div", { class: "chart" }, left), (container) =>
-    renderLine(container, { height: 300, x: xSpec, y: ySpec, series: [attention, stateSpace] })
-  );
+  head.appendChild(viewToggle);
 
-  const right = figure(grid, {
-    title: "Paired family difference",
-    caption:
-      "The gap is indistinguishable from zero at the two smallest pairs and appears from 790M vs 1B onward. " +
-      "The smallest Pythia has an oracle ceiling of 0.009, so its flat curve is a capability floor, not architecture invariance.",
-  });
-  legend(right, [difference]);
-  mount(html("div", { class: "chart" }, right), (container) =>
-    renderLine(container, {
-      height: 300,
-      x: xSpec,
-      y: { ...ySpec, label: "Paired primacy difference (pp)" },
-      series: [difference],
-    })
-  );
-
-  table(
-    parent,
-    [
-      { label: "Pair" },
-      { label: "Attention primacy", numeric: true },
-      { label: "State-space primacy", numeric: true },
-      { label: "Difference", numeric: true },
-      { label: "Holm p", numeric: true },
-    ],
-    DATA.scale.map((entry) => [
-      entry.pair,
-      effectCell(entry.attention.primacy),
-      effectCell(entry.state_space.primacy),
-      effectCell(entry.difference),
-      pval(entry.difference.p),
-    ]),
-    "Phase 4 scale sweep. Percentage points, with 95% bootstrap intervals."
-  );
+  html("figcaption", {
+    html:
+      "Five pairs of models, one from each family, matched as closely as their published sizes allow and run " +
+      "on the same questions. At the two smallest sizes neither family prefers either end of the context. " +
+      "From roughly a billion parameters upward the attention models develop a clear preference for the start " +
+      "and the state-space models do not. Size and general ability move together here, so this shows when the " +
+      "gap appears rather than why.",
+  }, node);
+  flush();
 }
+
 
 function buildCalibration() {
   const parent = $("#calibration");
