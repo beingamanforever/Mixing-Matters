@@ -8,12 +8,12 @@ Cross-phase synthesis using every phase's evidence: **`CUMULATIVE-FINDINGS.md`**
 
 | Sub-experiment | Directory | Finding |
 |---|---|---|
-| 4b depth trend + 4e scoring/length lenses | `report/` | Depth alone does not make primacy (Pythia 410m < 1b); arm survives scoring and length changes. |
-| 4a query-position ablation | `4a-query-position/` | bookend lifts Mamba primacy from null to +0.103; question_first kills Mamba recency; gold_padded halves Pythia primacy. |
-| 4c attention-sink mass | `4c-sink-scan/`, `4c-sink-scan-variants/` | Late-layer token-0 sink tracks primacy across scale; pythia-2.8b final-layer sink 0.455, pythia-160m (null primacy) ~0. |
+| 4b depth trend + 4e scoring/length lenses | `report/` | A simple depth-only account is insufficient; the Phase 2 pattern persists under the tested scoring rules and length bins. |
+| 4a query-position variants | `4a-query-position/` | Bookend Mamba primacy is +0.103 versus a null baseline; question-first recency is +0.010 versus +0.070; no paired between-condition test was run. |
+| 4c attention-sink mass | `4c-sink-scan/`, `4c-sink-scan-variants/` | Late-layer token-0 sink mass is associated with primacy across Pythia scale; pythia-2.8b final-layer sink is 0.455 and pythia-160m is near zero. |
 | 4c sink-block ablation | `4c-sink-block/` | Null intervention: Nemotron-H custom attention ignores the token-0 mask; documented follow-up. |
-| 4d linear probe | `4d-probe/` | Mamba encodes gold position better than Pythia (0.65 vs 0.60) yet has null primacy: utilisation, not storage. |
-| 4e instruction-template variation | `4e-template/` | Architecture contrast is template-invariant; transformer primacy magnitude is template-sensitive (instructional collapses Pythia primacy). |
+| 4d linear probe | `4d-probe/` | Gold position is more linearly decodable in the measured Mamba state than in Pythia (0.65 versus 0.60), but the probe does not measure answer-content storage or use. |
+| 4e instruction-template variation | `4e-template/` | Pythia primacy is positive under two templates, while the instructional-template interval crosses zero; the cells have no paired between-template test. |
 
 The compute-free lenses (below) read the already-collected Phase 2 and Phase 4 sweeps; the GPU sub-experiments were run across one L40S and two T4s.
 
@@ -24,7 +24,8 @@ Records aggregated by this report:
 - Phase 2 sweeps on the Pile, one A40 host: `pythia-2.8b`, `mamba-2.8b`, `mamba2-2.7b`.
 - Phase 4 Pythia sweeps at every registered size point: `pythia-160m`, `pythia-410m`, `pythia-1b`, `pythia-1.4b`, `pythia-2.8b`.
 
-Every record was produced by the same harness (dataset, seed, decoding, token counts), so within a family the only variable that moves across sizes is scale, and within a variant of `scoring_sensitivity` the only variable is the answer-extraction rule.
+Every record was produced by the same harness for dataset, seed, decoding, and prompt construction.
+Across model sizes, parameter count, depth, width, training progress, and capability can move together, while each `scoring_sensitivity` variant changes only the answer-extraction rule applied to fixed outputs.
 
 ## Report
 
@@ -49,10 +50,10 @@ Every record was produced by the same harness (dataset, seed, decoding, token co
 | Mamba-2.8B | 64 | -0.001 [-0.016, +0.014] | 0.914 |
 | Mamba2-2.7B | 64 | -0.018 [-0.034, -0.003] | 0.023 |
 
-Depth alone does not create primacy: Pythia-410M (24 layers, 1024 wide) has a primacy edge of +0.013, while Pythia-1B (16 layers, 2048 wide) has +0.052.
+The observations do not support a simple depth-only account: Pythia-410M (24 layers, 1024 wide) has a primacy edge of +0.013, while Pythia-1B (16 layers, 2048 wide) has +0.052.
 More layers with less width gives less primacy than fewer layers with more width; the workshop-spec prediction "primacy strengthens with depth" is not supported at fixed family without capacity.
 Mamba variants at 64 layers have zero or slightly negative primacy - depth on its own does not manufacture the arm when the sequence mixer is SSM.
-The dominant axis in these numbers is capability/parameter count once family is fixed: Pythia crosses into a strong primacy edge somewhere between 410M and 1B parameters, matches Phase 4's "grows and stabilizes" verdict, and does so *irrespective* of layer count in that range.
+The edge appears in the capable Pythia checkpoints at 1B and above, but these observations do not identify a causal threshold because scale, width, depth, training progress, and task capability move together.
 
 ### Scoring sensitivity
 
@@ -69,7 +70,7 @@ The dominant axis in these numbers is capability/parameter count once family is 
 Signs and Holm significance are preserved across the three scoring rules for every Pythia model at 1B and above, and for both Mamba variants.
 Normalized EM roughly halves the magnitude (as expected; it is a strict rule) but does not flip any sign.
 First-line-only extraction tracks the primary scorer within a few thousandths on every model.
-The primacy claim is not a scoring artifact.
+The tested alternative scoring rules do not explain the Pythia primacy pattern.
 
 ### Length sensitivity
 
@@ -87,17 +88,17 @@ Three equal-count prompt-length bins over the 800 exploratory questions, bin edg
 
 Pythia-2.8B and Mamba2-2.7B both show the largest edge magnitudes in the longest-prompt bin, with opposite signs.
 The three-model primacy signature persists across every bin (Pythia positive, Mambas at or below zero).
-No length-bin narrows the Pythia-2.8B primacy edge to a null or reverses the Mamba pattern, so the Phase 2 shape is not a length artifact.
+No length bin reverses the Phase 2 family pattern, so the result is not explained by the tested prompt-length stratification alone.
 
 ## Standing reads for the paper story
 
 - **Depth alone does not manufacture the arm.**
 The one within-family, opposite-direction contrast on layers vs width (Pythia 410M vs 1B) puts more layers on the *less primacy* side.
 Whatever creates primacy in the Pythia family is not simply "more layers".
-Capability/parameter count crossing the 1B threshold is the change that matches the emergence.
-- **The arm is not a scoring artifact.**
+The appearance of the edge coincides with higher capability and parameter count in this series, without identifying a causal threshold.
+- **The tested scoring rules do not explain the arm.**
 Alternative extraction and normalization preserve sign and Holm-significance on every model in the group; only magnitude shifts a little for normalized EM.
-- **The arm is not a length artifact.**
-Every prompt-length tertile carries the Phase 2 pattern in the same direction; the top tertile is the strongest, consistent with the arms being genuine position effects that scale with the *middle span* rather than an artifact of prompt fitting.
+- **The tested length bins preserve the family pattern.**
+Every prompt-length tertile carries the Phase 2 pattern in the same direction, but the bins are descriptive and can differ in question composition.
 
-The remaining single-variable questions live in the GPU-bound sub-experiments listed in the runbook.
+The executed GPU sub-experiments generate bounded mechanism hypotheses; a valid causal intervention remains open.

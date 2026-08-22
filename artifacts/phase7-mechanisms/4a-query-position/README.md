@@ -2,7 +2,7 @@
 
 Query-position ablation on `pythia-2.8b` and `mamba-2.8b` at 200 exploratory questions per (model, prompt variant).
 Every gold record carries the `prompt_variant` field so records join to the Phase 2 baseline (`prompt_variant=None → baseline`) in one call.
-The four prompt variants change only the position of the question in the prompt; the ten distractors and the gold document are placed identically.
+The ten distractors and gold-document placement are identical across variants, but the variants jointly change query placement, repetition, and token layout.
 
 ## Setup
 
@@ -35,34 +35,32 @@ The four prompt variants change only the position of the question in the prompt;
 
 ## Reading the result
 
-### The fixed-state-compression signature on Mamba is clean
+### Mamba edges differ descriptively across prompt variants
 
 Mamba-2.8B has a null primacy edge under the baseline documents-then-question layout (Phase 2 result reproduced at n=200).
-Under `bookend`, primacy jumps to +0.103, larger than any Mamba primacy edge measured in Phases 2, 4, or 8.
-The single-variable change that produced this is placing the question tokens **before** the document block: the recurrent state now knows the query while it compresses the documents, and it can preferentially retain information about early gold documents.
-This is exactly the prediction of the fixed-state-compression hypothesis for SSM sequence mixers.
+Under `bookend`, the per-condition primacy estimate is +0.103, larger than any Mamba primacy edge measured in Phases 2, 4, or 8.
+The bookend layout places question tokens before the document block and repeats them after it, so the result is consistent with a fixed-state-compression hypothesis but does not isolate it.
+No paired between-condition contrast was computed, so the difference between the baseline and bookend estimates is descriptive.
 
-Under `question_first` (only prefix, no trailing question) primacy climbs to +0.020 (still not clean, wide CI) while recency **drops from +0.070 to +0.010**.
-Exposing the question up-front trades away the state's recency bias.
-That is the second prediction of fixed-state-compression: when the question is exposed early, the recurrent state does not just carry the tail; it filters as it goes.
+Under `question_first` (only prefix, no trailing question), primacy is +0.020 (still not clean, wide CI) and recency is +0.010, compared with +0.070 at baseline.
+This pattern is consistent with the hypothesis that early query exposure changes what the recurrent state retains, but it does not establish that mechanism.
 
 ### Pythia already has a primacy arm, so the effects are additive
 
 Pythia's baseline primacy is +0.070 (Phase 2 replicated on the L40S at n=200).
-`bookend` **more than doubles** it to +0.150.
-The additional prefix question tokens sit right after the instructions, deep inside the attention-sink zone; every attention layer now has extra query-relevant tokens at the beginning of the prompt.
-`question_first` also lifts primacy modestly (+0.088), still substantially above baseline, again consistent with more query-relevant mass at the start of the prompt.
+The `bookend` per-condition estimate is +0.150.
+The additional prefix question tokens sit near the beginning of the prompt, which is consistent with an attention-sink hypothesis.
+The `question_first` primacy estimate is +0.088, which is descriptively above baseline and consistent with more query-relevant mass at the start of the prompt.
 
-`gold_padded` (128 filler tokens between documents and question) **halves** Pythia's primacy edge to +0.038 and keeps recency near baseline.
-Filler tokens between the documents and the closing question shift the reader's attention away from the head of the prompt (where the gold sits when at position 0), consistent with attention mass being pulled toward the recent context by the sink-plus-recency competition.
+The `gold_padded` cell (128 filler tokens between documents and question) has Pythia primacy +0.038 and recency near baseline.
+Filler tokens between the documents and the closing question also change token distances and layout, so the lower estimate is descriptive and does not identify how attention moved.
 
-### Combined direction: query-first helps SSM more than Transformer at raising primacy from zero
+### Combined direction
 
-Mamba's primacy jumps from 0 to +0.103 under `bookend` (a factor no dense attention model in this study can match).
-Pythia's primacy grows from +0.070 to +0.150 under the same variant, but its **absolute** growth is comparable to Mamba's.
-The direction predicted by the workshop spec ("query-first should help Mamba and hybrid models more than Transformers") holds when framed as *lifting primacy from a null baseline*: only the SSM's arm was null to begin with, and the same intervention makes it positive.
-
-Every one of these effects is a single-variable change on the prompt-order layer, so no other axis is confounded within this experiment.
+Mamba primacy is 0 at baseline and +0.103 under `bookend`.
+Pythia primacy is +0.070 at baseline and +0.150 under the same variant.
+The Mamba point estimate moves from a null baseline to a positive bookend cell, while Pythia is positive in both cells.
+Because the variant changes placement, repetition, and layout and lacks a paired between-condition test, it does not establish that query-first helps one mixer more than another.
 
 ## Artifacts
 

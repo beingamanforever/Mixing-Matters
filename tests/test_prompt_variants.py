@@ -1,6 +1,6 @@
 import pytest
-from lost_in_the_middle.prompting import Document
 
+from lost_in_the_middle.prompting import Document
 from mixing_matters.prompt_variants import (
     TEMPLATES,
     VARIANTS,
@@ -10,10 +10,7 @@ from mixing_matters.prompt_variants import (
 
 
 def _documents(n: int = 3) -> list[Document]:
-    return [
-        Document(title=f"Title {index}", text=f"Body {index}")
-        for index in range(n)
-    ]
+    return [Document(title=f"Title {index}", text=f"Body {index}") for index in range(n)]
 
 
 def test_variants_enum_defines_expected_orders():

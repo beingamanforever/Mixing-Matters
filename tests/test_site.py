@@ -65,14 +65,42 @@ def test_phase3_and_phase5_edges_come_from_their_control_blocks(data):
 
 def test_contrasts_cover_every_paired_comparison(data):
     kinds = [row["kind"] for row in data["contrasts"]]
-    assert kinds.count("architecture") == 3
-    assert kinds.count("attention") == 1
+    assert kinds.count("family") == 3
+    assert kinds.count("checkpoint") == 1
     assert kinds.count("corpus") == 1
     assert kinds.count("scale") == 5
     assert kinds.count("production") == 3
     for row in data["contrasts"]:
         for edge in ("primacy", "recency"):
             assert row[edge]["ci"][0] <= row[edge]["estimate"] <= row[edge]["ci"][1]
+
+
+def test_panel_copy_preserves_the_evidence_boundary(data):
+    phase2 = next(panel for panel in data["panels"] if panel["id"] == "phase2")
+    assert phase2["title"] == "Exploratory 2.8B family comparison"
+    assert "differ" in phase2["caption"]
+
+    phase3 = next(panel for panel in data["panels"] if panel["id"] == "phase3")
+    assert phase3["title"] == "Tightly matched 8B checkpoint contrast"
+    assert "both attention and MLP composition" in phase3["caption"]
+
+
+def test_comparison_copy_matches_the_holm_decision_rule(data):
+    interval_p_mismatches = {
+        row["label"]
+        for row in data["contrasts"]
+        if row["recency"]["p"] >= 0.05
+        and (row["recency"]["ci"][0] > 0 or row["recency"]["ci"][1] < 0)
+    }
+    assert interval_p_mismatches == {
+        "Mamba 2.8B minus Mamba-2 2.7B",
+        "Hybrid minus pure Mamba-2 8B",
+    }
+
+    script = (WEB / "assets" / "app.js").read_text()
+    assert "Fading follows the" in script
+    assert "Holm-corrected test, not the unadjusted interval" in script
+    assert 'label: "Holm p"' in script
 
 
 def test_scale_trend_is_ordered_by_size(data):

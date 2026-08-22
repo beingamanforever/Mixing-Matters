@@ -93,37 +93,36 @@ FIGURES = (
     "paper-phase8-production",
 )
 
-plt.rcParams.update(
-    {
-        "font.family": "sans-serif",
-        "font.sans-serif": ["DejaVu Sans"],
-        "font.size": 7.5,
-        "axes.labelsize": 8,
-        "axes.linewidth": 0.7,
-        "axes.spines.top": False,
-        "axes.spines.right": False,
-        "axes.grid": True,
-        "axes.axisbelow": True,
-        "grid.color": "#D7DADD",
-        "grid.linewidth": 0.45,
-        "grid.alpha": 0.7,
-        "grid.linestyle": "-",
-        "xtick.labelsize": 7,
-        "ytick.labelsize": 7,
-        "xtick.major.width": 0.6,
-        "ytick.major.width": 0.6,
-        "legend.fontsize": 6.8,
-        "legend.frameon": False,
-        "lines.linewidth": 1.45,
-        "lines.markersize": 4.8,
-        "lines.markeredgewidth": 0.7,
-        "savefig.bbox": "tight",
-        "savefig.pad_inches": 0.03,
-        "svg.fonttype": "none",
-        "svg.hashsalt": "mixing-matters-paper",
-        "pdf.fonttype": 42,
-    }
-)
+PAPER_STYLE = {
+    "font.family": "sans-serif",
+    "font.sans-serif": ["DejaVu Sans"],
+    "font.size": 7.5,
+    "axes.labelsize": 8,
+    "axes.linewidth": 0.7,
+    "axes.spines.top": False,
+    "axes.spines.right": False,
+    "axes.grid": True,
+    "axes.axisbelow": True,
+    "grid.color": "#D7DADD",
+    "grid.linewidth": 0.45,
+    "grid.alpha": 0.7,
+    "grid.linestyle": "-",
+    "xtick.labelsize": 7,
+    "ytick.labelsize": 7,
+    "xtick.major.width": 0.6,
+    "ytick.major.width": 0.6,
+    "legend.fontsize": 6.8,
+    "legend.frameon": False,
+    "lines.linewidth": 1.45,
+    "lines.markersize": 4.8,
+    "lines.markeredgewidth": 0.7,
+    "savefig.bbox": "tight",
+    "savefig.pad_inches": 0.03,
+    "svg.fonttype": "none",
+    "svg.hashsalt": "mixing-matters-paper",
+    "pdf.fonttype": 42,
+}
+plt.rcParams.update(PAPER_STYLE)
 
 
 def _read(path: str) -> dict[str, Any]:
@@ -546,7 +545,8 @@ GENERATORS: tuple[Callable[[Path], list[Path]], ...] = (
 
 def generate_all(output: Path = DEFAULT_OUTPUT) -> list[Path]:
     """Generate every paper figure into an exact, caller-selected directory."""
-    return [path for generate in GENERATORS for path in generate(output)]
+    with plt.rc_context(PAPER_STYLE):
+        return [path for generate in GENERATORS for path in generate(output)]
 
 
 def main() -> None:

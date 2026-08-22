@@ -1,4 +1,4 @@
-# Paper: Mixing Matters (NewInML @ NeurIPS 2026)
+# Paper: Mixing Matters? Evidence and Its Limits for Position Bias Across Sequence Mixers
 
 Source for the workshop submission.
 
@@ -25,6 +25,9 @@ pdflatex mixing_matters
 ```
 
 Tectonic can be used instead with `tectonic -X compile mixing_matters.tex`.
+
+The canonical published output is `mixing-matters-newinml-2026.pdf`.
+After compiling, replace that file with the new `mixing_matters.pdf` build and do not commit a second PDF under the build-stem name.
 
 The source keeps exactly one bibliography environment and includes `checklist.tex` exactly once after the references.
 The appendix is part of the same build and uses only figures regenerated from committed experiment summaries.

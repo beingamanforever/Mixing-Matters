@@ -1,7 +1,8 @@
-# Phase 7 sub-experiment 4d: utilisation vs storage
+# Phase 7 sub-experiment 4d: position decodability probe
 
 A balanced linear probe for gold position (edge vs middle) trained on frozen hidden states.
-If a probe recovers where the gold document sits while QA accuracy is not U-shaped for that model, the model *stores* the location but does not *use* it.
+Above-chance probe accuracy shows that this position label is linearly decodable from the measured representation.
+It does not establish that the model stores the answer-bearing content or uses the decoded position during generation.
 
 ## Setup
 
@@ -24,22 +25,16 @@ The shuffled-label control sits at the 0.5 chance line for both models, so the r
 
 ## Reading the result
 
-Both models encode gold position in their mid-depth hidden state above chance: 0.60 for Pythia, 0.65 for Mamba.
-The decisive contrast is Mamba.
-Mamba-2.8B carries the *strongest* linear position signal of the two (0.648 vs Pythia's 0.603) yet has a *null* QA primacy edge (Phase 2: -0.001, not distinguishable from zero).
-The location of the gold document is linearly decodable from Mamba's representation, but that knowledge does not translate into a position-dependent accuracy advantage at the edges.
-
-This is the utilisation-not-storage signature the Phase 7 spec predicted: the model knows where the evidence is and still fails to preferentially use edge evidence.
-For Pythia the picture is consistent but weaker: it both encodes position (0.60) and shows a primacy arm (+0.052), so its stored location does map onto a utilisation asymmetry.
-
-The clean statement is that storage of position is not the bottleneck.
-Both architectures store it; only the transformer converts stored position into an edge-accuracy advantage.
-That points the primacy mechanism at *how* position information is used downstream (the attention-sink read on the Transformer side), not at whether the models can locate the gold document at all.
+Gold position is linearly decodable from both measured mid-depth representations above chance: 0.603 for Pythia and 0.648 for Mamba.
+In these selected layers, Mamba has the higher probe accuracy while its Phase 2 primacy edge is null (-0.001, not distinguishable from zero).
+This pattern motivates a hypothesis that position decodability and edge-dependent answer accuracy can dissociate.
+The probe does not determine whether answer content is stored, whether the decoded feature is used downstream, or what causes the family difference.
 
 ## Limits
 
 - The probe reads one layer per model. A model could encode position more strongly at another depth; the layer was fixed by rule before fitting to avoid selecting on the outcome, so these numbers are honest but not the maximum achievable.
-- Probe accuracy near 0.60-0.65 is a modest signal; the finding is the *direction* (Mamba encodes at least as well as Pythia while showing no primacy), not the absolute decodability.
+- Probe accuracy near 0.60-0.65 is a modest signal from one selected layer per model.
+- Comparing probe accuracies across architectures is descriptive because the representations, dimensions, and selected layers differ.
 
 ## Artifacts
 

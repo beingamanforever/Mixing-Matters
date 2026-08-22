@@ -106,4 +106,5 @@ That writes `position-curves.png`, `position-edges.png`, and `phase8-summary.jso
 
 Phase 8 answers no matched-control question.
 Every pairwise interaction jointly reflects architecture, corpus, token count, tokenizer, alignment status, depth, and positional encoding.
-The intended use is to place the three systems side by side and describe how their curves differ; single-variable claims belong to Phase 2, Phase 3, and Phase 5.
+The intended use is to place the three systems side by side and describe how their curves differ.
+Phase 2 and Phase 3 also retain model-family or checkpoint confounds, while Phase 5 is the closest executed single-axis corpus comparison.

@@ -3,17 +3,17 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Mixing Matters: Evidence Position Bias Across Sequence Mixers</title>
+    <title>Mixing Matters? Evidence and Its Limits for Position Bias Across Sequence Mixers</title>
     <meta
       name="description"
-      content="A paired ten-position intervention comparing how attention, state-space, and hybrid
-      sequence mixers use the same evidence in long-context question answering."
+      content="An exploratory paired ten-position study of position bias across attention, state-space,
+      and hybrid sequence mixers, with explicit limits on architectural and causal claims."
     />
-    <meta property="og:title" content="Mixing Matters: Evidence Position Bias Across Sequence Mixers" />
+    <meta property="og:title" content="Mixing Matters? Evidence and Its Limits for Position Bias Across Sequence Mixers" />
     <meta
       property="og:description"
-      content="Move one answer-bearing passage through ten positions and hold everything else fixed.
-      Transformers lose the middle. State-space models never had the beginning."
+      content="Move one answer-bearing passage through ten positions while holding each question bundle fixed.
+      The measured curves differ by model family, but the study does not isolate architecture as the cause."
     />
     <meta property="og:type" content="website" />
     <link rel="stylesheet" href="assets/style.css" />
@@ -26,8 +26,8 @@
     <header class="hero">
       <div class="hero-eyebrow">Long-context evaluation · sequence mixers</div>
       <h1>
-        Mixing Matters
-        <span class="sub">Evidence Position Bias Across Sequence Mixers in Long-Context Question Answering</span>
+        Mixing Matters?
+        <span class="sub">Evidence and Its Limits for Position Bias Across Sequence Mixers</span>
       </h1>
       <p class="byline">
         Author list withheld pending review
@@ -93,8 +93,8 @@
       </div>
       <div class="prose">
         <p class="hook">
-          Transformers lose the middle.
-          <span>State-space models never had the beginning.</span>
+          The same evidence is not equally usable everywhere.
+          <span>The measured curve depends on the model, prompt, and task.</span>
         </p>
         <p>
           Hide an answer inside a long context and models find it more easily near the edges than in the middle.
@@ -102,15 +102,15 @@
           long context itself, including for architectures that work nothing like one.
         </p>
         <p>
-          So we tested it. We slide one answer-bearing passage through every position of a fixed document set
-          and change nothing else, then repeat the sweep across attention, state-space, and hybrid models on
-          identical questions.
+          So we tested it. Within each question, we slide one answer-bearing passage through every position of a
+          fixed document set while preserving the distractors, question, and decoding setup. We repeat that
+          paired sweep across attention, state-space, and hybrid models on identical exploratory questions.
         </p>
         <p>
-          <strong>The U-shape splits in two.</strong> Every family reads the end of a context well. Only
-          attention models also favour the beginning, and only once they are big enough to use long context at
-          all. Advice inherited from transformers, like putting the important document first, does not
-          transfer for free.
+          <strong>The exploratory 2.8B family curves split at the beginning.</strong> Pythia favours the opening,
+          while the two compared Mamba checkpoints do not, and all three favour the end. Depth, positional
+          encoding, state size, checkpoint family, and capability remain confounded, so this is a measured
+          family difference rather than an isolated architecture effect.
         </p>
       </div>
     </section>
@@ -339,7 +339,7 @@
         <div class="eyebrow">Main result</div>
         <h2>Position curves by sequence mixer</h2>
         <p>
-          Switch between the matched architecture comparison, the matched 8B attention control, the corpus
+          Switch between the exploratory family comparison, the tightly matched 8B checkpoint contrast, the corpus
           control, and the production systems. Colour encodes the mixer class: attention, state-space, hybrid.
         </p>
       </div>
@@ -347,10 +347,9 @@
       <div class="prose" style="margin-top: 30px">
         <h3 class="minor">Why the matched 8B panel matters, and why it is not a verdict</h3>
         <p>
-          If attention is what creates primacy, then adding attention to a state-space model should create
-          primacy. The matched 8B panel is the one place we can ask that almost directly: the two checkpoints
-          come from the same lab, the same training data, and the same scale, and differ mainly in that the
-          hybrid swaps a small fraction of its state-space blocks for attention.
+          If attention contributes to primacy, the released pure and hybrid 8B checkpoints provide the tightest
+          comparison in this study. They come from the same lab, training data, and scale, but the hybrid changes
+          both attention and MLP composition, so the contrast is not attention-only.
         </p>
         <p>
           The hybrid does show a primacy effect on its own, and the pure model does not. But the honest
@@ -374,10 +373,11 @@
     <section class="band" id="scale">
       <div class="head">
         <div class="eyebrow">Model size</div>
-        <h2>The gap is not there at every size</h2>
+        <h2>The measured gap is not present at every size</h2>
         <p>
-          Repeating the same head-to-head comparison at five model sizes shows the difference switching on
-          partway up, rather than being a fixed property of either architecture.
+          Repeating the family comparison at five approximate size pairs finds a near-zero gap in the two
+          weakest pairs and a positive gap in the three capable pairs. This descriptive pattern does not
+          establish a causal size threshold.
         </p>
       </div>
     </section>
@@ -403,8 +403,8 @@
       </div>
       <div class="prose">
         <pre><code>@misc{mixingmatters2026,
-  title  = {Mixing Matters: Evidence Position Bias Across Sequence
-            Mixers in Long-Context Question Answering},
+  title  = {Mixing Matters? Evidence and Its Limits for Position Bias
+            Across Sequence Mixers},
   note   = {New in ML workshop submission},
   year   = {2026}
 }</code></pre>

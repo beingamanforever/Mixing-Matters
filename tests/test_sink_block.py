@@ -45,7 +45,10 @@ def test_block_hooks_every_attention_module_and_zeros_token_zero_column():
     for module in model.attentions:
         # Token-0 column of the last-seen mask must be replaced with neg_inf.
         assert module.last_mask is not attention_mask
-        assert torch.isfinite(module.last_mask).all().item() is False or (module.last_mask[..., 0] < -1e10).all().item()
+        assert (
+            torch.isfinite(module.last_mask).all().item() is False
+            or (module.last_mask[..., 0] < -1e10).all().item()
+        )
 
 
 def test_block_restores_forward_on_exit():
@@ -62,16 +65,15 @@ def test_block_restores_forward_on_exit():
 
 def test_block_raises_when_no_attention_modules_present():
     model = nn.Sequential(ReluBlock(), ReluBlock())
-    with pytest.raises(RuntimeError):
-        with block_attention_sink(model):
-            pass
+    with pytest.raises(RuntimeError), block_attention_sink(model):
+        pass
 
 
 def test_block_handles_positional_attention_mask():
     class PositionalModule(nn.Module):
         pass
 
-    class LlamaAttention(nn.Module):  # noqa: N801 - matches transformers class name
+    class LlamaAttention(nn.Module):
         def __init__(self):
             super().__init__()
             self.last_mask = None

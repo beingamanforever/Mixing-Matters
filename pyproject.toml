@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "mixing-matters"
 version = "0.1.0"
 requires-python = ">=3.10"
-dependencies = ["pydantic>=1.10,<3", "regex>=2023.0", "matplotlib>=3.7"]
+dependencies = ["pydantic>=1.10,<3", "regex>=2023.0", "matplotlib>=3.7", "pip"]
 
 [project.optional-dependencies]
 test = ["pytest", "ruff"]
@@ -19,7 +19,7 @@ mixing-matters = "mixing_matters.cli:main"
 packages = ["src/mixing_matters", "src/lost_in_the_middle"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = [".", "src"]
 
 [tool.ruff]
 line-length = 100

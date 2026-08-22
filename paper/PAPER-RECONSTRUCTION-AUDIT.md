@@ -1,6 +1,6 @@
 # Paper reconstruction audit
 
-This report records how the NeurIPS 2026 workshop paper was reconstructed from the repository evidence on 2026-08-14.
+This report records how the NeurIPS 2026 workshop paper was reconstructed from the repository evidence on 2026-08-14 and reconciled with later committed artifacts on 2026-08-22.
 
 ## Evidence policy
 
@@ -15,7 +15,7 @@ The frozen 1,855-question confirmatory split remains unopened.
   The reported control is the edge-versus-middle key-value effect, not a first-slot-only contrast.
 - Phase 2 supports a strong exploratory family-by-position interaction near 2.8B parameters.
   It does not isolate attention because model depth, positional encoding, state size, and checkpoint family differ.
-- Phase 3 is the tightest architecture comparison.
+- Phase 3 is the tightest released-checkpoint comparison, but the pure and hybrid checkpoints differ in both attention and MLP composition.
   The hybrid-minus-pure primacy estimate is directionally consistent with Phase 2 but crosses zero after the prespecified correction.
 - Phase 4 shows a descriptive family gap once the compared checkpoints can answer the task.
   The smallest Pythia checkpoint is at an answerability ceiling near zero, so the phase does not establish a causal scale threshold.
@@ -45,9 +45,10 @@ No figure uses an embedded raster image or an additional categorical color.
 
 ## Remaining boundaries
 
-The matched Phase 3 producing manifest records a dirty source tree.
+The original matched Phase 3 producing manifest records a dirty source tree.
+A later rerun at commit `33d6bb5` kept both producing repositories clean and reproduced the summary byte-for-byte.
 Phase 6 lacks committed raw generations and an environment manifest.
-Negative and distractor-order control outputs are absent.
+Negative and distractor-order controls are committed and passed on a 200-question exploratory Pythia sample only; they do not cover the 8B Megatron checkpoints.
 The blinded audit sample has no completed human labels.
 Some converted checkpoint mirrors do not declare complete license metadata in their model cards.
 Elapsed time and aggregate compute were not logged consistently enough to report a defensible total.

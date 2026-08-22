@@ -50,16 +50,19 @@ LABELS: dict[str, str] = {
 CURVE_PANELS: tuple[tuple[str, str, str, tuple[str, ...]], ...] = (
     (
         "phase2",
-        "Matched 2.8B comparison",
-        "Pythia, Mamba, and Mamba-2 at the same scale on the same 800 questions.",
+        "Exploratory 2.8B family comparison",
+        (
+            "Pythia, Mamba, and Mamba-2 at similar scale on the same 800 questions; "
+            "depth, positional encoding, state size, checkpoint family, and capability differ."
+        ),
         ("pythia-2.8b", "mamba-2.8b", "mamba2-2.7b"),
     ),
     (
         "phase3",
-        "Matched 8B pure vs hybrid",
+        "Tightly matched 8B checkpoint contrast",
         (
-            "Two NVIDIA checkpoints that share training data and scale; the hybrid "
-            "replaces about 7% of Mamba-2 blocks with attention."
+            "Two NVIDIA checkpoints that share training data, scale, depth, and tokenizer; "
+            "the hybrid changes both attention and MLP composition."
         ),
         ("mamba2-8b", "mamba2-hybrid-8b"),
     ),
@@ -172,7 +175,7 @@ def _contrasts(root: Path) -> list[dict[str, Any]]:
                 "phase": "phase2",
                 "label": f"{LABELS[interaction['first_model']]} minus "
                 f"{LABELS[interaction['second_model']]}",
-                "kind": "architecture",
+                "kind": "family",
                 **_edges(interaction),
             }
         )
@@ -181,7 +184,7 @@ def _contrasts(root: Path) -> list[dict[str, Any]]:
         {
             "phase": "phase3",
             "label": "Hybrid minus pure Mamba-2 8B",
-            "kind": "attention",
+            "kind": "checkpoint",
             "primacy": _effect(phase3["primacy_diff"]),
             "recency": _effect(phase3["recency_diff"]),
         }

@@ -4,20 +4,21 @@
 
 Does the accuracy-versus-evidence-position curve track the architecture, and does that pattern survive changes in scale, training data, and task?
 
-- The phases 1 through 6 each changed one thing and held everything else fixed. Read together they answer the project's question: at the same size and context, do a transformer and a sequence-mixing architecture place the same value on where the evidence sits?
+- The phases use a common position-intervention harness, but several model-family and task comparisons change more than one factor.
+- Read together, they measure where position curves differ and define which causal explanations remain unresolved.
 
 > This report is the cumulative read of those phases.
 
-## The phases, one variable at a time
+## The phases
 
 | Phase | Question                                       | Held fixed                            | Changed                                    | Host    | Status                                        |
 | ----- | ---------------------------------------------- | ------------------------------------- | ------------------------------------------ | ------- | --------------------------------------------- |
 | 1     | Does the pipeline detect a position effect?    | one model, one task                   | gold position, floor, ceiling              | A10G    | done                                          |
-| 2     | Does the architecture move the curve?          | corpus, size, context, seed, decoding | sequence-mixing architecture               | A40     | done                                          |
+| 2     | Do the model families have different curves?   | corpus, approximate size, context     | mixer, depth, position setup, checkpoint    | A40     | done                                          |
 | 4     | Does the architecture gap move with size?      | corpus, tokenizer, host               | parameter count, five matched pairs        | A40     | done                                          |
 | 5     | Does training data move the curve?             | architecture, size, host              | pretraining corpus                         | A10G    | done                                          |
 | 6     | Does the curve survive a change of task?       | models, host, context length          | multi-document QA to RULER `niah_single_1` | T4      | done                                          |
-| 3     | Do attention layers cause the primacy edge?    | matched Mamba-2 vs hybrid, 8B, 4K     | attention layers                           | in progress | code on `origin/phase-3`                      |
+| 3     | Do released pure and hybrid checkpoints differ? | corpus, tokenizer, scale, depth, host | attention and MLP composition               | A40     | done; clean rerun reproduced summary          |
 | 8     | Do production-scale families show the pattern? | none (descriptive)                    | Nemotron-H, Llama-3.1, Qwen                | L40S    | done                                          |
 
 ## Setup and phase overview
@@ -32,7 +33,7 @@ The models are `pythia-2.8b`, `mamba-2.8b`, `mamba2-2.7b`, the five matched Pyth
 
 ## Findings
 
-### The primacy arm is architecture-specific and scale-emergent
+### The primacy arm differs by family and appears at capable scales
 
 - Phase 2 ran three 2.8B models on one A40. Pythia has a primacy edge of +0.0519 (interval +0.0319 to +0.0719, Holm p below 0.0001).
 
@@ -48,8 +49,9 @@ The models are `pythia-2.8b`, `mamba-2.8b`, `mamba2-2.7b`, the five matched Pyth
 - Phase 4 swept five matched size pairs on one A40 and answered how that primacy gap moves with size.
 - Using Pythia minus Mamba as the sign convention, the primacy difference is indistinguishable from zero at the two smallest pairs (−0.0006 at 130m-160m, +0.0025 at 370m-410m) and then appears at 790m-1b (+0.0619) and stays at roughly the same size through 1.4b and 2.8b (+0.0694, +0.0531).
 
-- The endpoint verdict is **grows**: a change of +0.054 from the smallest to the largest pair.
-  - Reason being Pythia's own primacy edge strengthens with size (from +0.013, not significant at 410m, to +0.052 and above from 1b up) while Mamba's stays at or below zero at every size.
+- The endpoint change is +0.054 from the smallest to the largest pair.
+  - Pythia's own primacy edge is +0.013 and not significant at 410m, then +0.052 or larger from 1b up, while the measured Mamba edges stay at or below zero.
+  - This pattern is descriptive because scale, depth, width, checkpoint identity, and task capability move together.
 
 ![Scale primacy gap](figures/artifacts/phase4/report/scale-primacy-gap.png)
 ![Scale curves](figures/artifacts/phase4/report/scale-curves.png)
@@ -95,19 +97,20 @@ The remaining per-pair curves are below.
 
 - Phase 2: all three models have a positive recency edge, +0.0750 (Pythia), +0.0769 (Mamba-1), +0.1050 (Mamba-2), all Holm p < 0.0001.
 
-- Phase 4: the recency difference between the two families is stable across size, but "stable" hides a small-model effect. At the two smallest pairs the difference is large and negative (−0.0419 at 130m-160m, −0.0456 at 370m-410m, both Holm p below 0.0001), which just means Mamba can answer where Pythia at the same size barely can (pythia-160m ceiling 0.009; pythia-410m recency +0.033 against mamba-370m +0.078). Once both can answer, from 790m-1b on, the difference sits at +0.0087 and stays near zero through 2.8b (−0.0019). So the Mamba recency lead is really a small-model lead — it shows up where Pythia is too weak to read the question and disappears once Pythia catches up.
+- Phase 4: the recency difference between the two families is stable across size, but "stable" hides a small-model effect. At the two smallest pairs the difference is large and negative (−0.0419 at 130m-160m, −0.0456 at 370m-410m, both Holm p below 0.0001) and coincides with much weaker Pythia task capability (pythia-160m ceiling 0.009; pythia-410m recency +0.033 against mamba-370m +0.078). Once both can answer, from 790m-1b on, the difference sits at +0.0087 and stays near zero through 2.8b (−0.0019). The observed Mamba recency lead is concentrated in the weak small-model pairs and disappears once Pythia can answer.
 
 - Phase 6: the Pythia recency edge reappears at 2K (+0.10, Holm p 0.002), matching the QA sign.
 
-Recency is the arm both architectures share at every size, corpus, and task where the model can answer at all.
+Recency is present in both measured families across the capable comparisons executed here.
 
-### Training data lifts accuracy, not shape
+### One corpus contrast changes level without a detectable shape change
 
-- Phase 5 held the architecture fixed — mamba-2.8b on the Pile against the identical architecture on SlimPajama — and changed only the pretraining corpus.
+- Phase 5 holds the model architecture and approximate scale fixed while comparing Pile and SlimPajama checkpoints, so pretraining corpus and checkpoint identity move together.
 
 - The corpus effect on the primacy edge is −0.007 (interval −0.030 to +0.016, Holm p 0.57) and on the recency edge −0.016 (interval −0.044 to +0.012, Holm p 0.50). Both intervals span zero.
 
-What the corpus did change was the overall level. SlimPajama lifts the whole curve by about 0.05 at every position, the floor goes from 0.11 to 0.27, and the ceiling barely moves (0.615 to 0.625). That reads as the corpus contributing more memorized answers rather than changing how the model uses position.
+The observed overall level is higher for the SlimPajama checkpoint by about 0.05 at every position, the floor changes from 0.11 to 0.27, and the ceiling changes from 0.615 to 0.625.
+The floor shift is consistent with different closed-book knowledge, but the contrast does not isolate memorization or rule out a smaller edge-shape effect.
 
 ![Phase 5 corpus effect](figures/artifacts/phase5/report/corpus-effect.png)
 ![Phase 5 position curves](figures/artifacts/phase5/report/position-curves.png)
@@ -115,7 +118,7 @@ What the corpus did change was the overall level. SlimPajama lifts the whole cur
 
 > Phase 5 numbers are in `artifacts/phase5/report/phase5-summary.json`; figures in `artifacts/phase5/report/`.
 
-> The contrast between the two changes is the point: swapping the architecture moved the primacy edge; swapping the corpus did not.
+> In the executed comparisons, the family contrast has a detectable primacy interaction while the corpus edge contrasts do not clear the prespecified test.
 
 ## Consolidated numbers
 
@@ -123,7 +126,7 @@ What the corpus did change was the overall level. SlimPajama lifts the whole cur
 
 | Phase | Model / pair                       | Host | Primacy edge                                   | Recency edge                            | Floor / ceiling                  |
 | ----- | ---------------------------------- | ---- | ---------------------------------------------- | --------------------------------------- | -------------------------------- |
-| 1     | pythia-2.8b, 200 questions         | A10G | gold_first − gold_middle +0.115 [0.055, 0.175] | —                                       | 0.095 / 0.650                    |
+| 1     | pythia-2.8b, 200 questions         | A10G | gold_first − gold_middle +0.115 [0.055, 0.175] | not run                                 | 0.095 / 0.650                    |
 | 2     | pythia-2.8b                        | A40  | +0.0519 [0.0319, 0.0719], Holm < 1e-4          | +0.0750 [0.0537, 0.0969], Holm < 1e-4   | 0.091 / 0.640                    |
 | 2     | mamba-2.8b                         | A40  | −0.0013 [−0.0162, +0.0137], Holm 0.914         | +0.0769 [0.0575, 0.0969], Holm < 1e-4   | 0.115 / 0.615                    |
 | 2     | mamba2-2.7b                        | A40  | −0.0181 [−0.0338, −0.0025], Holm 0.023         | +0.1050 [0.0856, 0.1244], Holm < 1e-4   | 0.128 / 0.619                    |
@@ -148,7 +151,7 @@ What the corpus did change was the overall level. SlimPajama lifts the whole cur
 
 - The key-value retrieval positive control passes its gate for Pythia (edge +0.38) and Mamba-2 (edge +0.65) and does not pass for Mamba-1 (edge +0.00, consistent with a state size of 16 that cannot store thirty pairs).
 
-- The control is recorded and does not gate any sweep; Phase 1 already proved the pipeline detects a real position effect.
+- The control is recorded and does not gate any sweep; the Phase 1 calibration demonstrates that the harness can detect the imposed position effect in that executed setting.
 
 ![Phase 1 KV position curve](figures/artifacts/phase1/figures/kv-position-curve.png)
 ![Phase 1 condition accuracy](figures/artifacts/phase1/figures/phase1-condition-accuracy.png)
@@ -168,11 +171,15 @@ What the corpus did change was the overall level. SlimPajama lifts the whole cur
 - The phase 6 is underpowered relative to the QA phases and its edges are small and, for Pythia at 1K, not significant after Holm correction.
 - The corpus result in Phase 5 is a null; a larger effect could exist below the resolution of 800 questions.
 
-## Phase 3 (in progress)
+## Phase 3 (done)
 
-Question: does adding attention to a matched Mamba-2 architecture create the primacy edge?
+Question: do the released pure and hybrid Mamba-2 checkpoints have different position curves?
 
-This is the depth-and-attention contrast that Phase 2 names as its unresolved confound: an 8B pure Mamba-2 against an 8B hybrid that adds ~7% attention layers, matched on data, tokenizer, scale, depth, and positional encoding, at 4K context. It was designed to run in parallel with Phase 2, slotting between Phase 2 and Phase 4.
+The 8B pure and hybrid Mamba-2 checkpoints are matched on data, tokenizer, scale, depth, positional setup, host, and execution path at 4K context.
+The released checkpoints differ in both attention and MLP composition, so the contrast is composite rather than attention-only.
+The hybrid-minus-pure primacy effect is +0.0188 with 95% interval [-0.0056, +0.0444] and Holm p=0.1442.
+The original producing manifest records a dirty source tree, and a later clean rerun at commit `33d6bb5` reproduced the summary byte-for-byte.
+The held-out confirmatory split remains unopened.
 
 ## Phase 8 (done)
 
@@ -188,15 +195,16 @@ Every raw record carries the actual `execution_path` and `attention_implementati
 ### Findings
 
 - Every one of the three systems has a positive, Holm-significant primacy edge at 800 questions: Nemotron-H +0.067 (Holm p < 1e-4), Llama-3.1 +0.076 (Holm p < 1e-4), Qwen2.5 +0.041 (Holm p 0.0008).
-The pattern Phase 2 measured at 2.8B and Phase 4 traced across the scale axis reappears at the 8B production tier, on families that were pretrained on wholly different corpora with different tokenizers.
+The primacy pattern appears in all three production systems on this harness.
 - The recency arm splits by system.
 Nemotron-H has a clean recency edge (+0.029, Holm p 0.006); Llama-3.1 is marginal (+0.018, Holm p 0.051); Qwen2.5 is a null (+0.008, Holm p 0.474).
 Phase 2 measured recency on every 2.8B model.
-At production scale the recency arm is no longer universal, and the one system in Phase 8 that carries a full-strength recency edge is also the one whose sequence mixer includes SSM blocks.
-This tracks Phase 2, where the largest recency edge belonged to Mamba-2 (+0.105), and is consistent with the fixed-state compression hypothesis that ties late-position advantage to state carrying only the tail of the context.
+At production scale the recency arm is clearly non-zero only for Nemotron-H in these per-system tests.
+Because every system differs on many factors, this pattern cannot be attributed to its SSM blocks.
 - The one pairwise interaction that clears Holm is Llama minus Qwen on primacy, +0.036 (interval +0.009 to +0.063, Holm p 0.016).
 Llama's primacy arm sits about 3.6 points above Qwen's despite both being dense attention with RoPE.
-Within the dense-attention branch of Phase 8 there is still real curve shape that a "dense attention plus RoPE" label cannot explain on its own; corpus, token count, or alignment are still moving between the two.
+Within the dense-attention branch, the Llama-minus-Qwen difference shows that a shared coarse architecture label does not determine the measured primacy magnitude.
+The phase does not identify which other changing factor explains the difference.
 - Ceilings order Qwen (0.815) > Llama (0.782) > Nemotron-H (0.588); floors sit near 0.28-0.32 for all three.
 Nemotron-H's weaker ceiling means its edges are read against a lower headroom, but its primacy edge is still the largest per unit of ceiling headroom.
 
@@ -207,25 +215,27 @@ Nemotron-H's weaker ceiling means its edges are read against a lower headroom, b
 
 ### How it lines up with Phases 2 and 4
 
-- Phase 2 said the primacy arm was architecture-specific at 2.8B and absent from both Mamba variants.
-Phase 4 said that Pythia-minus-Mamba gap grows with scale and stabilizes from 790m-1b on.
+- Phase 2 found a family-by-position difference at 2.8B and no positive primacy arm in either Mamba variant.
+Phase 4 found a near-zero Pythia-minus-Mamba gap in the two weakest pairs and a positive gap in the three capable pairs.
 Phase 8's three 8B systems all show primacy; two of the three are dense attention with RoPE, matching the Phase 2 and 4 direction, and the third is a hybrid whose primacy edge is comparable in size.
 - Phase 8 is not evidence about the Phase 2 confound.
-Every axis moves between its systems, so the fact that Nemotron-H's primacy matches Llama's does not say attention layers cause primacy; the matched contrast for that is Phase 3, which is still running.
-- Read as a robustness check on the primacy phenomenon: at production scale, on the same 10-document harness, three families that differ everywhere still all pick edges over the middle.
-Whatever the underlying cause is, it survives replacing the entire training pipeline and tokenizer.
+Every axis moves between its systems, so the fact that Nemotron-H's primacy estimate is close to Llama's does not say attention layers cause primacy.
+Phase 3 is complete, but its paired effect is statistically uncertain and the released checkpoints differ in both attention and MLP composition.
+- Read as a prevalence check: at production scale, on the same 10-document harness, all three full systems have positive primacy estimates.
+The unmatched comparison does not isolate what produced them.
 
 ### Limits
 
 - Nemotron-H ran eager attention; Llama and Qwen ran SDPA.
 Two attention kernels are in scope within Phase 8, so the eager-vs-SDPA path is a second changing variable when Nemotron-H is compared against the others.
-That trade-off is documented on every raw record and does not change the sign of any edge.
+That trade-off is documented on every raw record and prevents attributing between-system differences to one factor.
 - Nemotron-H fails the key-value positive control (mean kv accuracy ~0.32 across the ten positions, versus Pythia and Mamba-2 near full retrieval in Phases 1 and 2).
-Its weaker ceiling on QA is consistent with a weaker base retrieval capacity, not a failure of the pipeline; the control is recorded and does not gate the sweep.
+Its weaker ceiling on QA co-occurs with weaker retrieval capacity, but the non-gating control cannot distinguish a model limitation from every possible pipeline issue.
 - The prompt-token span tolerance was raised from 2 to 8 for Phase 8 because the three tokenizers each merge document boundaries differently.
 The recorded per-question span is a few tokens across all runs, well inside the raised limit.
 
 ## Next steps
 
-Add Phase 3 when the matched Mamba-2 vs hybrid runs land, then restitch the primacy narrative around that clean architecture contrast.
-Until then, the standing claim the phases isolate is: architecture changes the primacy arm at 2.8B, scale makes that difference appear from 790m-1b on, training data does not move it, a synthetic-needle task reproduces it where the task is hard enough to measure, and three production 8B families with wholly different pipelines all still show it.
+Freeze the analysis before opening the 1,855-question confirmatory split.
+If a causal attention claim is retained, test it with an intervention that changes attention without also changing MLP composition and repair the no-op Nemotron-H sink block.
+The current standing claim is narrower: the exploratory Pile comparison shows a family-by-position interaction near 2.8B, the interaction is present in the three capable scale pairs, Pythia primacy appears on the 2K synthetic task, and three unmatched production systems also show primacy on the QA harness.

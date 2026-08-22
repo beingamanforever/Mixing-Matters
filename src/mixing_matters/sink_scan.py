@@ -21,22 +21,18 @@ return. Pure-SSM families (``mamba``, ``mamba2``) raise a ``ValueError``
 here rather than silently emitting zeros.
 """
 
-import json
 import uuid
 from pathlib import Path
 
 from . import UPSTREAM_COMMIT, models
-from .anchors import build_prompt
 from .build_positions import place_gold
 from .data import question_id, read_rows
 from .download import SHA256
 from .io import write_jsonl
 from .prompt_variants import build_variant_prompt
 from .run import (
-    MAX_NEW_TOKENS,
     SEED,
     Generator,
-    _installed_version,
     _resolve_driver_version,
     file_sha256,
 )
@@ -173,7 +169,9 @@ def run_sink_scan(
                     gold_padded_tokens=gold_padded_tokens,
                 )
                 # Prompt-token count for the reader; matches the sweep field.
-                prompt_tokens = int(generator.tokenizer(prompt, return_tensors="pt").input_ids.shape[1])
+                prompt_tokens = int(
+                    generator.tokenizer(prompt, return_tensors="pt").input_ids.shape[1]
+                )
                 sink_mass = _sink_mass_per_layer(generator.model, generator.tokenizer, prompt)
                 for layer, mass in enumerate(sink_mass):
                     yield {

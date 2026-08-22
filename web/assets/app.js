@@ -42,6 +42,7 @@ const pp = (value, digits = 2) => {
   return Number(magnitude) === 0 ? magnitude : `${value > 0 ? "+" : "−"}${magnitude}`;
 };
 const acc = (value) => value.toFixed(3);
+const pValue = (value) => (value < 0.0001 ? "< 0.0001" : `= ${value.toFixed(4)}`);
 
 /** Axis ticks in percentage points, at just enough precision for the step size. */
 const ppTick = (value, step) => {
@@ -817,18 +818,18 @@ function buildContrasts() {
   const parent = $("#contrasts");
   const kinds = [
     { key: "all", label: "All comparisons" },
-    { key: "architecture", label: "Matched 2.8B" },
-    { key: "attention", label: "Attention added" },
+    { key: "family", label: "2.8B families" },
+    { key: "checkpoint", label: "8B checkpoints" },
     { key: "scale", label: "Model size" },
     { key: "corpus", label: "Training data" },
     { key: "production", label: "Production systems" },
   ];
   // Reading order for the blocks, which is not the order the phases ran in.
-  const order = ["architecture", "attention", "scale", "corpus", "production"];
+  const order = ["family", "checkpoint", "scale", "corpus", "production"];
   const headings = {
-    architecture: "Same size, different mixer",
-    attention: "Attention added to a state-space model",
-    scale: "Same comparison, repeated at five model sizes",
+    family: "Similar scale and corpus, different model families",
+    checkpoint: "Pure versus hybrid released checkpoints",
+    scale: "Family comparison across five approximate size pairs",
     corpus: "Same model, different training data",
     production: "Deployed systems, many differences at once",
   };
@@ -839,7 +840,7 @@ function buildContrasts() {
   const filters = html("div", { class: "filters" }, parent);
   const node = html("figure", { class: "figure" }, parent);
   const head = html("div", { class: "figure-head" }, node);
-  const title = html("h3", { text: "Where the primacy gap comes from" }, head);
+  const title = html("h3", { text: "Paired primacy differences" }, head);
   const measureToggle = toggle(["Primacy", "Recency"], (index) => {
     measure = index === 0 ? "primacy" : "recency";
     draw();
@@ -872,7 +873,7 @@ function buildContrasts() {
             value: effect.estimate,
             lo: effect.ci[0],
             hi: effect.ci[1],
-            note: significant(effect) ? "holds up" : "inconclusive",
+            note: `Holm p ${pValue(effect.p)}`,
             color: "var(--attention)",
             hollow: !significant(effect),
           },
@@ -885,12 +886,12 @@ function buildContrasts() {
   function draw() {
     body.textContent = "";
     title.textContent =
-      measure === "primacy" ? "Where the primacy gap comes from" : "Where the recency gap comes from";
+      measure === "primacy" ? "Paired primacy differences" : "Paired recency differences";
     caption.innerHTML =
       `Each bar is one pair of models measured on the same questions, so it reads as "the first model's ` +
       `${measure} minus the second model's". Bars to the right mean the first model leans on that end of the ` +
-      `context more. The line through each bar shows how much the result moves across questions; where it ` +
-      `crosses zero the comparison is inconclusive, and the bar is drawn faded.`;
+      `context more. The line through each bar is its 95% percentile bootstrap interval. Fading follows the ` +
+      `Holm-corrected test, not the unadjusted interval: faded means Holm p ≥ 0.05.`;
 
     const viewToggle = withTable(body, {
       initial: view,
@@ -899,8 +900,8 @@ function buildContrasts() {
       },
       buildChart(container) {
         legend(container, [
-          { label: "Difference we can rely on", color: "var(--attention)" },
-          { label: "Range still includes zero", color: "var(--attention)", faded: true },
+          { label: "Holm p < 0.05", color: "var(--attention)" },
+          { label: "Holm p ≥ 0.05", color: "var(--attention)", faded: true },
         ]);
         const chart = html("div", { class: "chart" }, container);
         mount(chart, (node) =>
@@ -915,9 +916,19 @@ function buildContrasts() {
       buildTable(container) {
         table(
           container,
-          [{ label: "Comparison" }, { label: `Difference in ${measure}`, numeric: true }],
-          rows().map((row) => [row.label, pp(row[measure].estimate)]),
-          "Points of accuracy: one point is one extra correct answer per hundred questions."
+          [
+            { label: "Comparison" },
+            { label: `Difference in ${measure}`, numeric: true },
+            { label: "95% interval", numeric: true },
+            { label: "Holm p", numeric: true },
+          ],
+          rows().map((row) => [
+            row.label,
+            pp(row[measure].estimate),
+            `[${pp(row[measure].ci[0])}, ${pp(row[measure].ci[1])}]`,
+            pValue(row[measure].p).replace("= ", ""),
+          ]),
+          "Points of accuracy: one point is one extra correct answer per hundred questions. Fading uses the Holm-corrected p-value."
         );
       },
     });
@@ -943,7 +954,7 @@ function buildScale() {
   const parent = $("#scale");
   const node = html("figure", { class: "figure" }, parent);
   const head = html("div", { class: "figure-head" }, node);
-  html("h3", { text: "The gap only appears once models are big enough" }, head);
+  html("h3", { text: "Measured primacy across five approximate size pairs" }, head);
   const body = html("div", {}, node);
 
   const series = (key, label, color) => ({
@@ -1031,9 +1042,9 @@ function buildScale() {
     html:
       "Five pairs of models, one from each family, matched as closely as their published sizes allow and run " +
       "on the same questions. At the two smallest sizes neither family prefers either end of the context. " +
-      "From roughly a billion parameters upward the attention models develop a clear preference for the start " +
-      "and the state-space models do not. Size and general ability move together here, so this shows when the " +
-      "gap appears rather than why.",
+      "The three larger compared Pythia checkpoints have positive primacy estimates while their Mamba pairs " +
+      "do not. Size and general ability move together here, so this describes the measured pattern rather " +
+      "than a causal threshold.",
   }, node);
   flush();
 }

@@ -1,6 +1,6 @@
 # Phase 7 sub-experiment 4e: instruction-template variation
 
-Measurement-artifact check on the prompt template.
+Exploratory prompt-template sensitivity check.
 Re-runs `pythia-2.8b` and `mamba-2.8b` at 200 questions under two alternative instruction templates and compares the primacy and recency edges to the vendored Liu et al. baseline.
 All three templates keep the documents-then-question order; only the instruction wording and the answer cue change (`liu` default, `concise`, `instructional`).
 
@@ -26,19 +26,23 @@ All three templates keep the documents-then-question order; only the instruction
 
 ## Reading the result
 
-Two things move independently.
+The per-template cells show two descriptive patterns.
 
-- The **qualitative architecture contrast is template-invariant**: Mamba-2.8B has a null primacy edge under every template (0.000, -0.003, -0.010, none distinguishable from zero), and Pythia has a positive primacy edge under the two templates that keep a short instruction head (liu +0.070, concise +0.078). The Pythia-vs-Mamba primacy gap is not a creation of the specific Liu wording.
-- The **magnitude of the transformer's primacy edge is template-sensitive**: the `instructional` template, which prepends a longer multi-sentence instruction and an explicit `Documents:` header before the document block, collapses Pythia's primacy to +0.005 (not significant) while leaving its recency intact (+0.063). Nothing about Mamba changes.
+- Mamba-2.8B has a null primacy edge under every template (0.000, -0.003, -0.010, none distinguishable from zero), while Pythia has a positive primacy edge under the two templates that keep a short instruction head (liu +0.070, concise +0.078).
+- The instructional-template Pythia estimate is +0.005 with an interval that crosses zero, so the sign pattern is not template-invariant across all executed cells.
+- The Pythia primacy estimates differ by template: the `instructional` template, which prepends a longer multi-sentence instruction and an explicit `Documents:` header before the document block, has primacy +0.005 (not significant) and recency +0.063. Mamba primacy remains near zero in all three cells.
 
-That collapse is itself evidence for the attention-sink reading rather than against it.
-The `instructional` template inserts extra tokens at the very head of the prompt, exactly the region where the token-0 sink and the primacy-relevant early context live (see the 4c sink-mass scan). Pushing the gold document further from the sink-bearing head weakens the primacy arm, mirroring the `gold_padded` result in 4a where inserting filler between documents and question halved Pythia's primacy.
+That lower Pythia estimate is consistent with the attention-sink hypothesis, but it does not test that mechanism.
+The `instructional` template inserts extra tokens at the very head of the prompt, the region measured by the 4c sink-mass scan, and co-occurs with the lower Pythia primacy estimate.
+The `gold_padded` cell in 4a also changes token distances and has a lower Pythia primacy estimate, but neither comparison isolates attention allocation.
+
+No paired between-template contrast was computed, so differences between template point estimates are descriptive rather than tested effects.
 
 Recency is stable across all templates for both models, consistent with recency being anchored to the end of the prompt (unchanged by instruction wording) rather than to the head.
 
 ## Caveats
 
-- Absolute primacy numbers should not be quoted without the template. The safe, template-robust claims are the *signs* and the *architecture contrast*, not the exact edge value.
+- Absolute primacy numbers should not be quoted without the template, and neither the sign nor the architecture contrast is established as template-robust across all executed cells.
 - 200 questions per cell; intervals are wider than the 800-question Phase 2 baselines.
 
 ## Artifacts

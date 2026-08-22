@@ -26,12 +26,13 @@ template:
   distance between gold and the end can be varied independently of the
   ten distractors. Callers gate for their own prompt-length budget.
 
-The four variants share the same underlying document block formatting
-as the Liu template so a switch between them is a single-variable
-change on the prompt order, not a change in document rendering.
+The four variants share the Liu template's document rendering, but they
+jointly change question placement, repetition, and token layout. They
+therefore support descriptive per-condition comparisons rather than a
+single-variable prompt-order claim.
 """
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from lost_in_the_middle.prompting import Document, get_qa_prompt
 
