@@ -41,8 +41,7 @@
   ssm arrow/.style={diagram arrow, draw=ssmorange}
 }
 
-\title{Mixing Matters: Evidence Position Bias Across Sequence Mixers in
-Long-Context Question Answering}
+\title{Mixing Matters? Evidence and Its Limits for Position Bias Across Sequence Mixers}
 
 \workshoptitle{New in ML}
 
@@ -57,10 +56,10 @@ Language models often use relevant evidence less effectively when it appears in 
 We ask whether this position bias changes with the mechanism used to mix information across tokens.
 For each multi-document question, we move the answer-bearing document through ten positions while holding the question and distractors fixed.
 In a shared-corpus comparison near 2.8B parameters, Pythia shows a clear beginning advantage that two Mamba variants lack, while all three models show an end advantage.
-This near-2.8B family comparison confounds sequence mixing with depth, RoPE or other positional encoding, recurrent-state size, and checkpoint family.
+This near-2.8B family comparison confounds sequence mixing with depth, RoPE or other positional encoding, recurrent-state size, and checkpoint family, and each architecture is represented by a single checkpoint rather than a sample of checkpoints.
 A tighter comparison between pure and hybrid Mamba-2 models points in the same direction, but its paired effect remains statistically uncertain.
 Across additional exploratory studies, the family gap appears only once the compared models can answer the task, a corpus swap changes overall accuracy without a detectable change in curve shape, and Pythia reproduces the beginning advantage on synthetic retrieval.
-Prompt placement can materially reshape both edges.
+Prompt placement can materially reshape both edges: a single template change reduces Pythia's primacy effect from $+0.070$ to $+0.005$, and bookending the prompt with the question creates a $+0.103$ primacy effect in Mamba where none existed before, both within a single model.
 Attention-sink measurements and position probes motivate hypotheses about evidence use, but do not establish a causal mechanism.
 All ten-document QA results use an exploratory split, and the held-out confirmatory split remains unexamined.
 \end{abstract}
@@ -81,7 +80,7 @@ It is difficult to test cleanly, however, because model families also differ in 
 We study the question with a paired intervention on evidence position.
 For every question, the same answer document and distractors form one bundle, and only the answer document's position changes.
 The main comparison finds a beginning advantage for Pythia that is absent in two similarly sized Mamba models trained on the same corpus, while the end advantage is shared.
-This near-2.8B family comparison confounds sequence mixing with depth, RoPE or other positional encoding, recurrent-state size, and checkpoint family.
+This near-2.8B family comparison confounds sequence mixing with depth, RoPE or other positional encoding, recurrent-state size, and checkpoint family, and each architecture is represented by a single checkpoint rather than a sample of checkpoints.
 A more tightly matched pure-versus-hybrid Mamba-2 comparison is directionally compatible but does not detect a reliable paired attention effect.
 Scale, corpus, task, production-model, prompt, sink, and probe studies then define where the observation does and does not generalize.
 
@@ -236,7 +235,7 @@ Let $a_S$, $a_M$, and $a_E$ be mean accuracy at start positions $\{0,1\}$, middl
 We define primacy as $a_S-a_M$ and recency as $a_E-a_M$.
 The question is the unit of analysis.
 Each of 10{,}000 bootstrap samples draws complete ten-position question bundles with replacement, following the bootstrap principle of resampling the independent unit \citep{efron1979bootstrap}, and model comparisons reuse the same sampled questions.
-We report percentile 95\% confidence intervals and apply Holm's sequential correction to the primacy and recency tests within each comparison family \citep{holm1979multiple}.
+We report percentile 95\% confidence intervals and apply Holm's sequential correction to the primacy and recency tests within each comparison family \citep{holm1979multiple}; across all phases this paper reports several dozen individual edge estimates, and correction is applied per family rather than globally across the paper.
 The intervals quantify variation across questions under the fixed checkpoints, prompts, and decoding configuration, not variation across training seeds or model checkpoints.
 
 \runin{Reproducibility and controls}
@@ -260,7 +259,7 @@ All are base models pretrained on the Pile \citep{gao2020pile}, have similar par
 Table~\ref{tab:phase2} and Figure~\ref{fig:primary-curves} show a positive primacy edge for Pythia and no positive primacy edge for either Mamba model.
 The paired Mamba-minus-Pythia primacy interactions are $-0.053$ and $-0.070$ (both Holm $p<10^{-4}$), while Mamba-1 versus Mamba-2 is uncertain ($+0.017$, 95\% CI $[-0.005,0.038]$).
 All three models have positive recency edges.
-These comparisons match corpus and approximate scale, but not depth, positional encoding, state size, or checkpoint family.
+These comparisons match corpus and approximate scale, but not depth, positional encoding, state size, or checkpoint family, and each architecture is represented by a single checkpoint rather than a sample of checkpoints.
 
 \begin{table*}[t]
 \centering
@@ -360,7 +359,7 @@ Both Mamba models score $1.0$ at every depth, so this check reproduces the trans
 We also run \texttt{Llama-3.1-8B} \citep{dubey2024llama}, \texttt{Qwen2.5-7B} \citep{yang2024qwen2}, and \texttt{Nemotron-H-8B} \citep{nvidia2025nemotronh}.
 All three show positive primacy edges ($+0.076$, $+0.041$, $+0.067$).
 Only Llama versus Qwen has a significant paired primacy interaction ($+0.036$, Holm $p=0.016$).
-Because the systems differ on architecture, data, tokenizer, token count, depth, and positional encoding, these results establish prevalence, not an architectural explanation (Figure~\ref{fig:artifact-production}).
+Because the systems differ on architecture, data, tokenizer, token count, depth, and positional encoding, these results establish prevalence, not an architectural explanation (Figure~\ref{fig:artifact-production}). Notably, the only significant paired interaction in this comparison is between two Transformers (Llama vs.\ Qwen), while neither differs reliably from the hybrid Nemotron-H, which cuts against reading architecture as the dominant driver at this scale.
 
 \section{Mechanistic evidence and intervention}
 \label{sec:mechanism}
@@ -393,7 +392,7 @@ The matched 8B direction, sink association, and probe results motivate a mixer-d
 
 Several limitations set the confirmatory boundary.
 All analyses use the exploratory split, so the planned 1{,}855-question test must be run under a frozen analysis before confirmatory language is warranted.
-The 2.8B and scale comparisons retain depth, positional-encoding, state-size, and capability confounds.
+The 2.8B and scale comparisons retain depth, positional-encoding, state-size, and capability confounds. Each architecture in this comparison is also represented by a single checkpoint, so an observed difference could reflect that specific training run rather than a general property of its architecture family.
 The matched 8B paired contrast crosses zero after Holm correction; an independent clean re-run at commit \texttt{33d6bb5} (clean source tree, both repositories) reproduced the summary byte-for-byte, so the null result is not an artifact of the earlier dirty-tree run.
 These certification controls passed on Pythia, but they do not test the 8B Megatron checkpoints.
 A 50-generation blinded audit sample exists, but human labels were not completed.
