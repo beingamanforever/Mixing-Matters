@@ -49,24 +49,24 @@ def _uniform_model_records(
     return records
 
 
-def _architecture_records(question_count: int = 20) -> list[dict]:
+def _checkpoint_records(question_count: int = 20) -> list[dict]:
     """The hybrid has a primacy edge of 0.3; the pure model is flat. No recency edge."""
     records = _uniform_model_records(HYBRID, question_count, 0.6, 0.3, 0.3)
     records += _uniform_model_records(PURE, question_count, 0.3, 0.3, 0.3)
     return records
 
 
-# --- attention contrast -----------------------------------------------------
+# --- checkpoint contrast ----------------------------------------------------
 
 
 def test_attention_interaction_recovers_the_hybrid_minus_pure_primacy_gap():
-    result = attention_interaction(_architecture_records(), n_resamples=50)
+    result = attention_interaction(_checkpoint_records(), n_resamples=50)
     assert result["primacy"]["estimate"] == pytest.approx(0.3)
     assert result["recency"]["estimate"] == pytest.approx(0.0)
 
 
 def test_attention_control_reports_pair_members_and_per_model_edges():
-    result = attention_control(_architecture_records(), n_resamples=50)
+    result = attention_control(_checkpoint_records(), n_resamples=50)
     assert result["hybrid_model"] == HYBRID
     assert result["pure_model"] == PURE
     assert result["pair"] == "mamba2-8b-arch"
@@ -78,7 +78,7 @@ def test_attention_control_reports_pair_members_and_per_model_edges():
 
 def test_attention_control_edges_use_only_the_two_phase3_models():
     # A third model that is not in the pair must not enter the per-model edges.
-    records = _architecture_records()
+    records = _checkpoint_records()
     records += _uniform_model_records("pythia-2.8b", 20, 0.9, 0.9, 0.9)
     result = attention_control(records, n_resamples=50)
     assert result["hybrid_edges"]["primacy"]["estimate"] == pytest.approx(0.3)
@@ -86,7 +86,7 @@ def test_attention_control_edges_use_only_the_two_phase3_models():
 
 
 def test_attention_control_is_deterministic_across_shuffled_order():
-    records = _architecture_records()
+    records = _checkpoint_records()
     first = attention_control(records, n_resamples=50)
     shuffled = list(records)
     random.Random(7).shuffle(shuffled)
@@ -95,7 +95,7 @@ def test_attention_control_is_deterministic_across_shuffled_order():
 
 
 def test_attention_interaction_matches_phase2_interaction_on_the_arch_pair():
-    records = _architecture_records()
+    records = _checkpoint_records()
     assert attention_interaction(records, n_resamples=50) == interaction(
         records, HYBRID, PURE, n_resamples=50
     )
@@ -107,7 +107,7 @@ def test_attention_interaction_matches_phase2_interaction_on_the_arch_pair():
 def test_write_phase3_figures_writes_all_outputs(tmp_path):
     from mixing_matters.figures import write_phase3_figures
 
-    paths = write_phase3_figures(_architecture_records(), tmp_path, n_resamples=50)
+    paths = write_phase3_figures(_checkpoint_records(), tmp_path, n_resamples=50)
     names = {path.name for path in paths}
     assert names == {
         "position-curves.png",
@@ -122,9 +122,9 @@ def test_write_phase3_figures_writes_all_outputs(tmp_path):
 def test_write_phase3_figures_refuses_to_overwrite(tmp_path):
     from mixing_matters.figures import write_phase3_figures
 
-    write_phase3_figures(_architecture_records(), tmp_path, n_resamples=50)
+    write_phase3_figures(_checkpoint_records(), tmp_path, n_resamples=50)
     with pytest.raises(FileExistsError):
-        write_phase3_figures(_architecture_records(), tmp_path, n_resamples=50)
+        write_phase3_figures(_checkpoint_records(), tmp_path, n_resamples=50)
 
 
 # --- injected-generator seam ------------------------------------------------

@@ -59,7 +59,8 @@ In a shared-corpus comparison near 2.8B parameters, Pythia shows a clear beginni
 This near-2.8B family comparison confounds sequence mixing with depth, RoPE or other positional encoding, recurrent-state size, and checkpoint family, and each architecture is represented by a single checkpoint rather than a sample of checkpoints.
 A tighter comparison between pure and hybrid Mamba-2 models points in the same direction, but its paired effect remains statistically uncertain.
 Across additional exploratory studies, the family gap appears only once the compared models can answer the task, a corpus swap changes overall accuracy without a detectable change in curve shape, and Pythia reproduces the beginning advantage on synthetic retrieval.
-Prompt placement can materially reshape both edges: a single template change reduces Pythia's primacy effect from $+0.070$ to $+0.005$, and bookending the prompt with the question creates a $+0.103$ primacy effect in Mamba where none existed before, both within a single model.
+Prompt design is associated with materially different per-condition edge estimates: Pythia primacy is $+0.070$ under the baseline template and $+0.005$ under an instructional template, while Mamba primacy is $0.000$ under the baseline layout and $+0.103$ under a bookended layout.
+These exploratory variant cells were not tested with a paired between-condition contrast, so their differences are descriptive.
 Attention-sink measurements and position probes motivate hypotheses about evidence use, but do not establish a causal mechanism.
 All ten-document QA results use an exploratory split, and the held-out confirmatory split remains unexamined.
 \end{abstract}
@@ -81,12 +82,12 @@ We study the question with a paired intervention on evidence position.
 For every question, the same answer document and distractors form one bundle, and only the answer document's position changes.
 The main comparison finds a beginning advantage for Pythia that is absent in two similarly sized Mamba models trained on the same corpus, while the end advantage is shared.
 This near-2.8B family comparison confounds sequence mixing with depth, RoPE or other positional encoding, recurrent-state size, and checkpoint family, and each architecture is represented by a single checkpoint rather than a sample of checkpoints.
-A more tightly matched pure-versus-hybrid Mamba-2 comparison is directionally compatible but does not detect a reliable paired attention effect.
+A more tightly matched pure-versus-hybrid Mamba-2 comparison is directionally compatible but does not detect a reliable paired checkpoint difference.
 Scale, corpus, task, production-model, prompt, sink, and probe studies then define where the observation does and does not generalize.
 
 The paper makes three contributions.
 First, it provides an auditable position-intervention harness with anchors, preserved outputs, paired inference, and an untouched confirmatory split.
-Second, it presents an exploratory family-by-position comparison together with a tighter but statistically uncertain attention comparison.
+Second, it presents an exploratory family-by-position comparison together with a tighter but statistically uncertain pure-versus-hybrid checkpoint comparison.
 Third, it turns the remaining phases into bounded evidence: corpus and task checks test scope, while prompt interventions and internal measurements generate mechanistic hypotheses without being presented as causal proof.
 
 \section{Related work}
@@ -104,7 +105,7 @@ Dense self-attention \citep{vaswani2017attention} mixes token pairs under a caus
 Alternative long-sequence mixers include structured state spaces, recurrent weighted key-value models, and long convolutions \citep{gu2022s4,peng2023rwkv,poli2023hyena}.
 Mamba and Mamba-2 carry information through selective state-space recurrences \citep{gu2023mamba,dao2024mamba2}.
 Hybrid models such as Griffin, Jamba, and Nemotron-H combine recurrent or state-space blocks with attention \citep{de2024griffin,lieber2024jamba,nvidia2025nemotronh}.
-\citet{waleffe2024empirical} release the pure and hybrid 8B Mamba-2 checkpoints used in our tightest controlled comparison.
+\citet{waleffe2024empirical} release the pure and hybrid 8B Mamba-2 checkpoints used in our tightest checkpoint comparison.
 
 % preamble: \usetikzlibrary{positioning, fit, arrows.meta, calc}
 
@@ -129,7 +130,7 @@ Hybrid models such as Griffin, Jamba, and Nemotron-H combine recurrent or state-
 \node[font=\small\bfseries, above=0.8mm of Pann1] {Dense attention};
 
 % ================= Panel 2: State-space recurrence =================
-\node[diagram node, right=17mm of a4] (s1) {$x_1$};
+\node[diagram node, right=16mm of a4] (s1) {$x_1$};
 \node[diagram node, right=of s1] (s2) {$x_2$};
 \node[diagram node, right=of s2] (s3) {$\cdots$};
 \node[diagram node, right=of s3] (s4) {$x_T$};
@@ -147,7 +148,7 @@ Hybrid models such as Griffin, Jamba, and Nemotron-H combine recurrent or state-
 \node[font=\small\bfseries, above=0.8mm of Pann2] {State-space recurrence};
 
 % ================= Panel 3: Hybrid mixer =================
-\node[diagram node, right=17mm of s4] (h1) {$x_1$};
+\node[diagram node, right=16mm of s4] (h1) {$x_1$};
 \node[diagram node, right=of h1] (h2) {$x_2$};
 \node[diagram node, right=of h2] (h3) {$\cdots$};
 \node[diagram node, right=of h3] (h4) {$x_T$};
@@ -169,7 +170,7 @@ Hybrid models such as Griffin, Jamba, and Nemotron-H combine recurrent or state-
 \node[font=\small\bfseries, above=0.8mm of Pann3] {Hybrid mixer};
 
 \end{tikzpicture}
-\caption{Schematic abstractions of the sequence-mixing mechanisms discussed in this paper. Dense attention permits direct token-to-state interactions, state-space models carry prefix information through a recurrent state, and hybrid models combine recurrent blocks with a minority of attention blocks. The drawing is conceptual rather than a layer-by-layer specification, and the depicted 1-in-4 attention block is illustrative only: the hybrid checkpoint evaluated in Section~\ref{sec:contrast} replaces about 7\% of blocks with attention, a substantially smaller fraction than shown here.}
+\caption{Schematic sequence mixers. Dense attention permits direct token interactions, state-space models carry prefix information through a recurrent state, and hybrids combine both. The drawing is conceptual. The depicted 1-in-4 attention block is illustrative; the hybrid checkpoint in Section~\ref{sec:contrast} replaces about 7\% of blocks with attention.}
 \label{fig:mixer-schematic}
 \end{figure*}
 
@@ -235,7 +236,7 @@ Let $a_S$, $a_M$, and $a_E$ be mean accuracy at start positions $\{0,1\}$, middl
 We define primacy as $a_S-a_M$ and recency as $a_E-a_M$.
 The question is the unit of analysis.
 Each of 10{,}000 bootstrap samples draws complete ten-position question bundles with replacement, following the bootstrap principle of resampling the independent unit \citep{efron1979bootstrap}, and model comparisons reuse the same sampled questions.
-We report percentile 95\% confidence intervals and apply Holm's sequential correction to the primacy and recency tests within each comparison family \citep{holm1979multiple}; across all phases this paper reports several dozen individual edge estimates, and correction is applied per family rather than globally across the paper.
+We report percentile 95\% confidence intervals and apply Holm's sequential correction within each primacy-and-recency pair for a model or paired model contrast \citep{holm1979multiple}; across all phases this paper reports several dozen individual edge estimates, and correction is applied per pair rather than globally across the paper.
 The intervals quantify variation across questions under the fixed checkpoints, prompts, and decoding configuration, not variation across training seeds or model checkpoints.
 
 \runin{Reproducibility and controls}
@@ -264,7 +265,7 @@ These comparisons match corpus and approximate scale, but not depth, positional 
 \begin{table*}[t]
 \centering
 \caption{Pile-trained models on 800 exploratory questions. Paired-bootstrap 95\% CIs and
-Holm-corrected $p$-values across six tests; bold $p$ indicates $\alpha=0.05$ significance.}
+Holm-corrected $p$-values within each model's primacy-and-recency pair; bold $p$ indicates $\alpha=0.05$ significance.}
 \label{tab:phase2}
 \scriptsize
 \begin{threeparttable}
@@ -315,17 +316,17 @@ Shaded bands show 95\% question-bootstrap confidence intervals.}
 \label{fig:primary-curves}
 \end{figure}
 
-\runin{Matched 8B attention comparison}
-Our strongest control uses NVIDIA's pure and hybrid 8B Mamba-2 checkpoints \citep{waleffe2024empirical}, which share training data, tokenizer, scale, depth, and positional setup.
-The hybrid contains 7\% attention layers.
+\runin{Matched 8B checkpoint comparison}
+Our tightest released-checkpoint comparison uses NVIDIA's pure and hybrid 8B Mamba-2 checkpoints \citep{waleffe2024empirical}, which share training data, tokenizer, scale, depth, and positional setup.
+The hybrid contains 7\% attention layers and a different MLP composition, so the comparison is not an attention-only intervention.
 Within models, the pure model's primacy edge is uncertain ($+0.008$, $p=0.36$) and the hybrid's is positive ($+0.027$, $p=0.007$).
 One estimate being significant and the other not does not establish that the models differ.
 The paired hybrid-minus-pure primacy effect is $+0.019$ (95\% CI $[-0.006,0.044]$, Holm $p=0.144$), while the recency effect is $-0.028$ (95\% CI $[-0.055,-0.001]$, Holm $p=0.089$).
-This direction supports the 2.8B observation but does not isolate a causal attention effect.
+This direction supports the 2.8B observation but the composite checkpoint contrast does not isolate a causal attention effect.
 
 \begin{table}[t]
-\caption{Matched 8B primacy comparison on 800 exploratory questions.
-The paired interaction is the relevant architecture test.}
+\caption{Tightly matched 8B released-checkpoint comparison on 800 exploratory questions.
+The paired interaction tests the composite pure-versus-hybrid difference, not attention alone.}
 \label{tab:phase3}
 \centering
 \small
@@ -359,7 +360,8 @@ Both Mamba models score $1.0$ at every depth, so this check reproduces the trans
 We also run \texttt{Llama-3.1-8B} \citep{dubey2024llama}, \texttt{Qwen2.5-7B} \citep{yang2024qwen2}, and \texttt{Nemotron-H-8B} \citep{nvidia2025nemotronh}.
 All three show positive primacy edges ($+0.076$, $+0.041$, $+0.067$).
 Only Llama versus Qwen has a significant paired primacy interaction ($+0.036$, Holm $p=0.016$).
-Because the systems differ on architecture, data, tokenizer, token count, depth, and positional encoding, these results establish prevalence, not an architectural explanation (Figure~\ref{fig:artifact-production}). Notably, the only significant paired interaction in this comparison is between two Transformers (Llama vs.\ Qwen), while neither differs reliably from the hybrid Nemotron-H, which cuts against reading architecture as the dominant driver at this scale.
+Because the systems differ on architecture, data, tokenizer, token count, depth, and positional encoding, these results establish prevalence, not an architectural explanation (Figure~\ref{fig:artifact-production}).
+The fact that only the Llama-versus-Qwen contrast clears correction cannot rank architecture against the other changing factors, and the non-significant contrasts with Nemotron-H are not evidence of equivalence.
 
 \section{Mechanistic evidence and intervention}
 \label{sec:mechanism}
@@ -375,14 +377,15 @@ Thus position information remains linearly decodable, at a modest margin over th
 This is consistent with a utilization hypothesis, but the effect size is modest and probe decodability does not prove that the model stores or uses the answer-bearing content.
 
 \runin{Training-free prompt intervention}
-On 200 exploratory questions, repeating the question both before and after the documents changes Mamba primacy from $0.000$ to $+0.103$ ($p<10^{-4}$).
-Placing the question only before the documents does not create primacy ($+0.020$, $p=0.366$), but reduces recency from $+0.070$ to $+0.010$.
+On 200 exploratory questions, the Mamba primacy estimate is $0.000$ under the baseline layout and $+0.103$ under the bookended layout ($p<10^{-4}$ within that cell).
+Under the question-first layout, Mamba primacy is $+0.020$ ($p=0.366$) and recency is $+0.010$, compared with baseline recency of $+0.070$.
 The bookend result is not a mitigation result: much of the larger edge comes from lower middle-position accuracy.
-It also changes query repetition and token placement together, so it is not a clean test of fixed-state compression.
+The variants jointly change query placement, repetition, and token layout, and no paired between-condition contrast was computed, so they are not a clean test of fixed-state compression.
 
 \runin{Prompt sensitivity}
-Changing the prompt template reduces Pythia primacy from $+0.070$ to $+0.005$ in the 200-question mechanism subset.
-This result warns against treating the measured magnitude as a template-invariant architectural constant.
+The per-template Pythia primacy estimates are $+0.070$ under the baseline template and $+0.005$ under the instructional template in the 200-question mechanism subset.
+These are per-template exploratory estimates rather than a paired template-difference test, and the instructional-template confidence interval crosses zero.
+The result warns against treating either the sign or magnitude as a template-invariant architectural constant.
 
 \section{Discussion and limitations}
 \label{sec:discussion}
@@ -393,8 +396,8 @@ The matched 8B direction, sink association, and probe results motivate a mixer-d
 Several limitations set the confirmatory boundary.
 All analyses use the exploratory split, so the planned 1{,}855-question test must be run under a frozen analysis before confirmatory language is warranted.
 The 2.8B and scale comparisons retain depth, positional-encoding, state-size, and capability confounds. Each architecture in this comparison is also represented by a single checkpoint, so an observed difference could reflect that specific training run rather than a general property of its architecture family.
-The matched 8B paired contrast crosses zero after Holm correction; an independent clean re-run at commit \texttt{33d6bb5} (clean source tree, both repositories) reproduced the summary byte-for-byte, so the null result is not an artifact of the earlier dirty-tree run.
-These certification controls passed on Pythia, but they do not test the 8B Megatron checkpoints.
+The matched 8B paired contrast crosses zero after Holm correction; a later clean re-run at commit \texttt{33d6bb5} (clean source tree, both repositories) reproduced the summary byte-for-byte, so the null result is not an artifact of the earlier dirty-tree run.
+The committed sham-gold and distractor-order certification controls passed on exploratory Pythia, but they do not test the 8B Megatron checkpoints.
 A 50-generation blinded audit sample exists, but human labels were not completed.
 Finally, the attempted hybrid sink block did not alter the model because its custom attention path did not honor the hook; it is not an ablation result.
 The next decisive study should freeze exclusions and contrasts, repair the hybrid intervention, and evaluate the held-out split once.
@@ -641,7 +644,7 @@ Phase & Executed comparison & Committed source & Interpretation in this paper \\
 \midrule
 1 & 200 QA; 50 key-value & \texttt{artifacts/phase1} & Calibration and positive control \\
 2 & 3 models, $n=800$ each & \texttt{artifacts/phase2} & Primary family interaction \\
-3 & pure and hybrid 8B, $n=800$ & \texttt{artifacts/phase3} & Matched but uncertain contrast \\
+3 & pure and hybrid 8B, $n=800$ & \texttt{artifacts/phase3} & Tightly matched composite contrast \\
 4 & 5 size pairs, $n=800$ each & \texttt{artifacts/phase4} & Descriptive scale trend \\
 5 & 2 corpora, $n=800$ each & \texttt{artifacts/phase5} & Corpus scope check \\
 6 & 3 models, 50 at two lengths & \texttt{artifacts/phase6} & Synthetic task scope check \\

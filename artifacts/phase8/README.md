@@ -59,6 +59,6 @@ The one pairwise contrast that clears the Holm threshold on either edge is Llama
 Ceiling accuracy separates the systems by their QA capacity given the oracle document: Qwen2.5 (0.815) > Llama-3.1 (0.782) > Nemotron-H (0.588).
 Floors sit near 0.28-0.32 for all three, so closed-book knowledge overlap is comparable.
 
-Phase 8 answers no matched-control question.
+Phase 8 answers no matched-control question and supports prevalence only.
 Every pairwise interaction jointly reflects architecture, corpus, token count, tokenizer, alignment status, depth, and positional encoding.
-Single-variable claims belong to Phase 2, Phase 3, and Phase 5.
+The unmatched systems therefore do not isolate architecture, and non-significant pairwise differences are not evidence of equivalence.

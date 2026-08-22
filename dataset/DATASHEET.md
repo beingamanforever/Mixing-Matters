@@ -1,9 +1,9 @@
 # Mixing Matters position-bias dataset
 
-Every model generation and attention measurement produced by the Mixing Matters study, flattened into one schema.
+Selected committed model generations and attention measurements from the Mixing Matters study, flattened into one schema.
 
 The study moves a single answer-bearing passage through ten positions in a fixed multi-document context and records what each model answers.
-This release is the record-level output of that intervention across 17 pinned checkpoints, 4 prompt variants, 3 instruction templates, and 2 tasks.
+This release contains record-level outputs from that intervention across 17 pinned checkpoints, 4 prompt variants, 3 instruction templates, and 2 tasks.
 
 Rebuild it from the committed artifacts with one command:
 
@@ -77,6 +77,12 @@ The harness rebuilds any prompt deterministically from `question_id`, `gold_posi
 Phase 6 RULER `niah_single_1` generations are not included.
 Those raw records were never committed to the public tree, so only the Phase 6 aggregate summary is public.
 
+The later sham-gold and distractor-order certification-control runs are not included.
+Their committed summaries and reports cover a 200-question exploratory Pythia sample, but the dataset builder does not ingest those control schemas.
+
+The clean Phase 3 rerun at commit `33d6bb5` is not duplicated in this dataset.
+It reproduced the released Phase 3 summary byte-for-byte and is retained separately as provenance evidence under `artifacts/phase3/rerun-33d6bb5/`.
+
 Phase 7 probe rows are not included.
 They are 2,560-dimensional hidden-state vectors whose only released use is the fitted probe accuracy in `artifacts/phase7-mechanisms/4d-probe/`.
 
@@ -92,7 +98,8 @@ Within a question, prompt token counts vary by at most one token across the ten 
 ## Known limitations
 
 Phase 1 ran on a different host from the later phases, so its `execution_path` is null and its GPU differs.
-The Phase 3 environment manifest records a dirty source tree, with the Megatron runner uncommitted at run time.
+The original Phase 3 environment manifest records a dirty source tree, with the Megatron runner uncommitted at run time.
+A later run at commit `33d6bb5` kept both producing repositories clean and reproduced the summary byte-for-byte.
 The `phase7/nemotron-h-8b-sink-blocked` run returned output identical to its baseline because the generic token-0 mask hook was not honoured by that model's custom attention path; it is a null implementation, not a successful ablation.
 Key-value control rows carry no `run_id` and no sensitivity scores because that harness predates those fields.
 
@@ -104,4 +111,4 @@ They do not describe variation across training seeds.
 Released under the Apache License 2.0, the same licence as the repository.
 The underlying questions come from the Lost in the Middle release of Liu et al. (2024); their terms apply to the question and passage content.
 
-Cite by title until the archival record is public: *Mixing Matters: Evidence Position Bias Across Sequence Mixers in Long-Context Question Answering*, New in ML workshop submission, 2026.
+Cite by title until the archival record is public: *Mixing Matters? Evidence and Its Limits for Position Bias Across Sequence Mixers*, New in ML workshop submission, 2026.

@@ -38,8 +38,6 @@ def _stable_fold(question_id: str, folds: int) -> int:
 
 
 def _standardize(train, test):
-    import numpy as np
-
     mean = train.mean(axis=0)
     std = train.std(axis=0)
     std[std == 0] = 1.0
@@ -169,7 +167,7 @@ def probe_gold_position(
 
     return {
         "layer": layer,
-        "n_samples": int(len(labels)),
+        "n_samples": len(labels),
         "n_features": int(features.shape[1]),
         "accuracy": accuracy,
         "shuffled_accuracy": shuffled_accuracy,

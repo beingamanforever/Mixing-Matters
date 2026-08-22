@@ -1,6 +1,6 @@
-# Mixing Matters
+# Mixing Matters?
 
-## Evidence Position Bias Across Sequence Mixers in Long-Context Question Answering
+## Evidence and Its Limits for Position Bias Across Sequence Mixers
 
 This repository studies whether language models use the same evidence differently when only its position in a long context changes.
 It compares Transformer, state-space, and hybrid sequence mixers with a paired, ten-position intervention derived from the [Lost in the Middle](https://aclanthology.org/2024.tacl-1.9/) evaluation.
@@ -33,7 +33,9 @@ See the [Phase 2 summary](artifacts/phase2/report/phase2-summary.json).
 **Matched 8B comparison.**
 The hybrid model has a larger primacy estimate than pure Mamba-2, but the paired hybrid-minus-pure effect is `+1.88` points with a 95% confidence interval of `[-0.56, +4.44]` and Holm `p = 0.1442`.
 The direction is consistent with the primary comparison, but the paired effect is statistically uncertain and does not establish that attention caused the difference.
-See the [Phase 3 summary](artifacts/phase3/report/phase3-summary.json) and the matched model release of [Waleffe et al. (2024)](https://arxiv.org/abs/2406.07887).
+This released-checkpoint contrast also changes the models' MLP composition, so it is not an attention-only intervention.
+The original run recorded a dirty producing tree, while a later clean rerun at commit `33d6bb5` reproduced the summary byte-for-byte.
+See the [Phase 3 summary](artifacts/phase3/report/phase3-summary.json), [clean-rerun report](artifacts/phase3/rerun-33d6bb5/REPORT.md), and the matched model release of [Waleffe et al. (2024)](https://arxiv.org/abs/2406.07887).
 
 ## Controls and scope
 
@@ -62,7 +64,7 @@ See the [Phase 5 summary](artifacts/phase5/report/phase5-summary.json) and [Phas
 </p>
 
 **Mechanistic evidence.**
-Late-layer [attention-sink](https://openreview.net/forum?id=NG7sS51zVF) mass tracks Pythia primacy across scale, position remains linearly decodable in both model families, and prompt variants substantially change the measured edges.
+Late-layer [attention-sink](https://openreview.net/forum?id=NG7sS51zVF) mass tracks Pythia primacy across scale, position remains linearly decodable in both model families, and prompt variants show substantially different per-condition edges.
 These results are correlational and diagnostic, not evidence of a causal mechanism.
 See the [Phase 7 summary](artifacts/phase7-mechanisms/report/phase7-summary.json).
 
@@ -89,7 +91,8 @@ The [figure tests](tests/test_paper_figures.py) check deterministic regeneration
 
 ## Released dataset
 
-Every generation the study produced is flattened into one schema in [`dataset/`](dataset/): 229,700 model generations across 17 pinned checkpoints, 10 evidence positions, 4 prompt variants, and 2 tasks, plus 280,000 per-layer attention-sink measurements.
+The released dataset flattens 229,700 selected committed model generations across 17 pinned checkpoints, 10 evidence positions, 4 prompt variants, and 2 tasks into one schema in [`dataset/`](dataset/), together with 280,000 per-layer attention-sink measurements.
+It excludes the uncommitted Phase 6 synthetic-retrieval generations, the later Pythia certification-control runs, and the duplicate clean Phase 3 rerun.
 Field documentation and collection details are in the [datasheet](dataset/DATASHEET.md).
 
 ```bash
@@ -113,7 +116,7 @@ Pushing to `main` deploys it through [the Pages workflow](.github/workflows/page
 ## Evidence boundary
 
 - All reported ten-document QA results are exploratory, and the 1,855-question confirmatory split remains unopened.
-- Negative-control and distractor-order runs have no committed outputs, and the prepared manual audit has no human labels.
+- The committed sham-gold and distractor-order controls passed on a 200-question exploratory Pythia sample, but they were not run on the 8B Megatron checkpoints, and the prepared manual audit has no human labels.
 - The matched 8B paired effect is statistically uncertain, and the mechanism analyses do not support a causal attention claim.
 - Confidence intervals quantify variation across questions for fixed checkpoints, prompts, and decoding settings, not variation across training seeds or model checkpoints.
 
@@ -123,7 +126,7 @@ The paper builds on the position-intervention protocol of [Liu et al. (2024)](ht
 The complete scholarly bibliography is included in the [paper](paper/mixing-matters-newinml-2026.pdf).
 
 The public author list and archival paper URL are not yet available.
-Until they are released, please cite the paper by title: *Mixing Matters: Evidence Position Bias Across Sequence Mixers in Long-Context Question Answering*, New in ML workshop submission, 2026.
+Until they are released, please cite the paper by title: *Mixing Matters? Evidence and Its Limits for Position Bias Across Sequence Mixers*, New in ML workshop submission, 2026.
 Archival BibTeX will be added after the public author list and paper URL are available.
 
 ## Acknowledgments

@@ -84,6 +84,7 @@ def _family_colors(models: list[str]) -> dict[str, str]:
             colors[model] = next(spare)
     return colors
 
+
 BOOTSTRAP_SEED = 240521
 N_RESAMPLES = 10000
 
@@ -527,9 +528,9 @@ def write_phase2_figures(
 
 
 def phase3_summary(records: list[dict], n_resamples: int = DEFAULT_RESAMPLES) -> dict:
-    """The attention contrast, per-model curves and edges, and floor/ceiling.
+    """The checkpoint contrast, per-model curves and edges, and floor/ceiling.
 
-    Phase 3 is self-contained: it reports the hybrid-minus-pure attention effect
+    Phase 3 is self-contained: it reports the hybrid-minus-pure composite effect
     on each edge, each model's own edges over the shared questions, and the two
     position curves with their floor and ceiling anchors.
     """
@@ -551,10 +552,10 @@ def write_phase3_figures(
     directory: Path,
     n_resamples: int = DEFAULT_RESAMPLES,
 ) -> list[Path]:
-    """Write the Phase 3 attention-control figures plus their summary.
+    """Write the Phase 3 checkpoint-contrast figures plus their summary.
 
     Draws the pure and hybrid position curves on one axis, the primacy and
-    recency edges per model, and the hybrid-minus-pure attention edge effect.
+    recency edges per model, and the hybrid-minus-pure composite edge effect.
     Refuses to overwrite any existing output.
     """
     summary = phase3_summary(records, n_resamples=n_resamples)
@@ -564,6 +565,7 @@ def write_phase3_figures(
 
     curve_path = directory / "position-curves.png"
     edges_path = directory / "position-edges.png"
+    # Preserve the established artifact filename even though the contrast is composite.
     effect_path = directory / "attention-effect.png"
     summary_path = directory / "phase3-summary.json"
     for path in (curve_path, edges_path, effect_path, summary_path):
@@ -574,7 +576,7 @@ def write_phase3_figures(
 
     hybrid_key, pure_key = ARCH_PAIR
     # Order the axes pure then hybrid so the curves read left to right as the
-    # baseline followed by the model with attention added.
+    # baseline followed by the released hybrid checkpoint.
     models = [pure_key, hybrid_key]
     question_counts = {model: curve[model]["positions"][0]["question_count"] for model in models}
 
@@ -993,7 +995,9 @@ def _draw_position_curve(ax, models, curve, floor_ceiling) -> None:
             label=model,
         )
         if model in floor_ceiling:
-            ax.axhline(floor_ceiling[model]["floor_accuracy"], color=color, linestyle=":", alpha=0.35)
+            ax.axhline(
+                floor_ceiling[model]["floor_accuracy"], color=color, linestyle=":", alpha=0.35
+            )
             ax.axhline(
                 floor_ceiling[model]["ceiling_accuracy"], color=color, linestyle=":", alpha=0.35
             )
@@ -1064,7 +1068,12 @@ def write_phase6_figures(
         comparison_paths = {
             length: directory / f"task-comparison-{length}.png" for length in lengths
         }
-    planned = [*curve_paths.values(), *edge_paths.values(), *comparison_paths.values(), summary_path]
+    planned = [
+        *curve_paths.values(),
+        *edge_paths.values(),
+        *comparison_paths.values(),
+        summary_path,
+    ]
     for path in planned:
         if path.exists():
             raise FileExistsError(path)
@@ -1292,10 +1301,18 @@ def write_phase7_figures(
             max(0.0, entry["primacy"]["estimate"] - entry["primacy"]["ci_low"]) for entry in entries
         ]
         upper = [
-            max(0.0, entry["primacy"]["ci_high"] - entry["primacy"]["estimate"]) for entry in entries
+            max(0.0, entry["primacy"]["ci_high"] - entry["primacy"]["estimate"])
+            for entry in entries
         ]
         ax.errorbar(
-            xs, ys, yerr=[lower, upper], fmt="o-", capsize=5, color=color, linewidth=1.5, markersize=6
+            xs,
+            ys,
+            yerr=[lower, upper],
+            fmt="o-",
+            capsize=5,
+            color=color,
+            linewidth=1.5,
+            markersize=6,
         )
         ax.axhline(0.0, color="black", linewidth=0.7, alpha=0.6)
         ax.set_xticks(xs)
@@ -1318,12 +1335,14 @@ def write_phase7_figures(
         "score_normalized_em": "normalized EM",
         "score_first_line": "first-line only",
     }
-    models = sorted({
-        model
-        for variant in variant_keys
-        for model, entry in variants.get(variant, {}).items()
-        if isinstance(entry, dict) and "primacy" in entry
-    })
+    models = sorted(
+        {
+            model
+            for variant in variant_keys
+            for model, entry in variants.get(variant, {}).items()
+            if isinstance(entry, dict) and "primacy" in entry
+        }
+    )
     if models:
         fig, ax = plt.subplots(figsize=(max(6.0, 0.9 * len(models) * len(variant_keys)), 4.0))
         width = 0.25

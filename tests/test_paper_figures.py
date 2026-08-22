@@ -134,6 +134,15 @@ def test_regeneration_is_byte_deterministic(generated):
     assert second == first
 
 
+def test_generation_isolated_from_global_matplotlib_style(tmp_path):
+    with figures.plt.rc_context({"grid.color": "#b0b0b0", "legend.edgecolor": "#cccccc"}):
+        paths = figures.generate_all(tmp_path)
+
+    svg = "".join(path.read_text().lower() for path in paths if path.suffix == ".svg")
+    assert "#b0b0b0" not in svg
+    assert "#cccccc" not in svg
+
+
 def test_refuses_to_replace_symlink(tmp_path):
     output = tmp_path / "figures"
     output.mkdir()

@@ -9,9 +9,9 @@ import json
 import os
 import subprocess
 import sys
+from collections.abc import Iterator
 from copy import deepcopy
 from dataclasses import dataclass
-from collections.abc import Iterator
 from pathlib import Path
 from types import ModuleType
 
@@ -183,7 +183,7 @@ def test_verifier_rejects_wrong_counts(
     artifact: str,
 ) -> None:
     """A truncated raw control must never reach the statistical gates."""
-    negative, order, positive = exact_bundle
+    negative, order, _positive = exact_bundle
     path = negative if artifact == "negative" else order
     records = verifier.read_records(path)[:-1]
     _replace_jsonl(path, records)
@@ -197,7 +197,7 @@ def test_verifier_rejects_wrong_coverage(
     exact_bundle: ControlBundle,
 ) -> None:
     """Duplicate keys cannot substitute for a missing position/permutation cell."""
-    negative, order, positive = exact_bundle
+    _negative, order, _positive = exact_bundle
     records = verifier.read_records(order)
     records[-1] = deepcopy(records[0])
     _replace_jsonl(order, records)
@@ -228,7 +228,7 @@ def test_verifier_rejects_null_score(
     exact_bundle: ControlBundle,
 ) -> None:
     """Null scores are failed generations, not valid control evidence."""
-    negative, order, positive = exact_bundle
+    negative, _order, _positive = exact_bundle
     records = verifier.read_records(negative)
     records[0]["score"] = None
     _replace_jsonl(negative, records)
@@ -304,7 +304,7 @@ def test_verifier_rejects_missing_null_setting(
     exact_bundle: ControlBundle,
 ) -> None:
     """A missing top-k field cannot masquerade as its required null value."""
-    negative, order, positive = exact_bundle
+    negative, _order, _positive = exact_bundle
     records = verifier.read_records(negative)
     for record in records:
         del record["top_k"]
@@ -330,7 +330,7 @@ def test_verifier_rejects_wrong_provenance(
     message: str,
 ) -> None:
     """Dataset, control, and run identity must stay exact and control-local."""
-    negative, order, positive = exact_bundle
+    negative, _order, _positive = exact_bundle
     records = verifier.read_records(negative)
     for record in records:
         record[field] = value
@@ -351,7 +351,7 @@ def test_verifier_rejects_wrong_model_or_settings(
     value: object,
 ) -> None:
     """Model and decoding settings are exact protocol constants."""
-    negative, order, positive = exact_bundle
+    _negative, order, _positive = exact_bundle
     records = verifier.read_records(order)
     for record in records:
         record[field] = value
@@ -381,7 +381,7 @@ def test_verifier_rejects_failure_sidecar(
     exact_bundle: ControlBundle,
 ) -> None:
     """Any scoring-failure sidecar makes the bundle ineligible."""
-    negative, order, positive = exact_bundle
+    negative, _order, _positive = exact_bundle
     negative.with_suffix(".failures.jsonl").write_text("")
 
     with pytest.raises(ValueError, match="scoring-failure sidecar exists"):
@@ -393,7 +393,7 @@ def test_verifier_rejects_mixed_software_provenance(
     exact_bundle: ControlBundle,
 ) -> None:
     """Every record must carry one complete invariant runtime provenance."""
-    negative, order, positive = exact_bundle
+    _negative, order, _positive = exact_bundle
     records = verifier.read_records(order)
     records[0]["software_versions"]["torch"] = "wrong"
     _replace_jsonl(order, records)

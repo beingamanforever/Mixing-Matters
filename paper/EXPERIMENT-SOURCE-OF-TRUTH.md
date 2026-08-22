@@ -2,20 +2,12 @@
 
 This document is the paper-writing record of what is actually present in the repository.
 It separates executed measurements from planned work, descriptive observations from causal claims, and artifact-backed results from prose that needs correction.
-It was prepared on 2026-08-11 after fetching all remotes.
+It was prepared on 2026-08-11 and reconciled with the committed artifacts on 2026-08-22.
 
 ## Repository state
 
-- Working branch: `phase-8`.
-- Local `HEAD`: `3ea6c95` (`paper: add official neurips_2026 style, filled checklist, related work, more references`).
-- `origin/phase-8`: `3ea6c95`.
-- Fetched `origin/main`: `8e99133` (`Phase 8`).
-- `HEAD` and `origin/main` share `036f006` as their merge base.
-- The local branch is three paper commits ahead of `origin/main`, while `origin/main` has one later Phase 8 artifact commit.
-- The tree difference between local `HEAD` and `origin/main` is limited to the local paper source, paper figures, the NeurIPS style/checklist, and `.gitignore`.
-- The experiment artifacts and source code are therefore present on both trees at this audit point.
-- The worktree already had untracked `paper/mixing_matters.pdf` and `paper/mixing_matters_preview.pdf` before this document was created.
-- No raw result file was overwritten during this audit.
+This ledger describes committed experiment evidence rather than a transient local branch or worktree.
+The 2026-08-22 reconciliation changed narrative records only and did not overwrite raw result files.
 
 ## Authority order
 
@@ -83,9 +75,10 @@ This is smaller than the 100-instance count described in the Phase 6 runbook and
 The `artifacts/phase7-mechanisms/inputs/` files reuse raw sweeps from earlier phases.
 Their repeated run IDs are copied-artifact provenance, not additional model executions.
 
-The environment manifests report these producing code revisions: Phase 1 `54dc62b`, Phase 2 `f41ccae`, Phase 3 `279b54c`, Phase 4 `2013199`, Phase 5 `6e3e83c`, and Phase 8 `c4f9f8c`.
-Several manifests also record untracked setup or launcher files, and the Phase 3 manifest records a dirty source tree with the Megatron runner and phase code uncommitted at run time.
-The paper should preserve these provenance caveats rather than describing every run as produced from a clean checkout.
+The original environment manifests report these producing code revisions: Phase 1 `54dc62b`, Phase 2 `f41ccae`, Phase 3 `279b54c`, Phase 4 `2013199`, Phase 5 `6e3e83c`, and Phase 8 `c4f9f8c`.
+Several manifests also record untracked setup or launcher files, and the original Phase 3 manifest records a dirty source tree with the Megatron runner and phase code uncommitted at run time.
+A subsequent Phase 3 rerun at commit `33d6bb5`, with both producing repositories clean, reproduced the prior summary byte-for-byte.
+The paper preserves both the original provenance caveat and the clean reproduction rather than describing every run as originally produced from a clean checkout.
 
 ## Results by phase
 
@@ -105,7 +98,7 @@ The tracer was replayed in separate processes with matching prompts, generations
 A 50-row blinded audit sample and an audit key were generated.
 The human categorization of formatting, extraction, hallucination, and truncation failures is not present in the repository.
 
-### Phase 2: matched 2.8B architecture comparison
+### Phase 2: exploratory near-2.8B family comparison
 
 Phase 2 ran Pythia-2.8B, Mamba-2.8B, and Mamba2-2.7B on the same 800 exploratory questions and one NVIDIA A40 execution host.
 
@@ -128,7 +121,7 @@ The non-gating failure is consistent with the smaller recurrent state and does n
 ### Phase 3: matched pure versus hybrid Mamba-2 at 8B
 
 Phase 3 ran two NVIDIA 8B checkpoints over the same 800 questions through the same bare-metal Megatron-LM backend and CUDA-kernel path.
-The checkpoints share training data, tokenizer, approximate scale, depth, and positional-encoding setup, while the hybrid replaces about 7% of Mamba-2 blocks with attention.
+The checkpoints share training data, tokenizer, approximate scale, depth, and positional-encoding setup, while the hybrid changes both attention and MLP composition.
 
 | Model | Primacy edge | 95% interval | Holm p | Recency edge | 95% interval | Holm p | Floor / ceiling |
 |---|---:|---|---:|---:|---|---:|---:|
@@ -139,8 +132,7 @@ The paired hybrid-minus-pure primacy effect was `+0.0188`, with 95% interval `[-
 The paired hybrid-minus-pure recency effect was `-0.0281`, with 95% interval `[-0.0550, -0.0013]` and Holm `p=0.0892`.
 
 The correct claim is that the hybrid has a significant within-model primacy edge while the pure model does not, and that the paired effect estimate is suggestive but not statistically significant under the prespecified correction.
-Phase 3 does not independently prove that adding attention caused the primacy difference.
-The current paper draft overstates this result when it calls the contrast a clean causal isolation.
+Phase 3 is a composite released-checkpoint contrast and does not independently prove that adding attention caused the primacy difference.
 
 ### Phase 4: scale and family trend
 
@@ -193,6 +185,7 @@ Absolute RULER accuracy is not directly comparable to QA accuracy because the ta
 ### Phase 7: mechanism and artifact checks
 
 These are exploratory mechanism analyses on 200-question variant subsets or on previously collected sweeps, not confirmatory tests on the held-out allocation.
+The prompt-variant and template results report per-condition edges without a paired between-condition test, so differences between their point estimates are descriptive.
 
 #### Query-position variants
 
@@ -208,7 +201,7 @@ The bookend result is consistent with a fixed-state-compression hypothesis, but 
 Token-0 attention share was measured across Pythia scale.
 The final-layer sink share was approximately 0.003 for Pythia-160M, 0.034 for Pythia-410M, 0.089 for Pythia-1B, 0.139 for Pythia-1.4B, and 0.455 for Pythia-2.8B.
 Pythia-410M is a useful caution because it has substantial mid-network sink mass but little final-layer sink and no significant primacy edge.
-The data support late-layer sink mass as a leading correlate of primacy.
+The data support late-layer sink mass as a correlate of primacy within the measured Pythia scale series.
 They do not establish that the sink is causally necessary.
 
 #### Storage versus utilization probe
@@ -220,9 +213,10 @@ This is evidence for a utilization difference rather than a storage failure, but
 
 #### Template and length sensitivity
 
-The architecture sign pattern survived the three scoring variants and the prompt-length tertiles in the committed analyses.
-The instructional template reduced the Pythia primacy estimate from about `+0.070` to `+0.005` on the 200-question variant subset while leaving recency positive.
-The safe claim is sign and direction robustness, not invariance of the absolute primacy magnitude to templates.
+The Phase 2 sign pattern survived the three scoring variants and prompt-length tertiles in the committed analyses.
+The instructional-template Pythia primacy interval crosses zero, so the family sign pattern is not template-invariant across all executed cells.
+The per-template Pythia primacy estimates were about `+0.070` for the baseline and `+0.005` for the instructional template on the 200-question variant subset, while recency was positive in both cells.
+The safe claim is template sensitivity, not robustness of the primacy sign or magnitude.
 
 #### Sink-block intervention
 
@@ -236,11 +230,11 @@ The direct forward-path intervention remains open.
 Phase 8 ran Nemotron-H-8B, Llama-3.1-8B, and Qwen2.5-7B on one L40S using the 800-question ten-position harness.
 This is not a matched control because architecture, corpus, token count, tokenizer, alignment, depth, positional encoding, and in some cases attention implementation differ.
 
-| System | Primacy edge | 95% interval | Holm p | Recency edge | Holm p | Floor / ceiling |
-|---|---:|---|---:|---:|---:|---:|
-| Nemotron-H-8B | +0.0669 | [+0.0438, +0.0906] | <0.0001 | +0.0288 | [+0.0081, +0.0494] | 0.3113 / 0.5875 |
-| Llama-3.1-8B | +0.0763 | [+0.0569, +0.0956] | <0.0001 | +0.0175 | [0.0000, +0.0344] | 0.3150 / 0.7825 |
-| Qwen2.5-7B | +0.0406 | [+0.0206, +0.0606] | 0.0008 | +0.0075 | [-0.0119, +0.0269] | 0.2800 / 0.8150 |
+| System | Primacy edge | 95% interval | Holm p | Recency edge | 95% interval | Holm p | Floor / ceiling |
+|---|---:|---|---:|---:|---|---:|---:|
+| Nemotron-H-8B | +0.0669 | [+0.0438, +0.0906] | <0.0001 | +0.0288 | [+0.0081, +0.0494] | 0.006 | 0.3113 / 0.5875 |
+| Llama-3.1-8B | +0.0763 | [+0.0569, +0.0956] | <0.0001 | +0.0175 | [0.0000, +0.0344] | 0.051 | 0.3150 / 0.7825 |
+| Qwen2.5-7B | +0.0406 | [+0.0206, +0.0606] | 0.0008 | +0.0075 | [-0.0119, +0.0269] | 0.474 | 0.2800 / 0.8150 |
 
 All three production systems have a positive primacy edge.
 Only the Llama versus Qwen primacy interaction clears Holm correction, at `+0.0356`, 95% interval `[+0.0088, +0.0625]`, Holm `p=0.0164`.
@@ -251,9 +245,10 @@ The production result is a robustness description, not an architecture attributi
 The positive key-value control is executed in the committed Phase 1, Phase 2, Phase 3, Phase 5, and Phase 8 artifact directories.
 Its result is model-dependent and is non-gating for the QA sweeps after the Phase 1 instrument check.
 
-The code contains negative-control and distractor-order-control builders and validators.
-No committed negative-control or distractor-order raw output, summary, or report was found in the artifact tree audited here.
-Those controls therefore cannot be described as executed or passed.
+The committed `artifacts/phase2/controls-09eab5e/` run executes both certification controls on 200 exploratory Pythia questions.
+The sham-gold accuracy was `0.1235` against a `0.0950` floor, a `0.0285` difference within its fixed gate; its primacy was `+0.0050` with 95% interval `[-0.0325, +0.0425]`, and its recency was `-0.0175` with 95% interval `[-0.0500, +0.0125]`.
+The three distractor-order accuracies were `0.2850`, `0.3000`, and `0.2767`, for a maximum spread of `0.0233` within its fixed gate.
+Both controls passed on this exploratory Pythia sample only and were not executed on the 8B Megatron checkpoints.
 
 The manual 50-generation audit sample exists, but its human labels do not.
 The held-out 1,855-question confirmatory split is frozen and unused.
@@ -265,7 +260,7 @@ The Nemotron-H sink-block result is an unsupported-mask null, not a causal ablat
 
 The Phase 2 curve figure shows a high Pythia start point, a middle trough, and a shared late-position rise, while both Mamba curves lack the same start arm.
 The Phase 2 edge figure shows Pythia's positive primacy bar and near-zero or negative Mamba primacy bars alongside positive recency bars for all three models.
-The Phase 3 curve figure shows the hybrid curve above the pure curve, but the attention-effect figure's primacy interval crosses zero.
+The Phase 3 curve figure shows the hybrid curve above the pure curve, but the hybrid-minus-pure effect figure's primacy interval crosses zero.
 The Phase 4 scale-gap figure shows a primacy gap emerging at the 790M versus 1B pair and remaining positive thereafter, while recency differences sit near zero at capable scales.
 The sink figure shows the largest late-layer token-0 share in Pythia-2.8B and almost no final-layer share in Pythia-160M.
 The Phase 8 curve figure shows primacy in all three production systems and a less consistent recency arm.
@@ -274,16 +269,16 @@ The 2K RULER figure shows Pythia's middle dip while both Mamba curves are satura
 
 ## Paper-safe claims
 
-The strongest artifact-backed claim is that the matched 2.8B Pile comparison has a Pythia primacy arm that is absent or negative in both Mamba variants, while all three share a positive recency arm.
+The strongest artifact-backed claim is that the exploratory near-2.8B Pile family comparison has a Pythia primacy arm that is absent or negative in both Mamba variants, while all three share a positive recency arm.
 The scale sweep shows that this primacy interaction is near zero at weak small-model pairs and appears from the 790M versus 1B pair onward.
 The corpus control shows a level shift without a detectable edge shift on the fixed Mamba architecture.
 The synthetic task reproduces the transformer primacy arm at 2K, while the Mamba controls saturate.
-The exploratory mechanism evidence is consistent with late-layer attention sinks and query-dependent state compression, and the probe favors utilization over storage as the immediate distinction.
-The matched 8B pure-versus-hybrid result is suggestive but not confirmatory for an attention-causes-primacy claim.
+The exploratory mechanism evidence identifies associations among late-layer attention-sink mass, linearly decodable position, and prompt-dependent edges, but it does not establish causal attention or fixed-state compression mechanisms.
+The matched 8B pure-versus-hybrid result is suggestive but not confirmatory for an attention-causes-primacy claim, and the released checkpoints also differ in MLP composition.
 
 ## Open work before a final causal paper claim
 
-Run the negative and distractor-order controls and preserve their raw outputs and reports.
+Extend the negative and distractor-order controls beyond the exploratory Pythia sample if they are required for the 8B checkpoints.
 Complete and archive the blinded human audit labels.
 Freeze the statistical and exclusion rules before opening the held-out 1,855-question split.
 Re-run the matched Phase 3 contrast on the confirmatory allocation if the causal attention claim is retained.
@@ -292,7 +287,5 @@ Keep all future claims tied to raw records, summary JSON, environment metadata, 
 
 ## Verification performed for this audit
 
-The repository test suite passed with `168 passed, 2 skipped`.
-`git diff --check` passed.
-Ruff check currently reports 13 pre-existing lint errors, and Ruff format check reports 13 unformatted files.
-Those lint and formatting failures were not introduced by this documentation-only change and remain part of the repository state.
+This section records the 2026-08-11 audit and is retained for historical context.
+Current verification results belong in the pull-request audit rather than this scientific evidence ledger.

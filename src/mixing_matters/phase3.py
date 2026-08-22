@@ -1,19 +1,15 @@
-"""Phase 3 statistics: does adding attention layers move the position curve.
+"""Phase 3 statistics for the released pure-versus-hybrid checkpoint contrast.
 
-Phase 2 asks whether the sequence-mixing architecture interacts with evidence
-position. Phase 3 holds almost everything fixed -- the same NVIDIA 8B Mamba-2
-training run, the same tokenizer, the same scale and depth, the same
-positional-encoding setup -- and changes only whether attention layers are
-present, comparing the pure Mamba-2 (``mamba2-8b``) against the hybrid that
-mixes in roughly seven percent attention layers (``mamba2-hybrid-8b``). The
-contrast is therefore the same paired edge-difference bootstrap Phase 2 uses
-(``phase2.interaction``), applied to the two models named in
-``models.ARCH_PAIR`` with the hybrid model first, so the estimate reads as the
-hybrid-minus-pure effect of adding attention on each edge.
+Phase 2 compares model families on the same question bundles. Phase 3 holds
+training data, tokenizer, scale, depth, and positional encoding fixed across
+released NVIDIA 8B checkpoints. The hybrid changes both attention and MLP
+composition, so the paired edge difference is a composite checkpoint contrast,
+not an attention-only effect. ``models.ARCH_PAIR`` orders the hybrid first, so
+the estimate reads as hybrid minus pure on each edge.
 
 Unlike Phase 5, Phase 3 is deliberately self-contained: it reports the
-attention effect and each model's own edges over the shared questions, and does
-not place the effect beside another phase's contrast.
+checkpoint contrast and each model's own edges over the shared questions. The
+legacy function and output-key names are retained for artifact compatibility.
 """
 
 from collections.abc import Iterable
@@ -27,7 +23,7 @@ def attention_interaction(records: Iterable[dict], n_resamples: int = DEFAULT_RE
 
     A thin wrapper over ``phase2.interaction`` pinned to ``models.ARCH_PAIR``
     with the hybrid model as the first argument, so a positive ``estimate``
-    means the hybrid has the larger edge, i.e. adding attention widened it.
+    means the released hybrid checkpoint has the larger edge.
     Both models are recomputed from the same bootstrap draw of question ids in
     every resample, so the contrast is paired over the questions both models
     answered completely.
@@ -37,7 +33,7 @@ def attention_interaction(records: Iterable[dict], n_resamples: int = DEFAULT_RE
 
 
 def attention_control(records: Iterable[dict], n_resamples: int = DEFAULT_RESAMPLES) -> dict:
-    """The attention contrast plus each model's own edges over the shared questions.
+    """The checkpoint contrast plus each model's own edges over the shared questions.
 
     Returns::
 

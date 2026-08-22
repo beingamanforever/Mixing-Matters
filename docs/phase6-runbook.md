@@ -9,7 +9,7 @@ If the two tasks disagree, that disagreement is the finding, not a failure of ei
 `niah_single_1` hides one fact sentence, "One of the special magic numbers for <key> is: <value>.", inside repeated noise sentences, then asks for the magic number.
 The task strings (noise haystack, numeric needle, word key, template, and the `string_match` scoring) are vendored verbatim in `src/mixing_matters/ruler.py` from NVIDIA RULER at commit `c3f5e3b4f87f97e048793bb510a3a6b19a46bf3a`.
 
-Two deliberate departures from running RULER's own script, both to fit this study's one-variable-at-a-time and reproducibility rules:
+Two deliberate departures from running RULER's own script preserve the study's position intervention and reproducibility rules:
 
 - The needle is placed at ten deterministic depths, 0 through 9, mirroring the ten gold positions of the QA sweep, instead of RULER's random per-sample depth.
 The noise sentence count is held fixed within a length, so total prompt length is invariant across the ten depths, exactly as gold position is length-invariant in Phase 2.
@@ -20,7 +20,8 @@ The numeric needle and the noise haystack are exact.
 
 ## Models and lengths
 
-The same three Phase 2 models, on one host so the only variables are task and length:
+The same three Phase 2 checkpoints run on one host at two lengths.
+Relative to Phase 2, the task, prompt construction, scorer, host, and sample size also change, so this phase is a generality check rather than a single-variable control.
 
 | Model | Family | Repo |
 |---|---|---|

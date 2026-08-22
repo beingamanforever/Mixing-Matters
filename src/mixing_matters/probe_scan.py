@@ -17,7 +17,6 @@ so the extraction (GPU) and the fit (CPU, seconds) stay decoupled and a
 single extraction can be re-probed under different label schemes.
 """
 
-import json
 import uuid
 from pathlib import Path
 
@@ -117,9 +116,7 @@ def run_probe_scan(
                 prompt_tokens = int(
                     generator.tokenizer(prompt, return_tensors="pt").input_ids.shape[1]
                 )
-                vector = _hidden_state_at_layer(
-                    generator.model, generator.tokenizer, prompt, layer
-                )
+                vector = _hidden_state_at_layer(generator.model, generator.tokenizer, prompt, layer)
                 yield {
                     "run_id": run_id,
                     "model_key": model_key,

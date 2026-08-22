@@ -79,7 +79,7 @@
  },
  "contrasts": [
   {
-   "kind": "architecture",
+   "kind": "family",
    "label": "Mamba 2.8B minus Mamba-2 2.7B",
    "phase": "phase2",
    "primacy": {
@@ -100,7 +100,7 @@
    }
   },
   {
-   "kind": "architecture",
+   "kind": "family",
    "label": "Mamba 2.8B minus Pythia 2.8B",
    "phase": "phase2",
    "primacy": {
@@ -121,7 +121,7 @@
    }
   },
   {
-   "kind": "architecture",
+   "kind": "family",
    "label": "Mamba-2 2.7B minus Pythia 2.8B",
    "phase": "phase2",
    "primacy": {
@@ -142,7 +142,7 @@
    }
   },
   {
-   "kind": "attention",
+   "kind": "checkpoint",
    "label": "Hybrid minus pure Mamba-2 8B",
    "phase": "phase3",
    "primacy": {
@@ -509,7 +509,7 @@
  },
  "panels": [
   {
-   "caption": "Pythia, Mamba, and Mamba-2 at the same scale on the same 800 questions.",
+   "caption": "Pythia, Mamba, and Mamba-2 at similar scale on the same 800 questions; depth, positional encoding, state size, checkpoint family, and capability differ.",
    "curves": {
     "mamba-2.8b": [
      {
@@ -834,10 +834,10 @@
     "mamba-2.8b",
     "mamba2-2.7b"
    ],
-   "title": "Matched 2.8B comparison"
+   "title": "Exploratory 2.8B family comparison"
   },
   {
-   "caption": "Two NVIDIA checkpoints that share training data and scale; the hybrid replaces about 7% of Mamba-2 blocks with attention.",
+   "caption": "Two NVIDIA checkpoints that share training data, scale, depth, and tokenizer; the hybrid changes both attention and MLP composition.",
    "curves": {
     "mamba2-8b": [
      {
@@ -1057,7 +1057,7 @@
     "mamba2-8b",
     "mamba2-hybrid-8b"
    ],
-   "title": "Matched 8B pure vs hybrid"
+   "title": "Tightly matched 8B checkpoint contrast"
   },
   {
    "caption": "The same Mamba 2.8B architecture trained on the Pile and on SlimPajama.",

@@ -133,7 +133,9 @@ def read_records(path: Path) -> list[dict[str, Any]]:
             for line_number, line in enumerate(stream, 1):
                 record = json.loads(line)
                 if not isinstance(record, dict):
-                    raise ValueError(f"{path} record {line_number} is not a JSON object")
+                    raise ValueError(  # noqa: TRY004
+                        f"{path} record {line_number} is not a JSON object"
+                    )
                 records.append(record)
     except (OSError, json.JSONDecodeError) as error:
         raise ValueError(f"invalid JSONL artifact {path}: {error}") from error
@@ -234,12 +236,12 @@ def _verify_environment(
         raise ValueError("environment manifest has wrong schema_version")
     repository = manifest.get("repository")
     if not isinstance(repository, dict):
-        raise ValueError("environment manifest has invalid repository")
+        raise ValueError("environment manifest has invalid repository")  # noqa: TRY004
     if repository.get("commit") != expected_repo_commit or repository.get("status") != []:
         raise ValueError("environment manifest has wrong repository provenance")
     dataset = manifest.get("dataset")
     if not isinstance(dataset, dict):
-        raise ValueError("environment manifest has invalid dataset")
+        raise ValueError("environment manifest has invalid dataset")  # noqa: TRY004
     if dataset.get("sha256") != EXPECTED_DATA_SHA256:
         raise ValueError("environment manifest has wrong dataset SHA-256")
     dataset_path = dataset.get("path")
@@ -269,7 +271,9 @@ def _verify_environment(
         raise ValueError("environment manifest has wrong protocol configuration")
     runtime = manifest.get("runtime")
     if not isinstance(runtime, dict):
-        raise ValueError("environment manifest has incomplete runtime provenance")
+        raise ValueError(  # noqa: TRY004
+            "environment manifest has incomplete runtime provenance"
+        )
     required_strings = {
         "python_executable": runtime.get("python_executable"),
         "python_version": runtime.get("python_version"),
@@ -430,7 +434,9 @@ def _require_binary_scores(records: Iterable[dict[str, Any]], label: str) -> Non
     for index, record in enumerate(records, 1):
         score = record.get("score")
         if isinstance(score, bool) or not isinstance(score, (int, float)):
-            raise ValueError(f"{label} record {index} has invalid score: {score!r}")
+            raise ValueError(  # noqa: TRY004
+                f"{label} record {index} has invalid score: {score!r}"
+            )
         if not math.isfinite(float(score)) or float(score) not in (0.0, 1.0):
             raise ValueError(f"{label} record {index} has invalid score: {score!r}")
 
@@ -451,7 +457,9 @@ def _require_complete_generations(records: list[dict[str, Any]], label: str) -> 
         if not isinstance(prompt, str) or not prompt:
             raise ValueError(f"{label} record {index} has invalid prompt")
         if not isinstance(response, str):
-            raise ValueError(f"{label} record {index} has invalid model_response")
+            raise ValueError(  # noqa: TRY004
+                f"{label} record {index} has invalid model_response"
+            )
         for field in ("prompt_token_count", "generated_token_count"):
             value = record.get(field)
             if not isinstance(value, int) or isinstance(value, bool) or value < 0:
@@ -483,7 +491,7 @@ def _single_nested_value(records: list[dict[str, Any]], parent: str, field: str,
     for record in records:
         nested = record.get(parent)
         if not isinstance(nested, dict):
-            raise ValueError(f"{label} has invalid {parent}")
+            raise ValueError(f"{label} has invalid {parent}")  # noqa: TRY004
         values.append(nested.get(field))
     first = values[0] if values else None
     if first is None or any(value != first for value in values):

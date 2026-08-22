@@ -19,8 +19,8 @@ The context manager restores every hook on exit, including on
 exceptions.
 """
 
+from collections.abc import Iterable
 from contextlib import contextmanager
-from typing import Iterable
 
 _TARGET_ATTENTION_MODULE_NAMES = (
     # Llama-3.1 and Qwen2.5 attention module classes.

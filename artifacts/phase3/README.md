@@ -6,7 +6,9 @@ Completed. Both models run over the full 800-question exploratory set.
 
 ## Why one host, one execution path
 
-Phase 3 compares a pure and a hybrid Mamba-2 model, so the only variable that may change between them is the attention layers. Both checkpoints are Megatron-LM-only (see `docs/phase3-runbook.md`), so both run on one NVIDIA A40 through NVIDIA's own Megatron-LM `MambaModel`, bare-metal (no container; the mamba-ssm kernel build repeatedly made the host briefly unreachable inside a container).
+Phase 3 compares released pure and hybrid Mamba-2 checkpoints while holding their corpus, tokenizer, approximate scale, depth, positional setup, host, and execution path fixed.
+The checkpoints differ in both attention and MLP composition, so this is a composite pure-versus-hybrid contrast rather than an attention-only intervention.
+Both checkpoints are Megatron-LM-only (see `docs/phase3-runbook.md`), so both run on one NVIDIA A40 through NVIDIA's own Megatron-LM `MambaModel`, bare-metal (no container; the mamba-ssm kernel build repeatedly made the host briefly unreachable inside a container).
 
 ## Experimental setup
 
@@ -26,5 +28,7 @@ Models and pinned revisions:
 Both checkpoints are published only as Megatron-LM distributed checkpoints; transformers cannot load either one, and the hybrid has no transformers modeling class at all. Both are gated on their own published PIQA number (Waleffe et al. 2024, Tables 3 and 7) before the sweep, and both passed within the +/- 1.0 point tolerance.
 
 Zero questions were excluded and zero generations failed scoring in either model's sweep.
+The original producing manifest records a dirty source tree.
+A later clean rerun at commit `33d6bb5` reproduced the summary byte-for-byte; see `rerun-33d6bb5/REPORT.md`.
 
-See `REPORT.md` for the position-accuracy curves, the primacy/recency edges, and the hybrid-minus-pure attention effect.
+See `REPORT.md` for the position-accuracy curves, the primacy/recency edges, and the hybrid-minus-pure composite effect.
