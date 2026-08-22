@@ -170,7 +170,7 @@ Hybrid models such as Griffin, Jamba, and Nemotron-H combine recurrent or state-
 \node[font=\small\bfseries, above=0.8mm of Pann3] {Hybrid mixer};
 
 \end{tikzpicture}
-\caption{Schematic abstractions of the sequence-mixing mechanisms discussed in this paper. Dense attention permits direct token-to-state interactions, state-space models carry prefix information through a recurrent state, and hybrid models combine recurrent blocks with a minority of attention blocks. The drawing is conceptual rather than a layer-by-layer specification.}
+\caption{Schematic abstractions of the sequence-mixing mechanisms discussed in this paper. Dense attention permits direct token-to-state interactions, state-space models carry prefix information through a recurrent state, and hybrid models combine recurrent blocks with a minority of attention blocks. The drawing is conceptual rather than a layer-by-layer specification, and the depicted 1-in-4 attention block is illustrative only: the hybrid checkpoint evaluated in Section~\ref{sec:contrast} replaces about 7\% of blocks with attention, a substantially smaller fraction than shown here.}
 \label{fig:mixer-schematic}
 \end{figure*}
 
@@ -371,9 +371,9 @@ Pythia-410M has a small final-layer sink ($0.034$) and no significant primacy ed
 Figure~\ref{fig:artifact-mechanisms} shows a scale-linked association, but the measurements share model scale as a confound and no valid sink ablation was completed.
 
 \runin{Utilization, not storage, is a hypothesis}
-A balanced linear probe on frozen mid-depth states predicts edge versus middle position above its shuffled-label control for Pythia ($0.603$ versus $0.484$) and Mamba ($0.648$ versus $0.508$).
-Thus position information remains linearly decodable even when Mamba has no positive primacy edge.
-This supports a utilization hypothesis, but probe decodability does not prove that the model stores or uses the answer-bearing content.
+A balanced linear probe on frozen mid-depth states predicts edge versus middle position modestly above its shuffled-label control for Pythia ($0.603$ versus $0.484$, a 12-point lift) and Mamba ($0.648$ versus $0.508$, a 14-point lift).
+Thus position information remains linearly decodable, at a modest margin over the shuffled baseline, even when Mamba has no positive primacy edge.
+This is consistent with a utilization hypothesis, but the effect size is modest and probe decodability does not prove that the model stores or uses the answer-bearing content.
 
 \runin{Training-free prompt intervention}
 On 200 exploratory questions, repeating the question both before and after the documents changes Mamba primacy from $0.000$ to $+0.103$ ($p<10^{-4}$).
@@ -394,7 +394,7 @@ The matched 8B direction, sink association, and probe results motivate a mixer-d
 Several limitations set the confirmatory boundary.
 All analyses use the exploratory split, so the planned 1{,}855-question test must be run under a frozen analysis before confirmatory language is warranted.
 The 2.8B and scale comparisons retain depth, positional-encoding, state-size, and capability confounds.
-The matched 8B paired contrast crosses zero after Holm correction, and its run manifest records a dirty source tree, weakening exact reproducibility.
+The matched 8B paired contrast crosses zero after Holm correction; an independent clean re-run at commit \texttt{33d6bb5} (clean source tree, both repositories) reproduced the summary byte-for-byte, so the null result is not an artifact of the earlier dirty-tree run.
 These certification controls passed on Pythia, but they do not test the 8B Megatron checkpoints.
 A 50-generation blinded audit sample exists, but human labels were not completed.
 Finally, the attempted hybrid sink block did not alter the model because its custom attention path did not honor the hook; it is not an ablation result.
@@ -662,6 +662,7 @@ The confirmatory rows have not been evaluated.
 Phase 1 calibrates the primary Pythia checkpoint before the cross-family comparison.
 The no-gold floor is $0.095$, the gold-only ceiling is $0.650$, and moving the gold document from the middle to the first position changes accuracy by $+0.115$ (95\% CI $[0.055,0.175]$).
 The key-value control produces a $+0.38$ edge-versus-middle effect, demonstrating that the position-intervention pipeline can recover an imposed positional signal.
+This calibration figure is a single-position contrast (first slot minus middle slot) on the 200-question Phase 1 subset, and is not directly comparable to the primacy statistic reported in Table~\ref{tab:phase2}, which averages positions $\{0,1\}$ against $\{4,5\}$ on the 800-question exploratory split; the two floor/ceiling pairs and the two edge sizes accordingly differ.
 
 \begin{figure}[t]
 \centering
@@ -748,7 +749,7 @@ The paired bootstrap resamples complete question bundles and preserves prompt an
 No generation failure or scored null is reported in the primary summaries.
 Prompt-length checks keep the compared position prompts within one token.
 
-The producing manifest for Phase 3 records uncommitted source changes, so the result is included with an explicit exact-reproduction limitation.
+The Phase 3 result was independently re-run under a clean source tree at commit \texttt{33d6bb5}, reproducing the original summary exactly; see \texttt{artifacts/phase3/rerun-33d6bb5/REPORT.md}.
 A 50-generation blinded audit sample exists, but the human labels were not completed.
 The committed negative and distractor-order controls passed on the exploratory Pythia sample only and do not test the 8B Megatron checkpoints.
 
