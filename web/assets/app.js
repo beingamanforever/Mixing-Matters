@@ -1113,7 +1113,38 @@ function buildCalibration() {
 
 /* ---------- boot ---------- */
 
+/** Mark the nav entry for the section currently under the sticky bar. */
+function trackSections() {
+  const links = [...document.querySelectorAll(".nav a")];
+  const sections = links.map((link) => document.getElementById(link.hash.slice(1)));
+  const update = () => {
+    // The last section may be too short to reach the bar, so the page end selects it.
+    const atEnd = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+    const current = atEnd
+      ? sections.length - 1
+      : sections.findLastIndex((section) => section.getBoundingClientRect().top <= 120);
+    links.forEach((link, index) => link.toggleAttribute("aria-current", index === current));
+    // On a narrow screen the nav scrolls sideways; keep the current entry in view.
+    const nav = links[0].closest(".nav");
+    if (current >= 0 && nav.scrollWidth > nav.clientWidth) {
+      nav.scrollLeft = links[current].offsetLeft - 24;
+    }
+  };
+  window.addEventListener("scroll", update, { passive: true });
+  update();
+}
+
+function handleCopy(event) {
+  const button = event.currentTarget;
+  navigator.clipboard.writeText(document.getElementById(button.dataset.copy).textContent).then(() => {
+    button.textContent = "Copied";
+    setTimeout(() => (button.textContent = "Copy"), 1600);
+  });
+}
+
 async function boot() {
+  document.querySelectorAll("[data-copy]").forEach((button) => button.addEventListener("click", handleCopy));
+  trackSections();
   DATA = await (await fetch("data/results.json")).json();
   buildPanels();
   buildContrasts();

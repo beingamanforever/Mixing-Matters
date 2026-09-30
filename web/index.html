@@ -16,22 +16,31 @@
       The measured curves differ by model family, but the study does not isolate architecture as the cause."
     />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://beingamanforever.github.io/Mixing-Matters/" />
+    <meta property="og:image" content="https://beingamanforever.github.io/Mixing-Matters/assets/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#0e1218" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
     <link rel="stylesheet" href="assets/style.css" />
     <link
       rel="icon"
       href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%2312161b'/><rect x='2' y='7' width='2' height='6' fill='%230072b2'/><rect x='6' y='9' width='2' height='4' fill='%23e69f00'/><rect x='10' y='5' width='2' height='8' fill='%23009e73'/></svg>"
     />
   </head>
-  <body>
+  <body id="top">
     <header class="hero">
-      <div class="hero-eyebrow">Long-context evaluation · sequence mixers</div>
+      <p class="venue">New in ML Workshop at NeurIPS 2026</p>
       <h1>
         Mixing Matters?
         <span class="sub">Evidence and Its Limits for Position Bias Across Sequence Mixers</span>
       </h1>
       <p class="byline">
-        Position bias in Mamba and hybrid language models
-        <span class="venue">Accepted · New in ML @ NeurIPS 2026</span>
+        Does "lost in the middle" hold for Mamba and hybrid language models? We move one answer-bearing passage
+        through ten positions and measure what changes.
       </p>
       <nav class="links" aria-label="Resources">
         <a href="paper.pdf">
@@ -91,11 +100,11 @@
         <div class="eyebrow">Summary</div>
         <h2>The same evidence, moved</h2>
       </div>
+      <p class="hook">
+        The same evidence is not equally usable everywhere.
+        <span>The measured curve depends on the model, prompt, and task.</span>
+      </p>
       <div class="prose">
-        <p class="hook">
-          The same evidence is not equally usable everywhere.
-          <span>The measured curve depends on the model, prompt, and task.</span>
-        </p>
         <p>
           Hide an answer inside a long context and models find it more easily near the edges than in the middle.
           That "lost in the middle" result was measured on transformers, but it now gets quoted as a fact about
@@ -402,12 +411,16 @@
         </p>
       </div>
       <div class="prose">
-        <pre><code>@misc{mixingmatters2026,
+        <div class="bibtex">
+          <button type="button" class="copy" data-copy="bibtex">Copy</button>
+          <pre><code id="bibtex">@misc{mixingmatters2026,
   title  = {Mixing Matters? Evidence and Its Limits for Position Bias
             Across Sequence Mixers},
   note   = {Accepted at New in ML, NeurIPS 2026},
+  url    = {https://beingamanforever.github.io/Mixing-Matters/},
   year   = {2026}
 }</code></pre>
+        </div>
         <p class="note" style="margin-top: 22px">
           This work builds on the position-intervention protocol of
           <a href="https://aclanthology.org/2024.tacl-1.9/">Liu et al. (2024)</a> and evaluates models introduced
@@ -420,6 +433,18 @@
         </p>
       </div>
     </section>
+
+    <footer class="footer">
+      <p>
+        We thank the Indian Institute of Technology Roorkee for the computational resources that supported this
+        research.
+      </p>
+      <p class="footer-links">
+        <a href="https://github.com/beingamanforever/Mixing-Matters">Source on GitHub</a>
+        <a href="https://github.com/beingamanforever/Mixing-Matters/blob/main/LICENSE">Apache License 2.0</a>
+        <a href="#top">Back to top</a>
+      </p>
+    </footer>
 
     <script src="assets/app.js"></script>
   </body>
