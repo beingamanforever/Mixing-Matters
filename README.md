@@ -8,6 +8,10 @@
 
 **Evidence and Its Limits for Position Bias Across Sequence Mixers**
 
+Aman Behera<sup>1</sup>, Namit Solanki<sup>2</sup>, Mehul Anand<sup>3</sup>
+
+<sup>1</sup>IIT Roorkee &nbsp; <sup>2</sup>AISSMS IOIT, Pune &nbsp; <sup>3</sup>Independent Researcher
+
 [![Accepted at New in ML @ NeurIPS 2026](https://img.shields.io/badge/NeurIPS%202026-New%20in%20ML%20·%20Accepted-009e73?style=flat-square)](https://beingamanforever.github.io/Mixing-Matters/)
 [![Project page](https://img.shields.io/badge/Project-page-0072b2?style=flat-square)](https://beingamanforever.github.io/Mixing-Matters/)
 [![Paper](https://img.shields.io/badge/Paper-PDF-b31b1b?style=flat-square)](paper/mixing-matters-newinml-2026.pdf)
@@ -201,16 +205,16 @@ tests/                end-to-end and figure regeneration tests
 The paper builds on the position-intervention protocol of [Liu et al. (2024)](https://aclanthology.org/2024.tacl-1.9/) and evaluates models introduced by [Biderman et al. (2023)](https://proceedings.mlr.press/v202/biderman23a.html), [Gu and Dao (2024)](https://openreview.net/forum?id=tEYskw1VY2), [Dao and Gu (2024)](https://proceedings.mlr.press/v235/dao24a.html), and [Waleffe et al. (2024)](https://arxiv.org/abs/2406.07887).
 The complete scholarly bibliography is included in the [paper](paper/mixing-matters-newinml-2026.pdf).
 
-The public author list and archival paper URL are not yet available.
-Until they are released, please cite the paper by title.
+If you use the study, the released dataset, or the evaluation harness, please cite the paper.
 
 ```bibtex
-@misc{mixingmatters2026,
-  title  = {Mixing Matters? Evidence and Its Limits for Position Bias
-            Across Sequence Mixers},
-  note   = {Accepted at New in ML, NeurIPS 2026},
-  url    = {https://beingamanforever.github.io/Mixing-Matters/},
-  year   = {2026}
+@inproceedings{behera2026mixing,
+  title     = {Mixing Matters? Evidence and Its Limits for Position Bias
+               Across Sequence Mixers},
+  author    = {Behera, Aman and Solanki, Namit and Anand, Mehul},
+  booktitle = {New in ML Workshop at NeurIPS},
+  year      = {2026},
+  url       = {https://beingamanforever.github.io/Mixing-Matters/}
 }
 ```
 

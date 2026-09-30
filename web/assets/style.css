@@ -145,6 +145,39 @@ code,
   margin-inline: auto;
 }
 
+.authors,
+.affiliations {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 22px;
+  margin: 0 auto;
+  max-width: 60ch;
+}
+
+.authors {
+  margin-top: 24px;
+  font-size: 17px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.affiliations {
+  margin-top: 6px;
+  font-size: 14px;
+  color: rgba(244, 245, 246, 0.6);
+}
+
+.authors sup,
+.affiliations sup {
+  margin-left: 1px;
+  font-size: 0.68em;
+}
+
+.affiliations sup {
+  margin: 0 2px 0 0;
+}
+
 .byline {
   margin: 26px auto 0;
   font-size: 16px;
